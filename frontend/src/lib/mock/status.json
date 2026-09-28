@@ -1,0 +1,7 @@
+{
+  "sequence": [
+    { "state": "building", "pct": 20, "step": "Reading your resume" },
+    { "state": "building", "pct": 60, "step": "Scanning 4,139 open internships" },
+    { "state": "ready", "pct": 100, "step": "Ranking your matches" }
+  ]
+}
