@@ -89,3 +89,71 @@ def client():
 
     with TestClient(app) as c:
         yield c
+
+
+PROFILE = {
+    "school": "University of Maryland, College Park",
+    "major": "Information Science",
+    "minor": "Data Science",
+    "degree_level": "Bachelor's",
+    "grad_year": 2028,
+    "gpa": 3.7,
+    "target_terms": ["Summer 2027"],
+    "preferred_locations": ["Washington, DC", "New York, NY"],
+    "remote_ok": True,
+    "interests": [
+        {"role": "software", "rank": 1},
+        {"role": "ai_ml_data", "rank": 2},
+        {"role": "data_analytics", "rank": 3},
+    ],
+}
+
+
+@pytest.fixture()
+def profile_body() -> dict:
+    import copy
+
+    return copy.deepcopy(PROFILE)
+
+
+def register(client, email="ada@umd.edu", password="correct-horse", name="Ada") -> dict:
+    """Register a user and return their Authorization header."""
+    r = client.post(
+        "/auth/register", json={"email": email, "password": password, "display_name": name}
+    )
+    assert r.status_code == 200, r.text
+    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+
+@pytest.fixture()
+def auth(client) -> dict:
+    return register(client)
+
+
+RESUME_TEXT = """Ada Lovelace
+ada@umd.edu | College Park, MD | github.com/ada
+
+EDUCATION
+University of Maryland, College Park - B.S. Information Science, minor in Data Science. GPA 3.7
+
+SKILLS
+Languages: Python, Java, SQL, JavaScript, C++
+Frameworks: React, FastAPI, PyTorch, scikit-learn
+Tools: Docker, AWS, Git, PostgreSQL, Tableau
+
+EXPERIENCE
+Software Engineering Intern, Example Corp, Summer 2026
+Built a REST API in Python and deployed it on AWS with Docker and CI/CD.
+Wrote machine learning models for ranking; improved precision by 12 percent.
+"""
+
+
+def make_pdf(text: str = RESUME_TEXT) -> bytes:
+    import pymupdf
+
+    doc = pymupdf.open()
+    page = doc.new_page()
+    page.insert_textbox(pymupdf.Rect(50, 50, 560, 780), text, fontsize=10)
+    data = doc.tobytes()
+    doc.close()
+    return data
