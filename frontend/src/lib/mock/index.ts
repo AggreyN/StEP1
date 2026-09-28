@@ -5,8 +5,11 @@
 // kept in memory, and mirrored to localStorage so a page reload (e.g. a
 // filtered dashboard URL) sees the same saves/applications.
 //
-// Test knob: localStorage["step1.mock.instant"] = "1" makes GET /feed/status
-// report `ready` on the very first poll.
+// Test knobs (localStorage):
+//   step1.mock.instant = "1"            GET /feed/status reports `ready` on
+//                                       the very first poll
+//   step1.mock.fail = "POST /saved"     the next request whose "METHOD /path"
+//                                       starts with this fails once with a 500
 
 import feedData from "./feed.json";
 import profileData from "./profile.json";
@@ -25,7 +28,7 @@ import type {
 import { roleLabel } from "../roles";
 
 const DELAY_MS = 300;
-const STORE_KEY = "step1.mock.v1";
+const STORE_KEY = "step1.mock.v2";
 const DEMO_EMAIL = "demo@umd.edu";
 
 
@@ -51,7 +54,7 @@ interface State {
   saved: string[];
   apps: MockApp[];
   nextId: number;
-  statusPoll: number | null; // null = not building
+  buildStartedAt: number | null; // null = not building
 }
 
 function seed(): State {
@@ -62,7 +65,7 @@ function seed(): State {
     saved: POSTINGS.filter((p) => p.saved).map((p) => p.id),
     apps: applicationsData.items as MockApp[],
     nextId: 100,
-    statusPoll: null,
+    buildStartedAt: null,
   };
 }
 
@@ -183,22 +186,22 @@ function filterFeed(q: URLSearchParams): Posting[] {
 
 function feedStatus(): MockResponse {
   const s = db();
-  const seq = statusData.sequence as FeedStatus[];
+  const seq = statusData.sequence as (FeedStatus & { after_ms: number })[];
   let instant = false;
   try {
     instant = window.localStorage.getItem("step1.mock.instant") === "1";
   } catch {
     // ignore
   }
-  if (s.statusPoll === null || instant) {
-    s.statusPoll = null;
+  // Progress follows the clock, not the number of polls, like a real job would.
+  const elapsed = s.buildStartedAt === null || instant ? Infinity : Date.now() - s.buildStartedAt;
+  const cur = [...seq].reverse().find((x) => elapsed >= x.after_ms) ?? seq[0];
+  if (cur.state === "ready" && s.buildStartedAt !== null) {
+    s.buildStartedAt = null;
     persist();
-    return ok(seq[seq.length - 1]);
   }
-  const cur = seq[Math.min(s.statusPoll, seq.length - 1)];
-  s.statusPoll = cur.state === "ready" ? null : s.statusPoll + 1;
-  persist();
-  return ok(cur, 200, cur.state === "building" ? { "Retry-After": "1" } : {});
+  const body: FeedStatus = { state: cur.state, pct: cur.pct, step: cur.step };
+  return ok(body, 200, cur.state === "building" ? { "Retry-After": "1" } : {});
 }
 
 type Body = Record<string, unknown> | undefined;
@@ -270,7 +273,7 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
       resume,
       profile_version: version,
     };
-    s.statusPoll = 0;
+    s.buildStartedAt = Date.now();
     persist();
     return ok({ profile_version: version, state: "building" }, 202, { "Retry-After": "1" });
   }
@@ -393,6 +396,19 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
   return err(404, "Not found");
 }
 
+function shouldFail(method: string, path: string): boolean {
+  try {
+    const rule = window.localStorage.getItem("step1.mock.fail");
+    if (rule && `${method} ${path}`.startsWith(rule)) {
+      window.localStorage.removeItem("step1.mock.fail");
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+  return false;
+}
+
 export async function handle(
   method: string,
   pathAndQuery: string,
@@ -401,6 +417,9 @@ export async function handle(
 ): Promise<MockResponse> {
   await sleep(DELAY_MS);
   const url = new URL(pathAndQuery, "http://mock.local");
+  if (shouldFail(method, url.pathname)) {
+    return err(500, "The server had a problem. Nothing was changed — try again.");
+  }
   // Deep-copy so callers can never mutate mock state by reference.
   const res = route(method, url, body as Body, token);
   return { ...res, body: res.body == null ? null : JSON.parse(JSON.stringify(res.body)) };

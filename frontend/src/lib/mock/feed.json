@@ -254,7 +254,10 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": {
+        "id": 15,
+        "status": "applied"
+      }
     },
     {
       "id": "simplify:1bafdb0e-db69-c5ef-2858-4fdd109cacc2",
@@ -584,7 +587,10 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": {
+        "id": 12,
+        "status": "interview_scheduled"
+      }
     },
     {
       "id": "simplify:f36adff1-6e47-a4f3-3b0e-a3dab89b3069",
@@ -1701,7 +1707,10 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": {
+        "id": 7,
+        "status": "rejected"
+      }
     },
     {
       "id": "simplify:0410502f-a8c8-e6d9-129b-e66518f42643",
@@ -2106,7 +2115,10 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": {
+        "id": 9,
+        "status": "ghosted"
+      }
     },
     {
       "id": "simplify:026a2268-1002-b9e2-75d5-a7346f10954b",

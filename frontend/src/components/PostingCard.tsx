@@ -33,7 +33,7 @@ export function PostingCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h3 className="truncate text-[15px] font-semibold leading-snug sm:text-base">
+              <h3 className="line-clamp-2 break-words text-[15px] font-semibold leading-snug sm:text-base">
                 <a href={p.url} target="_blank" rel="noreferrer" className="hover:underline">
                   {p.title}
                 </a>

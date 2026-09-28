@@ -43,12 +43,23 @@ function Dashboard() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  // A filter change shows in the controls immediately and is written to the
+  // URL (replaceState: no server round trip, and Next keeps useSearchParams in
+  // sync). `pending` only bridges the moment before the URL catches up.
+  const [pending, setPending] = useState<{ from: string; to: FeedFilters } | null>(null);
+  if (pending && (pending.from !== filterKey || filtersToParams(pending.to).toString() === filterKey)) {
+    setPending(null);
+  }
+  const shown = pending ? pending.to : filters;
+
   const setFilters = useCallback(
     (f: FeedFilters) => {
       const qs = filtersToParams(f).toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      if (qs === filterKey) return;
+      setPending({ from: filterKey, to: f });
+      window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
     },
-    [router, pathname]
+    [filterKey, pathname]
   );
 
   // Fetch page 1 whenever the URL filters change.
@@ -109,7 +120,7 @@ function Dashboard() {
 
   if (!authed) return null;
 
-  const activeCount = activeFilterKeys(filters).length;
+  const activeCount = activeFilterKeys(shown).length;
   const countLabel = `${total} posting${total === 1 ? "" : "s"}`;
 
   return (
@@ -117,7 +128,7 @@ function Dashboard() {
       <div className="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8">
         <aside className="hidden lg:block">
           <div className="sticky top-20">
-            <FilterPanel value={filters} onChange={setFilters} />
+            <FilterPanel value={shown} onChange={setFilters} />
           </div>
         </aside>
 
@@ -126,7 +137,7 @@ function Dashboard() {
             <div>
               <h1 className="text-xl font-semibold tracking-tight">Your matches</h1>
               <p className="tnum text-sm text-muted" data-testid="feed-total">
-                {loading ? "Ranking…" : `${countLabel}${activeCount ? " match your filters" : ", best match first"}`}
+                {loading ? "Ranking…" : `${countLabel}${activeCount ? ` match${total === 1 ? "es" : ""} your filters` : ", best match first"}`}
               </p>
             </div>
             <Button size="sm" className="lg:hidden" onClick={() => setSheetOpen(true)} data-testid="open-filters">
@@ -161,7 +172,7 @@ function Dashboard() {
       </div>
 
       <Dialog open={sheetOpen} onClose={() => setSheetOpen(false)} title="Filters" sheet>
-        <FilterPanel value={filters} onChange={setFilters} />
+        <FilterPanel value={shown} onChange={setFilters} />
         <Button variant="primary" className="mt-5 w-full" onClick={() => setSheetOpen(false)} data-testid="close-filters">
           {loading ? "Show results" : `Show ${countLabel}`}
         </Button>
