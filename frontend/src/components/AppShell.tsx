@@ -23,7 +23,7 @@ export function SourcesFooter() {
   return (
     <footer className="mt-auto border-t border-line px-4 py-5 text-center text-xs text-faint">
       Listings from{" "}
-      <a className="underline underline-offset-2 hover:text-muted" href="https://github.com/SimplifyJobs/Summer2026-Internships" target="_blank" rel="noreferrer">
+      <a className="underline underline-offset-2 hover:text-muted" href="https://github.com/SimplifyJobs/Summer2027-Internships" target="_blank" rel="noreferrer">
         SimplifyJobs
       </a>{" "}
       and{" "}
