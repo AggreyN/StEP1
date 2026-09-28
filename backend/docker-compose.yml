@@ -1,0 +1,49 @@
+# Local stack: the API + Postgres 16, zero AWS.
+#
+#   docker compose up --build
+#   docker compose exec api python -m app.sources.backfill
+#   open http://localhost:8000/docs
+#
+# Every AWS-backed feature runs on its local stand-in: local auth (bcrypt +
+# HS256), filesystem resume storage, env-var secrets.
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: step1
+      POSTGRES_PASSWORD: step1-local-only   # local compose only; RDS creds live in Secrets Manager
+      POSTGRES_DB: step1
+    ports:
+      - "5433:5432"        # 5433 so a Homebrew Postgres on 5432 doesn't collide
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U step1 -d step1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: dev
+      DATABASE_URL: postgresql+psycopg://step1:step1-local-only@db:5432/step1
+      AUTH_MODE: local
+      STORAGE_BACKEND: local
+      UPLOAD_DIR: /srv/data/uploads
+      JWT_SECRET: local-compose-only-not-for-prod
+      ALLOWED_ORIGINS: http://localhost:3000
+      PUBLIC_API_BASE: http://localhost:8000
+    volumes:
+      - uploads:/srv/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    # Migrations + uvicorn come from the image ENTRYPOINT (entrypoint.sh).
+
+volumes:
+  pgdata:
+  uploads:

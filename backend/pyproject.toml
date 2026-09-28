@@ -1,0 +1,16 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".venv", "alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+# B008: FastAPI's Depends()/Query() in defaults is the framework idiom.
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+# roles.py is the validated classifier; it is not to be reformatted.
+"app/sources/roles.py" = ["E", "W", "I", "UP"]
+
+[tool.ruff.format]
+exclude = ["app/sources/roles.py"]
