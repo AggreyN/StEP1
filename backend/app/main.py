@@ -17,7 +17,7 @@ from app.logging_config import setup as setup_logging
 
 setup_logging()
 
-from app.routes import health  # noqa: E402  (logging must be configured first)
+from app.routes import auth, health  # noqa: E402  (logging must be configured first)
 
 app = FastAPI(
     title="StEP1 API",
@@ -88,3 +88,4 @@ async def _db_schema_broken(request: Request, exc: ProgrammingError):
 
 
 app.include_router(health.router)
+app.include_router(auth.router)
