@@ -30,7 +30,7 @@ export function InterestRanker({ value, onChange }: { value: string[]; onChange:
           <li
             key={key}
             data-testid="ranked-interest"
-            className="flex items-center gap-3 rounded-lg border border-line bg-surface py-1.5 pl-2 pr-1"
+            className="flex items-center gap-2 rounded-lg border border-line bg-surface py-1.5 pl-2 pr-1 sm:gap-3"
           >
             <span
               aria-label={`Rank ${i + 1}`}
@@ -38,13 +38,13 @@ export function InterestRanker({ value, onChange }: { value: string[]; onChange:
             >
               {i + 1}
             </span>
-            <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{roleLabel(key)}</span>
+            <span className="min-w-0 flex-1 break-words text-[15px] font-medium leading-snug">{roleLabel(key)}</span>
             <button
               type="button"
               onClick={() => move(i, -1)}
               disabled={i === 0}
               aria-label={`Move ${roleLabel(key)} up`}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg disabled:opacity-30"
+              className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg disabled:opacity-30"
             >
               <UpIcon />
             </button>
@@ -53,7 +53,7 @@ export function InterestRanker({ value, onChange }: { value: string[]; onChange:
               onClick={() => move(i, 1)}
               disabled={i === value.length - 1}
               aria-label={`Move ${roleLabel(key)} down`}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg disabled:opacity-30"
+              className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg disabled:opacity-30"
             >
               <DownIcon />
             </button>
@@ -61,7 +61,7 @@ export function InterestRanker({ value, onChange }: { value: string[]; onChange:
               type="button"
               onClick={() => onChange(value.filter((k) => k !== key))}
               aria-label={`Remove ${roleLabel(key)}`}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg"
+              className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg"
             >
               <XIcon />
             </button>

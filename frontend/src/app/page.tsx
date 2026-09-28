@@ -172,7 +172,7 @@ function Dashboard() {
       </div>
 
       <Dialog open={sheetOpen} onClose={() => setSheetOpen(false)} title="Filters" sheet>
-        <FilterPanel value={shown} onChange={setFilters} />
+        <FilterPanel value={shown} onChange={setFilters} heading={false} />
         <Button variant="primary" className="mt-5 w-full" onClick={() => setSheetOpen(false)} data-testid="close-filters">
           {loading ? "Show results" : `Show ${countLabel}`}
         </Button>

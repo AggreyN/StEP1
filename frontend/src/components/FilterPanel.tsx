@@ -13,7 +13,16 @@ const SCORE_STEPS = [50, 60, 70, 80, 90];
 const field =
   "h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg placeholder:text-faint focus:border-accent focus:outline-none";
 
-export function FilterPanel({ value, onChange }: { value: FeedFilters; onChange: (f: FeedFilters) => void }) {
+export function FilterPanel({
+  value,
+  onChange,
+  heading = true,
+}: {
+  value: FeedFilters;
+  onChange: (f: FeedFilters) => void;
+  /** false inside the mobile sheet, which has its own title bar */
+  heading?: boolean;
+}) {
   // Location is typed; debounce so we don't rewrite the URL per keystroke.
   // When the URL changes underneath us (back button, "Remove location filter"),
   // adopt it — adjusted during render, per React's "derived state" guidance.
@@ -33,18 +42,20 @@ export function FilterPanel({ value, onChange }: { value: FeedFilters; onChange:
 
   return (
     <div className="space-y-5 text-sm">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-faint">Filters</h2>
-        {active > 0 && (
-          <button
-            type="button"
-            onClick={() => onChange(EMPTY_FILTERS)}
-            className="text-sm font-medium text-accent-text underline-offset-2 hover:underline"
-          >
-            Clear all
-          </button>
-        )}
-      </div>
+      {(heading || active > 0) && (
+        <div className="flex items-center justify-between">
+          {heading ? <h2 className="text-xs font-semibold uppercase tracking-wide text-faint">Filters</h2> : <span />}
+          {active > 0 && (
+            <button
+              type="button"
+              onClick={() => onChange(EMPTY_FILTERS)}
+              className="text-sm font-medium text-accent-text underline-offset-2 hover:underline"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
+      )}
 
       <fieldset>
         <legend className="mb-2 font-medium">Role</legend>
