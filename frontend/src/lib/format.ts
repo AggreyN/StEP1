@@ -37,10 +37,12 @@ export function todayInput(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** Convert a date input value to an ISO timestamp at local noon (avoids
- *  landing on the previous day in UTC). */
+/** Convert a date input value to an ISO timestamp. Today (or blank) returns
+ *  undefined so the API stamps the real current time and same-day events keep
+ *  their order; a past date becomes local noon (so it can't slip to the
+ *  previous day in UTC). */
 export function dateInputToIso(v: string): string | undefined {
-  if (!v) return undefined;
+  if (!v || v === todayInput()) return undefined;
   const [y, m, d] = v.split("-").map(Number);
   return new Date(y, m - 1, d, 12).toISOString();
 }
