@@ -1,0 +1,94 @@
+[
+ {
+  "date_updated": 1749260792,
+  "url": "https://ats.rippling.com/en-GB/rippling/jobs/3fd9615a-d0c7-458c-a0fc-5d9d7f0ce77c",
+  "locations": [
+   "New York, NY",
+   "San Francisco, CA"
+  ],
+  "sponsorship": "Other",
+  "active": true,
+  "company_name": "Rippling",
+  "title": "Frontend Software Engineer Intern",
+  "season": "Winter",
+  "source": "vanshb03",
+  "id": "df70fa57-977b-4f31-832e-a0e57ed070b5",
+  "date_posted": 1749260792,
+  "company_url": "",
+  "is_visible": true
+ },
+ {
+  "date_updated": 1749260811,
+  "url": "https://ats.rippling.com/en-GB/rippling/jobs/ee1ec0b1-9a55-408d-979d-9c74f257e9ea",
+  "locations": [
+   "San Francisco, CA"
+  ],
+  "sponsorship": "Other",
+  "active": true,
+  "company_name": "Rippling",
+  "title": "Machine Learning Engineer Intern",
+  "season": "Winter",
+  "source": "vanshb03",
+  "id": "62b793bb-caea-465f-a95f-ce43bb81f1fc",
+  "date_posted": 1749260811,
+  "company_url": "",
+  "is_visible": true
+ },
+ {
+  "date_updated": 1749262000,
+  "url": "https://ats.rippling.com/en-GB/rippling/jobs/203e0cac-0e30-4603-8087-f764e8c3f85c",
+  "locations": [
+   "New York, NY",
+   "San Francisco, CA"
+  ],
+  "sponsorship": "Other",
+  "active": true,
+  "company_name": "Rippling",
+  "title": "Software Engineer Intern",
+  "season": "Winter",
+  "source": "vanshb03",
+  "id": "859558cb-6cc3-4251-8a23-4545fdfaebfa",
+  "date_posted": 1749262000,
+  "company_url": "",
+  "is_visible": true
+ },
+ {
+  "date_updated": 1787326911,
+  "url": "https://careers.amd.com/careers-home/jobs/91180",
+  "locations": [
+   "Austin, TX",
+   "Boxborough, MA",
+   "Rochester, NY",
+   "Fort Collins, CO",
+   "Longmont, CO",
+   "Fishkill, NY"
+  ],
+  "sponsorship": "Does Not Offer Sponsorship",
+  "active": true,
+  "company_name": "AMD",
+  "title": "Software Engineer Intern",
+  "source": "vanshb03",
+  "id": "f1fb259b-d4f0-4533-bff6-ab51a408a4db",
+  "date_posted": 1787326911,
+  "company_url": "",
+  "is_visible": true,
+  "season": "Spring/Summer"
+ },
+ {
+  "date_updated": 1757658515,
+  "url": "https://jobs.lever.co/belvederetrading/5e07daf3-a6bb-40d4-8125-b56d2ea20d81",
+  "locations": [
+   "Chicago, IL"
+  ],
+  "sponsorship": "Does Not Offer Sponsorship",
+  "active": false,
+  "company_name": "Belvedere Trading",
+  "title": "Quantitative Trading Intern",
+  "source": "vanshb03",
+  "id": "cfb9420c-289e-4b59-822d-a687edbdac21",
+  "date_posted": 1752524369,
+  "company_url": "",
+  "is_visible": true,
+  "season": "Winter"
+ }
+]
