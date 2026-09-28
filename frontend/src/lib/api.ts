@@ -126,6 +126,9 @@ async function send(method: string, path: string, opts: SendOpts = {}): Promise<
   if (res.status === 401 && authRedirect && typeof window !== "undefined") {
     clearSession();
     if (!window.location.pathname.startsWith("/login")) {
+      // A hard navigation is deliberate: this module has no router, and a dead
+      // session should drop all in-memory page state anyway.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign("/login?expired=1");
     }
     throw new ApiError(401, "Your session expired — sign in again.");
