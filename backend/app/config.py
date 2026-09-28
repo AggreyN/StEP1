@@ -98,6 +98,11 @@ DEACTIVATE_GUARD_RATIO = float(os.getenv("DEACTIVATE_GUARD_RATIO", "0.5"))
 # stale rather than true.
 POSTING_MAX_AGE_DAYS = int(os.getenv("POSTING_MAX_AGE_DAYS", "120"))
 
+# Cached scores older than this are recomputed on the next read even if
+# nothing else changed, because freshness decays daily. Much shorter and every
+# page view rescoring; much longer and "Posted 3 days ago" is a week stale.
+SCORES_MAX_AGE_HOURS = float(os.getenv("SCORES_MAX_AGE_HOURS", "24"))
+
 # --- Application timeline ---
 # applied|acknowledged with no company-side event for this long -> ghosted.
 GHOST_AFTER_DAYS = int(os.getenv("GHOST_AFTER_DAYS", "30"))

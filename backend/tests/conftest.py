@@ -157,3 +157,68 @@ def make_pdf(text: str = RESUME_TEXT) -> bytes:
     data = doc.tobytes()
     doc.close()
     return data
+
+
+def make_row(
+    source_id: str,
+    title: str = "Software Engineer Intern",
+    company: str = "Acme",
+    *,
+    locations=("Washington, DC",),
+    terms=("Summer 2027",),
+    degrees=("Bachelor's",),
+    days_ago: float = 3,
+    category: str = "Software",
+    active: bool = True,
+    is_visible: bool = True,
+) -> dict:
+    """One posting in the Simplify list's own JSON shape."""
+    import time
+
+    posted = int(time.time() - days_ago * 86_400)
+    return {
+        "source": "Simplify",
+        "id": source_id,
+        "title": title,
+        "company_name": company,
+        "company_url": f"https://simplify.jobs/c/{company.replace(' ', '-')}",
+        "category": category,
+        "locations": list(locations),
+        "terms": list(terms),
+        "degrees": list(degrees),
+        "sponsorship": "Other",
+        "url": f"https://jobs.example.com/{source_id}",
+        "date_posted": posted,
+        "date_updated": posted,
+        "active": active,
+        "is_visible": is_visible,
+    }
+
+
+def seed(rows: list[dict]):
+    """Ingest rows through the real backfill path, as source 'simplify'."""
+    from app.database import SessionLocal
+    from app.sources import simplify
+    from app.sources.backfill import ingest
+    from app.sources.base import Source
+
+    class Fixed(Source):
+        name = "simplify"
+
+        def fetch(self):
+            return [simplify.normalize_row(r) for r in rows]
+
+    with SessionLocal() as session:
+        result = ingest(session, Fixed())
+    assert result.error is None, result.error
+    return result
+
+
+def onboard(client, headers: dict, **overrides) -> dict:
+    """PUT /profile with the standard body; returns the body that was sent."""
+    import copy
+
+    body = copy.deepcopy(PROFILE) | overrides
+    r = client.put("/profile", json=body, headers=headers)
+    assert r.status_code == 202, r.text
+    return body

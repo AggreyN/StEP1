@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 from sqlalchemy import delete, insert
 from sqlalchemy.orm import Session
 
@@ -31,7 +31,7 @@ from app.schemas import (
     ProfileOut,
     ResumeOut,
 )
-from app.services import resume_parse, storage
+from app.services import feed_state, resume_parse, storage
 from app.sources.roles import ROLE_LABELS
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -98,6 +98,7 @@ def get_profile(user: User = Depends(current_user), db: Session = Depends(get_db
 def put_profile(
     body: ProfileIn,
     response: Response,
+    background: BackgroundTasks,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
@@ -126,6 +127,12 @@ def put_profile(
     if profile.onboarded_at is None:
         profile.onboarded_at = datetime.now(UTC)
     db.commit()
+
+    # Mark the build as started before responding, so the first status poll
+    # can't slip in ahead of the background task and read "ready" off the
+    # previous version's scores.
+    feed_state.begin(user.id)
+    background.add_task(feed_state.run_build, user.id)
 
     # The poll hint for the "building" screen. CORS must expose this header
     # (main.py) or the browser can't read it.
@@ -187,7 +194,10 @@ async def upload_resume_local(key: str, request: Request, user: User = Depends(c
 
 @router.post("/resume/commit", response_model=ResumeOut)
 def commit_resume(
-    body: CommitIn, user: User = Depends(current_user), db: Session = Depends(get_db)
+    body: CommitIn,
+    background: BackgroundTasks,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
 ):
     if not storage.owns(user.id, body.key):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown upload key.")
@@ -221,4 +231,7 @@ def commit_resume(
 
     if previous and previous != body.key:
         storage.delete(previous)
+    if profile.onboarded_at is not None:
+        feed_state.begin(user.id)
+        background.add_task(feed_state.run_build, user.id)
     return resume_out(profile)

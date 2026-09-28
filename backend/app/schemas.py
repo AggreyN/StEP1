@@ -5,14 +5,34 @@ against. Field names here are load-bearing: a rename is a broken merge on the
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    PlainSerializer,
+    field_validator,
+    model_validator,
+)
 
 from app import config
 from app.models import EVENT_KINDS, INTEREST_ROLES
+
+
+def _utc_z(value: datetime) -> str:
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+# Every timestamp leaves the API as UTC with a trailing Z, whatever zone it
+# was stored or submitted in. The frontend compares and sorts these as strings.
+UtcDateTime = Annotated[datetime, PlainSerializer(_utc_z, return_type=str, when_used="json")]
+
 
 # --------------------------------------------------------------------------- #
 # Auth
@@ -86,7 +106,7 @@ class InterestOut(BaseModel):
 
 class ResumeOut(BaseModel):
     filename: str
-    uploaded_at: datetime
+    uploaded_at: UtcDateTime
     skills: list[str]
     needs_ocr: bool
 
@@ -213,7 +233,7 @@ class PostingOut(BaseModel):
     terms: list[str]
     degrees: list[str]
     url: str
-    date_posted: datetime | None
+    date_posted: UtcDateTime | None
     salary: SalaryOut | None
     source: str
     score: int | None
@@ -263,7 +283,7 @@ class EventOut(BaseModel):
 
     id: int
     kind: str
-    occurred_at: datetime
+    occurred_at: UtcDateTime
     note: str | None
     source: str
 
@@ -272,8 +292,8 @@ class ApplicationSummaryOut(BaseModel):
     id: int
     posting: PostingOut
     status: str
-    applied_at: datetime | None
-    last_event_at: datetime | None
+    applied_at: UtcDateTime | None
+    last_event_at: UtcDateTime | None
 
 
 class ApplicationDetailOut(ApplicationSummaryOut):

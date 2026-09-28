@@ -14,7 +14,12 @@ engine = create_engine(
     pool_size=config.DB_POOL_SIZE,
     max_overflow=config.DB_MAX_OVERFLOW,
     pool_recycle=1800,  # under RDS's default idle-connection timeout
-    connect_args={"connect_timeout": config.DB_CONNECT_TIMEOUT},
+    connect_args={
+        "connect_timeout": config.DB_CONNECT_TIMEOUT,
+        # Timestamps come back in the session's zone. Pin it, or the same
+        # instant reads as -04:00 on a laptop and +00:00 on the server.
+        "options": "-c timezone=utc",
+    },
 )
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)

@@ -17,7 +17,14 @@ from app.logging_config import setup as setup_logging
 
 setup_logging()
 
-from app.routes import auth, health, profile  # noqa: E402  (logging must be configured first)
+from app.routes import (  # noqa: E402  (logging must be configured first)
+    auth,
+    feed,
+    health,
+    postings,
+    profile,
+    saved,
+)
 
 app = FastAPI(
     title="StEP1 API",
@@ -87,6 +94,20 @@ async def _db_schema_broken(request: Request, exc: ProgrammingError):
     )
 
 
+@app.exception_handler(Exception)
+async def _unhandled(request: Request, exc: Exception):
+    """Even a bug answers in the contract's error shape. The traceback goes
+    to the log (joined by X-Request-Id), never to the client."""
+    _log.exception("unhandled error", exc_info=exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Something went wrong on our side. Please try again."},
+    )
+
+
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(profile.router)
+app.include_router(feed.router)
+app.include_router(postings.router)
+app.include_router(saved.router)

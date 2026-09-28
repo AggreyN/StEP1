@@ -118,10 +118,22 @@ def start_application(
         db,
         application,
         kind="applied",
-        occurred_at=applied_at or datetime.now(UTC),
+        occurred_at=_checked_time(applied_at, "applied_at"),
         note=None,
         source="manual",
     )
+
+
+def _checked_time(value: datetime | None, name: str) -> datetime:
+    """Default to now, read a naive timestamp as UTC, refuse the future."""
+    now = datetime.now(UTC)
+    if value is None:
+        return now
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    if value > now + _FUTURE_SLACK:
+        raise TransitionError(f"{name} can't be in the future.")
+    return value
 
 
 def record_user_event(
@@ -133,10 +145,7 @@ def record_user_event(
     note: str | None = None,
 ) -> ApplicationEvent:
     """Validate a user-entered event against the state machine, then append it."""
-    now = datetime.now(UTC)
-    occurred_at = occurred_at or now
-    if occurred_at.tzinfo is None:
-        occurred_at = occurred_at.replace(tzinfo=UTC)
+    occurred_at = _checked_time(occurred_at, "occurred_at")
 
     if kind == "ghosted":
         raise TransitionError(
@@ -171,9 +180,6 @@ def record_user_event(
                 f"'{_human(kind)}' can't be dated before the current status "
                 f"({_human(application.status)}, {latest.date().isoformat()})."
             )
-    if occurred_at > now + _FUTURE_SLACK:
-        raise TransitionError("occurred_at can't be in the future.")
-
     return _append(db, application, kind=kind, occurred_at=occurred_at, note=note, source="manual")
 
 
