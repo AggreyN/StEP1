@@ -1,6 +1,11 @@
 # StEP1 backend dependencies.  Install:  pip install -r requirements.txt
-# Floors are the versions verified locally (Python 3.14) — the Docker image
-# runs python:3.12-slim, and every package here has 3.12 wheels.
+# The Docker image runs python:3.12-slim. Every package here ships wheels for
+# 3.12 through 3.14; nothing had to be downgraded to run on 3.14.
+#
+# Last verified together (Python 3.14, 2026-09-28):
+#   fastapi 0.141.1, starlette 1.7.0, uvicorn 0.54.0, SQLAlchemy 2.1.1,
+#   alembic 1.20.0, psycopg 3.3.6, pydantic 2.13.5, passlib 1.7.4, bcrypt 4.0.1,
+#   python-jose 3.5.0, PyMuPDF 1.28.2, boto3 1.43.103, pytest 9.1.1, ruff 0.16.9
 
 # --- Web framework + server ---
 fastapi>=0.115
@@ -27,7 +32,7 @@ python-dotenv>=1.0          # load .env in development
 requests>=2.31
 
 # --- Resume parsing ---
-PyMuPDF>=1.24               # imported as "fitz"; PDF -> text
+PyMuPDF>=1.24.3             # imported as `pymupdf` (the name 1.24.3 introduced)
 
 # --- Tests + lint ---
 pytest>=8.0
