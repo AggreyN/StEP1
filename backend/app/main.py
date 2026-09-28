@@ -18,6 +18,7 @@ from app.logging_config import setup as setup_logging
 setup_logging()
 
 from app.routes import (  # noqa: E402  (logging must be configured first)
+    applications,
     auth,
     feed,
     health,
@@ -111,3 +112,4 @@ app.include_router(profile.router)
 app.include_router(feed.router)
 app.include_router(postings.router)
 app.include_router(saved.router)
+app.include_router(applications.router)
