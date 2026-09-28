@@ -279,3 +279,17 @@ def test_saving_raises_the_companys_other_postings(client, board):
 
     client.delete("/saved/simplify:dc-swe", headers=board)
     assert palantir()["fall-swe"]["score"] == before["fall-swe"]["score"]
+
+
+def test_a_reader_that_waited_on_a_build_does_not_repeat_it(client, board, db):
+    """GET /feed arriving mid-build waits on the lock; once it has it, the
+    scores are current and must not be computed a second time."""
+    from app.models import Profile
+    from app.services import matching
+
+    profile = db.get(Profile, 1)
+    stamp = profile.scores_computed_at
+    assert matching.rescore(db, 1, unless=lambda p: feed_state.is_current(db, p)) == 0
+    db.refresh(profile)
+    assert profile.scores_computed_at == stamp
+    assert matching.rescore(db, 1) == len(IN_FEED)  # unconditional still works

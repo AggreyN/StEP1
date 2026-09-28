@@ -85,7 +85,9 @@ def is_current(db: Session, profile: Profile) -> bool:
 def ensure_current(db: Session, profile: Profile) -> None:
     """Recompute synchronously if the cache is stale. Used by GET /feed."""
     if not is_current(db, profile):
-        matching.rescore(db, profile.user_id)
+        # Re-checked under the lock: if a background build was mid-flight, we
+        # waited for it and there is nothing left to do.
+        matching.rescore(db, profile.user_id, unless=lambda fresh: is_current(db, fresh))
         db.refresh(profile)
 
 

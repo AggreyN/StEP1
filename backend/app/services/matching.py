@@ -31,6 +31,7 @@ pass — no query per posting.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
@@ -306,7 +307,13 @@ def score_all(
 _LOCK_NAMESPACE = 5171
 
 
-def rescore(db: Session, user_id: int, *, company_id: int | None = None) -> int:
+def rescore(
+    db: Session,
+    user_id: int,
+    *,
+    company_id: int | None = None,
+    unless: Callable[[Profile], bool] | None = None,
+) -> int:
     """Recompute and replace the cached match_scores for one student. Commits.
 
     With `company_id`, only that company's postings are rescored — what a
@@ -316,13 +323,15 @@ def rescore(db: Session, user_id: int, *, company_id: int | None = None) -> int:
     An advisory lock serialises concurrent rescoring of the same student (the
     background task racing a status poll): the loser waits, then recomputes
     against the same data rather than interleaving its DELETE with the
-    winner's INSERT.
+    winner's INSERT. `unless` is asked once the lock is held, so a caller that
+    only wants current scores can let the loser return without redoing the
+    work the winner just committed.
     """
     db.execute(
         text("SELECT pg_advisory_xact_lock(:ns, :uid)"), {"ns": _LOCK_NAMESPACE, "uid": user_id}
     )
     profile = db.get(Profile, user_id, populate_existing=True)
-    if profile is None or profile.onboarded_at is None:
+    if profile is None or profile.onboarded_at is None or (unless and unless(profile)):
         db.rollback()
         return 0
     version = profile.profile_version
