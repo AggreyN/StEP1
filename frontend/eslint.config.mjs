@@ -13,7 +13,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     // build dir of the Playwright dev server, and Playwright's own output
-    ".next-test/**",
+    ".next-*/**",
     "playwright-report/**",
     "test-results/**",
   ]),

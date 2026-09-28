@@ -20,6 +20,7 @@ export function PostingCard({
 }) {
   const p = posting;
   const salary = formatSalary(p.salary);
+  const age = postedAge(p.date_posted);
   const locs = p.locations.slice(0, 2).join(" · ") + (p.locations.length > 2 ? ` +${p.locations.length - 2}` : "");
 
   return (
@@ -86,7 +87,7 @@ export function PostingCard({
             </span>
           ))}
           {salary && <span className="tnum whitespace-nowrap">{salary}</span>}
-          <span className="whitespace-nowrap text-faint">Posted {postedAge(p.date_posted)}</span>
+          {age && <span className="whitespace-nowrap text-faint">Posted {age}</span>}
         </div>
 
         <div className="mt-2.5 flex flex-wrap items-center gap-2">

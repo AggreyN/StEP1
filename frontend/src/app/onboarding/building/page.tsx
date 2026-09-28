@@ -5,7 +5,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getFeedStatus } from "@/lib/api";
+import { ApiError, getFeedStatus } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import type { FeedStatus } from "@/lib/types";
 import { Wordmark } from "@/components/AppShell";
@@ -44,7 +44,12 @@ function Building() {
         timer = setTimeout(() => poll(s.retryAfter ?? delaySec), (s.retryAfter ?? delaySec) * 1000);
       } catch (e) {
         if (cancelled) return;
+        if (e instanceof ApiError && e.status === 409) {
+          router.replace("/onboarding"); // no profile yet — nothing is building
+          return;
+        }
         setError(e instanceof Error ? e.message : "Couldn't check progress.");
+        if (Date.now() - startedAt.current > SLOW_AFTER_MS) setSlow(true);
         timer = setTimeout(() => poll(Math.min(delaySec * 2, 10)), Math.min(delaySec * 2, 10) * 1000);
       }
     };

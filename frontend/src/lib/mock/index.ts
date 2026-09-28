@@ -8,6 +8,7 @@
 // Test knobs (localStorage):
 //   step1.mock.instant = "1"            GET /feed/status reports `ready` on
 //                                       the very first poll
+//   step1.mock.stuck = "1"              GET /feed/status never leaves `building`
 //   step1.mock.fail = "POST /saved"     the next request whose "METHOD /path"
 //                                       starts with this fails once with a 500
 
@@ -156,7 +157,10 @@ function appDetail(app: MockApp): ApplicationDetail {
 
 function sortPostings(list: Posting[]): Posting[] {
   return [...list].sort(
-    (a, b) => b.score - a.score || b.date_posted.localeCompare(a.date_posted)
+    (a, b) =>
+      (b.score ?? -1) - (a.score ?? -1) ||
+      (b.date_posted ?? "").localeCompare(a.date_posted ?? "") ||
+      a.id.localeCompare(b.id)
   );
 }
 
@@ -179,7 +183,7 @@ function filterFeed(q: URLSearchParams): Posting[] {
       (!roles.length || p.roles.some((r) => roles.includes(r))) &&
       (!location || p.locations.some((l) => l.toLowerCase().includes(location))) &&
       (!term || p.terms.includes(term)) &&
-      p.score >= minScore &&
+      (p.score ?? 0) >= minScore &&
       (!remote || p.is_remote)
   );
 }
@@ -188,10 +192,16 @@ function feedStatus(): MockResponse {
   const s = db();
   const seq = statusData.sequence as (FeedStatus & { after_ms: number })[];
   let instant = false;
+  let stuck = false;
   try {
     instant = window.localStorage.getItem("step1.mock.instant") === "1";
+    stuck = window.localStorage.getItem("step1.mock.stuck") === "1";
   } catch {
     // ignore
+  }
+  if (stuck) {
+    const { state, pct, step } = seq.filter((x) => x.state === "building").slice(-1)[0];
+    return ok({ state, pct, step }, 200, { "Retry-After": "1" });
   }
   // Progress follows the clock, not the number of polls, like a real job would.
   const elapsed = s.buildStartedAt === null || instant ? Infinity : Date.now() - s.buildStartedAt;

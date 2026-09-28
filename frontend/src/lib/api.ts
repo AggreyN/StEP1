@@ -211,19 +211,18 @@ export async function uploadResume(file: File): Promise<Resume> {
   });
 }
 
-/** The one place that PUTs file bytes to a presigned URL.
+/** The one place that PUTs file bytes to the upload URL, and the one place
+ *  that decides whether the bearer token goes with them.
  *
- *  The bearer token is attached when the upload URL is our own API (local
- *  backend mode stores uploads itself and requires auth). A real S3 presigned
- *  URL carries its signature in the query string, and S3 rejects a request
- *  that also has an Authorization header — so for any other host the bearer
- *  is dropped. This is the only place that decision is made. */
+ *  Local backend mode: upload_url is our own API, which requires the bearer.
+ *  S3: a presigned URL carries its own signature in the query string and must
+ *  not be sent a second credential, so the bearer is dropped. */
 async function putUpload(p: Presign, file: File): Promise<void> {
   const token = getToken();
-  const toOwnApi = !USE_MOCK && p.upload_url.startsWith(BASE);
+  const presigned = /[?&](X-Amz-Signature|Signature)=/i.test(p.upload_url);
   const headers: Record<string, string> = {
     ...p.headers,
-    ...(token && toOwnApi ? { Authorization: `Bearer ${token}` } : {}),
+    ...(token && !presigned ? { Authorization: `Bearer ${token}` } : {}),
   };
   if (USE_MOCK) {
     const { handleUpload } = await import("./mock");

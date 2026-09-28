@@ -43,7 +43,7 @@ export interface Reason {
 export interface Salary {
   min: number | null;
   max: number | null;
-  unit: string;
+  unit: string | null;
 }
 
 export interface PostingApplicationRef {
@@ -62,10 +62,12 @@ export interface Posting {
   terms: string[];
   degrees: string[];
   url: string;
-  date_posted: string;
+  /** null when the source list did not give a date */
+  date_posted: string | null;
   salary: Salary | null;
   source: string;
-  score: number;
+  /** null when the posting has not been scored for this user */
+  score: number | null;
   reasons: Reason[];
   saved: boolean;
   application: PostingApplicationRef | null;
@@ -98,11 +100,11 @@ export interface Resume {
 }
 
 export interface Profile {
-  school: string;
-  major: string;
+  school: string | null;
+  major: string | null;
   minor: string | null;
-  degree_level: string;
-  grad_year: number;
+  degree_level: string | null;
+  grad_year: number | null;
   gpa: number | null;
   target_terms: string[];
   preferred_locations: string[];
@@ -150,15 +152,15 @@ export interface ApplicationSummary {
   id: number;
   posting: Posting;
   status: string;
-  applied_at: string;
-  last_event_at: string;
+  applied_at: string | null;
+  last_event_at: string | null;
 }
 
 export interface ApplicationDetail {
   id: number;
   posting: Posting;
   status: string;
-  applied_at: string;
+  applied_at: string | null;
   events: ApplicationEvent[];
   next_transitions: string[];
 }

@@ -95,7 +95,7 @@ export default function ApplicationsPage() {
                           <p className="truncate text-[15px] font-medium">{a.posting.title}</p>
                           <p className="truncate text-sm text-muted">
                             {a.posting.company.name} · applied {shortDate(a.applied_at)}
-                            {a.last_event_at !== a.applied_at && ` · updated ${shortDate(a.last_event_at)}`}
+                            {a.last_event_at && a.last_event_at !== a.applied_at && ` · updated ${shortDate(a.last_event_at)}`}
                           </p>
                         </div>
                         <StatusPill status={a.status} />

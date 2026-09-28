@@ -75,11 +75,11 @@ export default function OnboardingPage() {
         if (cancelled) return;
         setExisting(p);
         if (p) {
-          setSchool(p.school);
-          setMajor(p.major);
+          setSchool(p.school ?? DEFAULT_SCHOOL);
+          setMajor(p.major ?? "");
           setMinor(p.minor ?? "");
-          setDegree(p.degree_level);
-          setGradYear(String(p.grad_year));
+          if (p.degree_level) setDegree(p.degree_level);
+          if (p.grad_year) setGradYear(String(p.grad_year));
           setGpa(p.gpa == null ? "" : String(p.gpa));
           setTerms(p.target_terms);
           setLocations(p.preferred_locations);

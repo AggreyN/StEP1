@@ -30,3 +30,18 @@ test("building: polls, shows each real step, then routes to the dashboard", asyn
   expect([...seen]).toEqual(expect.arrayContaining(building));
   await expect(page).toHaveURL(/\/$/);
 });
+
+test("building: after 30 seconds it says so and links to the dashboard anyway", async ({ page }) => {
+  await signInDemo(page);
+  await page.evaluate(() => localStorage.setItem("step1.mock.stuck", "1"));
+  await page.clock.install();
+  await page.goto("/onboarding/building?retry=1");
+  await expect(page.getByTestId("building-step")).toHaveText("Scanning 4,139 open internships");
+  await expect(page.getByText("taking longer than usual")).toHaveCount(0);
+
+  await page.clock.runFor(35_000);
+  await expect(page.getByText("This is taking longer than usual.")).toBeVisible();
+  await expect(page).toHaveURL(/\/onboarding\/building/); // still here, no forced redirect
+  await page.getByRole("link", { name: "Go to the dashboard anyway" }).click();
+  await expect(page).toHaveURL(/\/$/);
+});

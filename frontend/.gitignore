@@ -40,8 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# separate distDir used by the Playwright dev server
-/.next-test/
+# separate build dirs (NEXT_DIST_DIR), e.g. the Playwright dev server's
+/.next-*/
 
 # Playwright
 /test-results/

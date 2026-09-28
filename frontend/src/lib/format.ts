@@ -5,7 +5,8 @@ export function daysAgo(iso: string, now = Date.now()): number {
   return Math.max(0, Math.floor((now - new Date(iso).getTime()) / 86_400_000));
 }
 
-export function postedAge(iso: string): string {
+export function postedAge(iso: string | null): string | null {
+  if (!iso) return null;
   const d = daysAgo(iso);
   if (d === 0) return "today";
   if (d === 1) return "yesterday";
@@ -14,17 +15,20 @@ export function postedAge(iso: string): string {
   return `${Math.floor(d / 30)}mo ago`;
 }
 
-export function shortDate(iso: string): string {
+export function shortDate(iso: string | null): string {
+  if (!iso) return "—";
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export function longDate(iso: string): string {
+export function longDate(iso: string | null): string {
+  if (!iso) return "—";
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 export function formatSalary(s: Salary | null): string | null {
   if (!s || (s.min == null && s.max == null)) return null;
-  const unit = s.unit === "hour" ? "/hr" : s.unit === "year" ? "/yr" : s.unit === "month" ? "/mo" : ` ${s.unit}`;
+  const unit =
+    s.unit === "hour" ? "/hr" : s.unit === "year" ? "/yr" : s.unit === "month" ? "/mo" : s.unit ? ` ${s.unit}` : "";
   const money = (n: number) =>
     s.unit === "hour" ? `$${n}` : `$${n >= 1000 ? Math.round(n / 1000) + "k" : n}`;
   if (s.min != null && s.max != null && s.min !== s.max) return `${money(s.min)}–${money(s.max)}${unit}`;
