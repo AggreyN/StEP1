@@ -38,6 +38,49 @@ os.environ["JWT_SECRET"] = "test-only-secret-not-a-real-key"
 os.environ["ALLOWED_ORIGINS"] = "http://localhost:3000"
 
 
+_TABLES = (
+    "application_events, applications, saved_postings, match_scores, profile_interests, "
+    "profiles, outreach_messages, contacts, integrations, users, postings, companies, ingest_runs"
+)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _migrated():
+    """Build the schema with `alembic downgrade base && upgrade head` — the
+    migration is what runs in production, so it's what the suite exercises."""
+    from alembic.config import Config
+
+    from alembic import command
+
+    cfg = Config(str(BACKEND_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(BACKEND_ROOT / "alembic"))
+    command.downgrade(cfg, "base")
+    command.upgrade(cfg, "head")
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _clean_tables(_migrated):
+    yield
+    from sqlalchemy import text
+
+    from app.database import engine
+
+    with engine.begin() as conn:
+        conn.execute(text(f"TRUNCATE {_TABLES} RESTART IDENTITY CASCADE"))
+
+
+@pytest.fixture()
+def db():
+    from app.database import SessionLocal
+
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
 @pytest.fixture()
 def client():
     from fastapi.testclient import TestClient
