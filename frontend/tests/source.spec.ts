@@ -86,20 +86,11 @@ test("the palette passes the contrast check", () => {
   expect(out).not.toContain("FAIL");
 });
 
-test("amplify.yml carries the same security headers as next.config", () => {
-  // The generator is the judge: it builds the block from security-headers.mjs,
-  // which is what next.config.ts serves, and compares it with the file.
-  const check = (env: NodeJS.ProcessEnv) => {
-    try {
-      execFileSync("node", [path.join(ROOT, "scripts/amplify-headers.mjs"), "--check"], { env, encoding: "utf8" });
-      return true;
-    } catch {
-      return false;
-    }
-  };
-  const launchDefaults = { ...process.env, NEXT_PUBLIC_API_BASE: "", NEXT_PUBLIC_UPLOAD_ORIGIN: "" };
-  // up to date either with the launch defaults or pinned to this environment's origins
-  expect(check(launchDefaults) || check(process.env)).toBe(true);
+test("amplify.yml carries the security headers from the one definition", () => {
+  // The generator is the judge: it builds the block from security-headers.mjs
+  // and compares it with the file.
+  const out = execFileSync("node", [path.join(ROOT, "scripts/amplify-headers.mjs"), "--check"], { encoding: "utf8" });
+  expect(out).toContain("up to date");
 
   const yml = readFileSync(path.resolve(ROOT, "../amplify.yml"), "utf8");
   for (const name of [
@@ -112,4 +103,26 @@ test("amplify.yml carries the same security headers as next.config", () => {
   ]) {
     expect(yml).toContain(`key: "${name}"`);
   }
+  expect(yml).toContain("baseDirectory: out");
+  expect(yml).toContain("appRoot: frontend");
+});
+
+test("nothing names a domain for the site or the API", () => {
+  // The domain isn't chosen. Addresses come from environment variables.
+  const yml = readFileSync(path.resolve(ROOT, "../amplify.yml"), "utf8");
+  const rules = readFileSync(path.join(ROOT, "amplify-rewrites.json"), "utf8");
+  for (const [name, text] of [["amplify.yml", yml], ["amplify-rewrites.json", rules]] as const) {
+    expect(text, name).not.toMatch(/https?:\/\/[a-z0-9.-]+\.[a-z]{2,}/i);
+  }
+  const hits: string[] = [];
+  for (const file of SRC) {
+    const text = code(file);
+    if (/step1\.(com|org|net|io|app|dev)\b/i.test(text)) hits.push(path.relative(ROOT, file));
+  }
+  expect(hits).toEqual([]);
+});
+
+test("the rewrite rules are the documented 404 rule and nothing else", () => {
+  const rules = JSON.parse(readFileSync(path.join(ROOT, "amplify-rewrites.json"), "utf8"));
+  expect(rules).toEqual([{ source: "/<*>", target: "/404.html", status: "404", condition: null }]);
 });
