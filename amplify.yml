@@ -11,6 +11,7 @@ applications:
       phases:
         preBuild:
           commands:
+            - nvm use 22
             - npm ci
             - npm run check:deploy
         build:
