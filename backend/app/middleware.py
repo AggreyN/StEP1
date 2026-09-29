@@ -26,26 +26,69 @@ def _header(scope, name: bytes) -> str | None:
     return None
 
 
-def client_ip(scope) -> str:
-    """The address of whoever is really making the request.
+# The key for every request whose address cannot be vouched for.
+UNVERIFIED = "unverified"
 
-    With no trusted proxy that is the peer on the socket, and
-    X-Forwarded-For is ignored: it is a header, and says what its sender
+
+def _forwarded_hosts(scope) -> list[str]:
+    """The addresses in X-Forwarded-For, left to right, without ports."""
+    hosts = []
+    for name, value in scope.get("headers", []):
+        if name != b"x-forwarded-for":
+            continue
+        for entry in value.decode("latin-1").split(","):
+            entry = entry.strip().lower()
+            if not entry:
+                continue
+            if entry.startswith("["):  # [2001:db8::1]:443
+                entry = entry[1:].split("]", 1)[0]
+            elif entry.count(":") == 1:  # 203.0.113.7:443
+                entry = entry.split(":", 1)[0]
+            hosts.append(entry)
+    return hosts
+
+
+def _peer(scope, forwarded: list[str]) -> str:
+    """The address on the socket, if it can be believed.
+
+    It cannot always. The server in front of this app may already have
+    replaced it: uvicorn, by default, takes the client's address from
+    X-Forwarded-For whenever the connection comes from a host it trusts, and
+    by default it trusts this machine. On a laptop, or behind any proxy on the
+    same host, that makes the "socket address" whatever the request said it
+    was, and the app is handed the result with nothing to mark it.
+
+    What the app can see is whether the address it was given also appears in
+    X-Forwarded-For. If it does, it came from the header or might as well
+    have, and it is not used. Every such request shares one key, so changing
+    the header buys nothing.
+    """
+    client = scope.get("client")
+    host = (client[0] if client else "") or ""
+    if not host:
+        return "unknown"
+    if host.lower() in forwarded:
+        return UNVERIFIED
+    return host
+
+
+def client_ip(scope) -> str:
+    """The address of whoever is really making the request, for rate limits.
+
+    With no trusted proxy, that is the peer on the socket, and
+    X-Forwarded-For is not believed: it is a header, and says what its sender
     likes. Behind trusted proxies it is the entry TRUSTED_PROXY_HOPS from the
     right of X-Forwarded-For, the one the outermost of our own proxies wrote.
-    Entries to its left came with the request and are not believed.
+    Entries to its left came with the request and are not believed either.
     """
-    peer = (scope.get("client") or ("unknown", 0))[0]
-    if not config.TRUST_PROXY:
-        return peer
-    forwarded = [p.strip() for p in (_header(scope, b"x-forwarded-for") or "").split(",")]
-    forwarded = [p for p in forwarded if p]
-    hops = max(config.TRUSTED_PROXY_HOPS, 1)
-    if len(forwarded) >= hops:
-        return forwarded[-hops]
-    # Fewer entries than proxies: the request did not come the way we think
-    # requests come. Fall back to what cannot be forged.
-    return peer
+    forwarded = _forwarded_hosts(scope)
+    if config.TRUST_PROXY:
+        hops = max(config.TRUSTED_PROXY_HOPS, 1)
+        if len(forwarded) >= hops:
+            return forwarded[-hops]
+        # Fewer entries than proxies: the request did not come the way
+        # requests are supposed to come.
+    return _peer(scope, forwarded)
 
 
 def is_https(scope) -> bool:

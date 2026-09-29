@@ -23,4 +23,9 @@ while :; do
 done
 
 # exec so uvicorn is PID 1 and receives SIGTERM directly.
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+#
+# --no-proxy-headers: uvicorn would otherwise rewrite the client address and
+# scheme from X-Forwarded-For and X-Forwarded-Proto for any connection from a
+# host it trusts. The app reads those headers itself, under TRUST_PROXY and
+# TRUSTED_PROXY_HOPS, and should be the only thing that does.
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers

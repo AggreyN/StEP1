@@ -240,6 +240,53 @@ def test_behind_proxies_the_address_is_counted_from_the_right(
     assert client_ip(scope(forwarded=forwarded)) == expected
 
 
+@pytest.mark.parametrize(
+    ("peer", "forwarded"),
+    [
+        ("8.8.8.8", "8.8.8.8"),
+        ("8.8.8.8", "8.8.8.8:5555"),  # uvicorn takes the port from the header too
+        ("8.8.8.8", "1.1.1.1, 8.8.8.8"),
+        ("8.8.8.8", "8.8.8.8, 1.1.1.1"),
+        ("2001:db8::1", "[2001:db8::1]:443"),
+        ("2001:db8::1", "2001:DB8::1"),
+    ],
+)
+def test_an_address_that_may_have_come_from_the_header_is_not_used(monkeypatch, peer, forwarded):
+    """uvicorn replaces the socket address with X-Forwarded-For when the
+    connection is from a host it trusts, which by default includes this
+    machine. The app cannot see that it happened. It can see that the address
+    it was given is also in the header, and that is enough not to use it."""
+    monkeypatch.setattr(config, "TRUST_PROXY", False)
+    assert client_ip(scope(peer=peer, forwarded=forwarded)) == "unverified"
+    # Whatever is claimed, the key is the same: nothing to gain by varying it.
+    assert client_ip(scope(peer="9.9.9.9", forwarded="9.9.9.9")) == "unverified"
+
+
+def test_an_address_the_header_does_not_mention_is_the_sockets_own(monkeypatch):
+    monkeypatch.setattr(config, "TRUST_PROXY", False)
+    assert client_ip(scope(peer="10.0.0.9", forwarded="8.8.8.8")) == "10.0.0.9"
+    assert client_ip(scope(peer="10.0.0.9")) == "10.0.0.9"
+    assert client_ip({"type": "http", "client": None, "headers": []}) == "unknown"
+
+
+def test_behind_a_proxy_a_short_header_is_not_a_way_round(monkeypatch):
+    """Two proxies are expected and the header has one entry. Falling back to
+    the socket address would mean falling back to that same entry, if the
+    server had substituted it."""
+    monkeypatch.setattr(config, "TRUST_PROXY", True)
+    monkeypatch.setattr(config, "TRUSTED_PROXY_HOPS", 2)
+    assert client_ip(scope(peer="8.8.8.8", forwarded="8.8.8.8")) == "unverified"
+    assert client_ip(scope(peer="10.0.0.9", forwarded="8.8.8.8")) == "10.0.0.9"
+
+
+def test_forwarded_ports_are_not_part_of_the_address(monkeypatch):
+    monkeypatch.setattr(config, "TRUST_PROXY", True)
+    monkeypatch.setattr(config, "TRUSTED_PROXY_HOPS", 1)
+    for forwarded in ("203.0.113.7", "203.0.113.7:443", "203.0.113.7:51000", " 203.0.113.7 "):
+        assert client_ip(scope(forwarded=forwarded)) == "203.0.113.7"
+    assert client_ip(scope(forwarded="[2001:db8::1]:443")) == "2001:db8::1"
+
+
 def test_proxy_settings_default_to_not_trusting():
     """Read from the source, because the suite pins the value and a .env
     could too: what matters is what happens when nobody has said anything."""
