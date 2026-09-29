@@ -114,7 +114,7 @@ test("new student: register through to advancing an application", async ({ page 
   await appLink.click();
 
   // ---- timeline ----
-  await expect(page).toHaveURL(/\/applications\/\d+$/);
+  await expect(page).toHaveURL(/\/application\?id=\d+$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(title);
   const events = page.getByTestId("timeline-event");
   await expect(events).toHaveCount(1);

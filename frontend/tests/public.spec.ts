@@ -154,7 +154,7 @@ test("the footer links to About and Privacy on every screen, signed in or out", 
   };
   for (const path of ["/login", "/about", "/privacy"]) await check(path);
   await signInDemo(page);
-  for (const path of ["/", "/saved", "/applications", "/applications/12", "/onboarding"]) await check(path);
+  for (const path of ["/", "/saved", "/applications", "/application?id=12", "/onboarding"]) await check(path);
 
   await page.getByRole("contentinfo").getByRole("link", { name: "Privacy" }).click();
   await expect(page).toHaveURL(/\/privacy$/);

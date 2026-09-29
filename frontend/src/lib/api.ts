@@ -9,7 +9,8 @@
 // (status codes, Retry-After, {"detail": ...} errors), so switching the env
 // var is the only change needed when the backend lands.
 
-import { clearSession, getToken } from "./auth";
+import { getToken, refreshSession, sessionEnded, tokenIsStale } from "./auth";
+import { AUTH_MODE } from "./config";
 import { LIMITS } from "./limits";
 import type {
   ApplicationDetail,
@@ -60,6 +61,8 @@ interface SendOpts {
   body?: unknown;
   /** false for login/register: a 401 there is "wrong password", not a bounce. */
   authRedirect?: boolean;
+  /** set on the one retry after the token was renewed */
+  renewed?: boolean;
 }
 
 interface RawResponse {
@@ -94,6 +97,8 @@ function detailOf(body: unknown, status: number): string {
 
 async function send(method: string, path: string, opts: SendOpts = {}): Promise<RawResponse> {
   const { query, body, authRedirect = true } = opts;
+  // Cognito mode: renew a token that is about to run out before using it.
+  if (tokenIsStale()) await refreshSession();
   const token = getToken();
   let res: RawResponse;
 
@@ -128,13 +133,12 @@ async function send(method: string, path: string, opts: SendOpts = {}): Promise<
   }
 
   if (res.status === 401 && authRedirect && typeof window !== "undefined") {
-    clearSession();
-    if (!window.location.pathname.startsWith("/login")) {
-      // A hard navigation is deliberate: this module has no router, and a dead
-      // session should drop all in-memory page state anyway.
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.assign("/login?expired=1");
+    // Cognito mode: the token may simply have run out. Renew it and ask once
+    // more; nobody needs to know.
+    if (AUTH_MODE === "cognito" && !opts.renewed && token && (await refreshSession())) {
+      return send(method, path, { ...opts, renewed: true });
     }
+    sessionEnded();
     throw new ApiError(401, "Your session expired. Sign in again.");
   }
   if (res.status >= 400) throw new ApiError(res.status, detailOf(res.body, res.status));
@@ -167,10 +171,11 @@ export function getMe() {
   return json<Me>("GET", "/me");
 }
 
-/** Deletes the account and everything in it. 403 means the password was
- *  wrong; the message from the API says so. */
-export async function deleteAccount(password: string): Promise<void> {
-  await send("DELETE", "/me", { body: { password } });
+/** Deletes the account and everything in it. In local mode the API asks
+ *  for the password again (403 means it was wrong, and its message says so).
+ *  In cognito mode there is no password to ask for. */
+export async function deleteAccount(password?: string): Promise<void> {
+  await send("DELETE", "/me", password === undefined ? {} : { body: { password } });
 }
 
 // ---------- profile ----------

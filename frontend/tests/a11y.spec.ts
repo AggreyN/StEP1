@@ -46,6 +46,14 @@ for (const scheme of ["light", "dark"] as const) {
       await page.goto("/privacy");
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       await expectNoViolations(page, "privacy");
+
+      await page.goto("/no/such/page");
+      await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+      await expectNoViolations(page, "page not found");
+
+      await page.goto("/auth/callback");
+      await expect(page.getByRole("heading", { name: "Nothing to finish here" })).toBeVisible();
+      await expectNoViolations(page, "sign-in callback, local mode");
     });
 
     test("profile, its delete dialog, and the building screen", async ({ page }) => {
@@ -126,7 +134,7 @@ for (const scheme of ["light", "dark"] as const) {
       await expect(page.getByTestId("application-row").first()).toBeVisible();
       await expectNoViolations(page, "applications");
 
-      await page.goto("/applications/12");
+      await page.goto("/application?id=12");
       await expect(page.getByTestId("timeline")).toBeVisible();
       await expectNoViolations(page, "timeline");
 
@@ -137,12 +145,12 @@ for (const scheme of ["light", "dark"] as const) {
       await page.getByRole("button", { name: "Cancel" }).click();
 
       for (const id of [9, 7]) {
-        await page.goto(`/applications/${id}`);
+        await page.goto(`/application?id=${id}`);
         await expect(page.getByTestId("timeline")).toBeVisible();
         await expectNoViolations(page, id === 9 ? "timeline, ghosted" : "timeline, rejected");
       }
 
-      await page.goto("/applications/99999");
+      await page.goto("/application?id=99999");
       await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toBeVisible();
       await expectNoViolations(page, "timeline, not found");
     });

@@ -180,7 +180,7 @@ test("save, apply and advance the timeline with the keyboard alone", async ({ pa
   await page.keyboard.press("Enter");
 
   // timeline
-  await expect(page).toHaveURL(/\/applications\/\d+$/);
+  await expect(page).toHaveURL(/\/application\?id=\d+$/);
   await expect(page.getByTestId("timeline-event")).toHaveCount(1);
   const first = page.getByTestId("transition-button").first();
   const kind = await first.getAttribute("data-kind");
