@@ -55,6 +55,12 @@ function LoginForm() {
           </p>
         </div>
 
+        {params.get("deleted") && !error && (
+          <p role="status" data-testid="deleted-notice" className="mb-4 rounded-control bg-surface-2 px-3 py-2 text-sm text-fg">
+            Your account and everything in it have been deleted.
+          </p>
+        )}
+
         {params.get("expired") && mode === "login" && !error && (
           <p className="mb-4 rounded-control bg-surface-2 px-3 py-2 text-sm text-muted">
             Your session expired. Sign in again to pick up where you left off.

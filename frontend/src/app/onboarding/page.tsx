@@ -9,6 +9,7 @@ import { DEFAULT_SCHOOL, DEGREE_LEVELS, TERMS } from "@/lib/labels";
 import type { Profile, Resume } from "@/lib/types";
 import { AppShell } from "@/components/AppShell";
 import { ChipInput } from "@/components/ChipInput";
+import { DeleteAccount } from "@/components/DeleteAccount";
 import { InterestRanker, MAX_INTERESTS, MIN_INTERESTS } from "@/components/InterestRanker";
 import { Button, Chip, ErrorNote, Spinner } from "@/components/ui";
 import { CheckIcon, XIcon } from "@/components/icons";
@@ -174,6 +175,7 @@ export default function OnboardingPage() {
       ) : loadError ? (
         <ErrorNote onRetry={() => location.reload()}>{loadError}</ErrorNote>
       ) : (
+        <>
         <form onSubmit={submit} className="space-y-4" noValidate>
           <Section title="Fields of interest" hint={`Pick ${MIN_INTERESTS}–${MAX_INTERESTS} and put your top choice first. #1 scores highest.`}>
             <InterestRanker value={interests} onChange={setInterests} />
@@ -334,6 +336,10 @@ export default function OnboardingPage() {
             </div>
           </div>
         </form>
+        <div className="mt-10">
+          <DeleteAccount />
+        </div>
+        </>
       )}
     </AppShell>
   );

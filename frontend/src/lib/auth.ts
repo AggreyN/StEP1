@@ -1,6 +1,20 @@
 "use client";
 // Token handling lives here and only here.
 //
+// WHERE THE TOKEN IS KEPT, AND WHY
+// The sign-in token is kept in memory and in localStorage. That is a
+// deliberate choice, not an oversight:
+//   - It is a bearer token sent in the Authorization header, so there is no
+//     cookie and therefore no CSRF surface.
+//   - The cost is that script running on the page could read it, so any XSS
+//     would be an account takeover. The app is built to leave no room for
+//     that: no dangerouslySetInnerHTML (the linter fails the build on it),
+//     no user-written HTML anywhere, no third-party scripts, and a
+//     Content-Security-Policy that only allows the site's own scripts.
+//   - Moving to httpOnly cookies would trade this for CSRF protection work
+//     and a harder Cognito swap. For an invite-only app that is the wrong
+//     trade today. Revisit it if the app ever renders user-supplied markup.
+//
 // TODO(cognito): this whole file is replaced by Cognito's hosted UI. The rest
 // of the app only calls getToken / setSession / clearSession / useRequireAuth,
 // so the swap is one file.
@@ -64,6 +78,22 @@ export function clearSession() {
     // ignore
   }
   listeners.forEach((l) => l());
+}
+
+/** After the account is deleted: forget the session and anything else this
+ *  app put in the browser for the user. */
+export function clearLocalState() {
+  clearSession();
+  try {
+    for (const store of [window.localStorage, window.sessionStorage]) {
+      for (const key of Object.keys(store)) {
+        // keep the in-browser mock API's own "server" data and test switches
+        if (key.startsWith("step1.") && !key.startsWith("step1.mock.")) store.removeItem(key);
+      }
+    }
+  } catch {
+    // ignore
+  }
 }
 
 function subscribe(cb: () => void) {

@@ -42,7 +42,7 @@ import type {
 import { roleLabel } from "../roles";
 
 const DELAY_MS = 300;
-const STORE_KEY = "step1.mock.v2";
+const STORE_KEY = "step1.mock.v3";
 const DEMO_EMAIL = "demo@umd.edu";
 
 
@@ -70,14 +70,21 @@ interface MockApp {
   applied_at: string;
   events: ApplicationEvent[];
 }
+/** Everything that belongs to one user. Each user only ever sees their own:
+ *  another user's application id is a 404, as it is on the real API. */
+interface Account {
+  saved: string[];
+  apps: MockApp[];
+  buildStartedAt: number | null; // null = not building
+  /** Fingerprint of the password last used to sign in (see `fingerprint`). */
+  pw: string | null;
+}
 interface State {
   users: Record<string, MockUser>;
   profiles: Record<string, Profile>;
   resumes: Record<string, Resume>;
-  saved: string[];
-  apps: MockApp[];
+  accounts: Record<string, Account>;
   nextId: number;
-  buildStartedAt: number | null; // null = not building
 }
 
 function seed(): State {
@@ -85,11 +92,33 @@ function seed(): State {
     users: { [DEMO_EMAIL]: { id: 1, email: DEMO_EMAIL, display_name: "Demo Terp" } },
     profiles: { [DEMO_EMAIL]: profileData as Profile },
     resumes: {},
-    saved: POSTINGS.filter((p) => p.saved).map((p) => p.id),
-    apps: applicationsData.items as MockApp[],
+    accounts: {},
     nextId: 100,
-    buildStartedAt: null,
   };
+}
+
+/** A user's own data. New accounts start from a copy of the fixtures, so the
+ *  Saved and Applications screens have something in them. */
+function account(email: string): Account {
+  const s = db();
+  if (!s.accounts[email]) {
+    s.accounts[email] = {
+      saved: POSTINGS.filter((p) => p.saved).map((p) => p.id),
+      apps: JSON.parse(JSON.stringify(applicationsData.items)) as MockApp[],
+      buildStartedAt: null,
+      pw: null,
+    };
+  }
+  return s.accounts[email];
+}
+
+/** The mock never stores a password. It keeps a short, one-way fingerprint so
+ *  DELETE /me can tell a wrong password from the right one. Not security:
+ *  these are fake accounts in your own browser. */
+function fingerprint(password: string): string {
+  let h = 5381;
+  for (let i = 0; i < password.length; i++) h = ((h << 5) + h + password.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
 }
 
 let state: State | null = null;
@@ -154,22 +183,21 @@ function statusOf(app: MockApp): string {
   return s;
 }
 
-function decorate(p: Posting): Posting {
-  const s = db();
-  const app = s.apps.find((a) => a.posting_id === p.id);
+function decorate(p: Posting, mine: Account): Posting {
+  const app = mine.apps.find((a) => a.posting_id === p.id);
   return {
     ...p,
-    saved: s.saved.includes(p.id),
+    saved: mine.saved.includes(p.id),
     application: app ? { id: app.id, status: statusOf(app) } : null,
   };
 }
 
-function appDetail(app: MockApp): ApplicationDetail {
+function appDetail(app: MockApp, mine: Account): ApplicationDetail {
   const posting = POSTINGS.find((p) => p.id === app.posting_id)!;
   const status = statusOf(app);
   return {
     id: app.id,
-    posting: decorate(posting),
+    posting: decorate(posting, mine),
     status,
     applied_at: app.applied_at,
     events: [...app.events].sort((a, b) => a.occurred_at.localeCompare(b.occurred_at)),
@@ -213,8 +241,7 @@ function filterFeed(q: URLSearchParams): Posting[] {
   );
 }
 
-function feedStatus(): MockResponse {
-  const s = db();
+function feedStatus(mine: Account): MockResponse {
   const seq = statusData.sequence as (FeedStatus & { after_ms: number })[];
   let instant = false;
   let stuck = false;
@@ -229,10 +256,10 @@ function feedStatus(): MockResponse {
     return ok({ state, pct, step }, 200, { "Retry-After": "1" });
   }
   // Progress follows the clock, not the number of polls, like a real job would.
-  const elapsed = s.buildStartedAt === null || instant ? Infinity : Date.now() - s.buildStartedAt;
+  const elapsed = mine.buildStartedAt === null || instant ? Infinity : Date.now() - mine.buildStartedAt;
   const cur = [...seq].reverse().find((x) => elapsed >= x.after_ms) ?? seq[0];
-  if (cur.state === "ready" && s.buildStartedAt !== null) {
-    s.buildStartedAt = null;
+  if (cur.state === "ready" && mine.buildStartedAt !== null) {
+    mine.buildStartedAt = null;
     persist();
   }
   const body: FeedStatus = { state: cur.state, pct: cur.pct, step: cur.step };
@@ -319,6 +346,8 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
       s.users[email] = { id: s.nextId++, email, display_name: name };
       persist();
     }
+    account(email).pw = fingerprint(password);
+    persist();
     return ok(authResponse(s.users[email]));
   }
 
@@ -334,9 +363,23 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
   const user = userFromToken(token);
   if (!user) return err(401, "Not authenticated");
   const email = user.email;
+  const mine = account(email);
 
   if (method === "GET" && path === "/me") {
     return ok({ ...user, onboarded: !!s.profiles[email] });
+  }
+  if (method === "DELETE" && path === "/me") {
+    const password = String(body?.password ?? "");
+    if (!password) return err(422, "password: Field required");
+    if (fingerprint(password) !== mine.pw) return err(403, "Password is incorrect.");
+    // Everything that belonged to this user goes: account, profile, resume,
+    // saved postings, applications and their events.
+    delete s.users[email];
+    delete s.profiles[email];
+    delete s.resumes[email];
+    delete s.accounts[email];
+    persist();
+    return ok(null, 204);
   }
 
   // ---- profile ----
@@ -371,7 +414,7 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
       resume,
       profile_version: version,
     };
-    s.buildStartedAt = Date.now();
+    mine.buildStartedAt = Date.now();
     persist();
     return ok({ profile_version: version, state: "building" }, 202, { "Retry-After": "1" });
   }
@@ -403,36 +446,36 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
   if (path === "/ingest/status" && method === "GET") return ingestStatus();
 
   // ---- feed ----
-  if (path === "/feed/status" && method === "GET") return feedStatus();
+  if (path === "/feed/status" && method === "GET") return feedStatus(mine);
   if (path === "/feed" && method === "GET") {
     if (!s.profiles[email]) return err(409, "Complete onboarding first");
     const sort = q.get("sort") ?? "recent"; // the API's default
     if (sort !== "recent" && sort !== "score") return err(422, "sort: must be 'recent' or 'score'");
-    return ok(paginate(sortPostings(filterFeed(q), sort).map(decorate), q));
+    return ok(paginate(sortPostings(filterFeed(q), sort).map((p) => decorate(p, mine)), q));
   }
 
   let m = path.match(/^\/postings\/(.+)$/);
   if (m && method === "GET") {
     const p = POSTINGS.find((x) => x.id === decodeURIComponent(m![1]));
-    return p ? ok(decorate(p)) : err(404, "Posting not found");
+    return p ? ok(decorate(p, mine)) : err(404, "Posting not found");
   }
 
   // ---- saved ----
   if (path === "/saved" && method === "GET") {
-    const list = POSTINGS.filter((p) => s.saved.includes(p.id));
-    return ok(paginate(sortPostings(list).map(decorate), q));
+    const list = POSTINGS.filter((p) => mine.saved.includes(p.id));
+    return ok(paginate(sortPostings(list).map((p) => decorate(p, mine)), q));
   }
   m = path.match(/^\/saved\/(.+)$/);
   if (m) {
     const id = decodeURIComponent(m[1]);
     if (!POSTINGS.some((p) => p.id === id)) return err(404, "Posting not found");
     if (method === "POST") {
-      if (!s.saved.includes(id)) s.saved.push(id);
+      if (!mine.saved.includes(id)) mine.saved.push(id);
       persist();
       return ok(null, 204);
     }
     if (method === "DELETE") {
-      s.saved = s.saved.filter((x) => x !== id);
+      mine.saved = mine.saved.filter((x) => x !== id);
       persist();
       return ok(null, 204);
     }
@@ -440,8 +483,8 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
 
   // ---- applications ----
   if (path === "/applications" && method === "GET") {
-    const items = s.apps.map((a) => {
-      const d = appDetail(a);
+    const items = mine.apps.map((a) => {
+      const d = appDetail(a, mine);
       return {
         id: d.id,
         posting: d.posting,
@@ -456,7 +499,7 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
   if (path === "/applications" && method === "POST") {
     const pid = String(body?.posting_id ?? "");
     if (!POSTINGS.some((p) => p.id === pid)) return err(404, "Posting not found");
-    if (s.apps.some((a) => a.posting_id === pid)) {
+    if (mine.apps.some((a) => a.posting_id === pid)) {
       return err(409, "You already have an application for this posting.");
     }
     const at = typeof body?.applied_at === "string" ? body.applied_at : nowIso();
@@ -466,15 +509,15 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
       applied_at: at,
       events: [{ id: s.nextId++, kind: "applied", occurred_at: at, note: null, source: "manual" }],
     };
-    s.apps.push(app);
+    mine.apps.push(app);
     persist();
-    return ok(appDetail(app), 201);
+    return ok(appDetail(app, mine), 201);
   }
   m = path.match(/^\/applications\/(\d+)(\/events)?$/);
   if (m) {
-    const app = s.apps.find((a) => a.id === Number(m![1]));
+    const app = mine.apps.find((a) => a.id === Number(m![1]));
     if (!app) return err(404, "Application not found");
-    if (!m[2] && method === "GET") return ok(appDetail(app));
+    if (!m[2] && method === "GET") return ok(appDetail(app, mine));
     if (m[2] && method === "POST") {
       const kind = String(body?.kind ?? "");
       const status = statusOf(app);
@@ -491,7 +534,7 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
         source: "manual",
       });
       persist();
-      return ok(appDetail(app), 201);
+      return ok(appDetail(app, mine), 201);
     }
   }
 

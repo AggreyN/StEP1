@@ -166,6 +166,12 @@ export function getMe() {
   return json<Me>("GET", "/me");
 }
 
+/** Deletes the account and everything in it. 403 means the password was
+ *  wrong; the message from the API says so. */
+export async function deleteAccount(password: string): Promise<void> {
+  await send("DELETE", "/me", { body: { password } });
+}
+
 // ---------- profile ----------
 
 /** null when the profile has not been created yet (404). */
