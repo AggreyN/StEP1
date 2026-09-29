@@ -1,0 +1,19 @@
+# StEP1 architecture rules -- derived from docs/ARCHITECTURE.md
+# Checked by the project-map skill (check_arch.py). Local, no LLM.
+
+ignore backend/tests/**, frontend/tests/**, frontend/tests-prod/**, backend/alembic/**
+
+# AWS SDK stays behind the service layer (service map, section 1)
+only backend/app/services/**, backend/app/jobs/** may import boto3, botocore
+
+# Cognito owns passwords; bcrypt exists only for the AUTH_MODE=local fallback in auth.py
+only backend/app/auth.py may import bcrypt, passlib
+
+# Routes never reach AWS or outside HTTP directly -- they go through services/ and sources/
+never backend/app/routes/** imports boto3, botocore, httpx, requests
+
+# Match scoring is deterministic; Bedrock is only for explanations/drafts (section 0)
+never backend/app/services/matching.py imports boto3, anthropic, openai
+
+# Frontend: every network call goes through lib/api.ts
+never frontend/src/app/**, frontend/src/components/** uses (?<![\.\w])fetch\(
