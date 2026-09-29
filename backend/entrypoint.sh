@@ -28,4 +28,10 @@ done
 # scheme from X-Forwarded-For and X-Forwarded-Proto for any connection from a
 # host it trusts. The app reads those headers itself, under TRUST_PROXY and
 # TRUSTED_PROXY_HOPS, and should be the only thing that does.
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers
+#
+# --timeout-graceful-shutdown 10: on SIGTERM, requests in progress get ten
+# seconds to finish. After that the app stops the refresh of the listings if
+# one is running, which can take up to INGEST_SHUTDOWN_GRACE_S (15). Together
+# they fit inside the 30 seconds ECS allows before it kills the task.
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers \
+  --timeout-graceful-shutdown 10
