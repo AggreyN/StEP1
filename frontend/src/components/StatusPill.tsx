@@ -14,7 +14,7 @@ export function StatusPill({ status, className = "" }: { status: string; classNa
     <span
       data-testid="status-pill"
       data-status={status}
-      className={`inline-flex items-center whitespace-nowrap rounded-md px-2 py-0.5 text-[13px] font-medium leading-5 ${TONES[statusTone(status)]} ${className}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-chip px-2 py-0.5 text-[13px] font-medium leading-5 ${TONES[statusTone(status)]} ${className}`}
     >
       {kindLabel(status)}
     </span>

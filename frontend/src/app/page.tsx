@@ -217,7 +217,7 @@ function EmptyState({
   const active = activeFilterKeys(filters);
   if (!active.length) {
     return (
-      <div data-testid="empty-state" className="rounded-xl border border-dashed border-line-strong p-6 text-center">
+      <div data-testid="empty-state" className="rounded-card border border-dashed border-line-strong p-6 text-center">
         <p className="font-medium">No matches yet.</p>
         <p className="mt-1 text-sm text-muted">
           Postings are matched against your fields, terms and degree.{" "}
@@ -230,7 +230,7 @@ function EmptyState({
     );
   }
   return (
-    <div data-testid="empty-state" className="rounded-xl border border-dashed border-line-strong p-5">
+    <div data-testid="empty-state" className="rounded-card border border-dashed border-line-strong p-5">
       <p className="font-medium">No {describe(filters)}.</p>
       {relaxations === null ? (
         <div className="mt-3">
@@ -250,7 +250,7 @@ function EmptyState({
       ) : (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
           <span className="min-w-0 text-muted" data-testid="no-single-filter">
-            No single filter is responsible — removing any one of the{" "}
+            No single filter is responsible. Removing any one of the{" "}
             {active.map((k) => FILTER_NAMES[k]).join(", ")} still finds nothing. They&apos;re too narrow together.
           </span>
           <Button size="sm" onClick={() => onRelax(EMPTY_FILTERS)}>

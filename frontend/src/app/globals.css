@@ -1,56 +1,102 @@
 @import "tailwindcss";
 
-/* The whole palette lives here. One accent (indigo), used only for score
-   badges and primary actions. Dark mode swaps the variables via
-   prefers-color-scheme, so Tailwind classes like bg-surface just follow. */
+/* The whole palette lives here: brown, cream and white.
+   Cream page, white cards, brown for the one accent (score badges, primary
+   actions, links). Red, green and amber are kept for meaning only.
+
+   Every pair below is checked by `node scripts/contrast.mjs`
+   (4.5:1 for text, 3:1 for control boundaries and focus rings).
+   --border is a decorative hairline; anything that marks the edge of a
+   control uses --border-strong, which does meet 3:1.
+
+   Theme: follows the system by default. <html data-theme="light"> or
+   <html data-theme="dark"> overrides it. The two dark blocks must stay
+   identical; the contrast script fails if they drift. */
 
 :root {
-  color-scheme: light dark;
-  --bg: #f6f6f7;
+  color-scheme: light;
+  --bg: #f7f1e6;
   --surface: #ffffff;
-  --surface-2: #f0f0f2;
-  --border: #e3e3e7;
-  --border-strong: #cfcfd6;
-  --text: #17171c;
-  --muted: #5f5f6b;
-  --faint: #8e8e99;
-  --accent: #4f46e5;
-  --accent-hover: #4338ca;
+  --surface-2: #f1e8d9;
+  --border: #e6dac6;
+  --border-strong: #917b5f;
+  --text: #2b1d13;
+  --muted: #5e4b3c;
+  --faint: #756152;
+  --accent: #6f4325;
+  --accent-hover: #5a351c;
   --accent-fg: #ffffff;
-  --accent-soft: #eef0ff;
-  --accent-text: #3f37c9;
-  --danger: #b42318;
-  --danger-soft: #fdf0ef;
-  --positive: #067647;
-  --positive-soft: #ebf8f1;
-  --warn: #8a5a00;
-  --warn-soft: #fdf3dc;
-  --overlay: rgb(15 15 20 / 0.45);
+  --accent-soft: #f3e7d6;
+  --accent-text: #6a3f22;
+  --danger: #b3261e;
+  --danger-soft: #fbeae6;
+  --positive: #2f6b3a;
+  --positive-soft: #e7f1e4;
+  --warn: #836400;
+  --warn-soft: #fcf3d2;
+  --overlay: rgb(43 29 19 / 0.5);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f0f12;
-    --surface: #17171c;
-    --surface-2: #212128;
-    --border: #2b2b33;
-    --border-strong: #3b3b45;
-    --text: #ececf0;
-    --muted: #a3a3ad;
-    --faint: #72727c;
-    --accent: #8b90fa;
-    --accent-hover: #a3a7fb;
-    --accent-fg: #101018;
-    --accent-soft: #24254a;
-    --accent-text: #b4b8fd;
-    --danger: #f58a80;
-    --danger-soft: #3a1d1b;
-    --positive: #5fd39a;
-    --positive-soft: #11301f;
-    --warn: #e2b252;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #17110d;
+    --surface: #211914;
+    --surface-2: #2c221b;
+    --border: #392c23;
+    --border-strong: #846e59;
+    --text: #f3eadc;
+    --muted: #c2b2a0;
+    --faint: #a39281;
+    --accent: #d9a777;
+    --accent-hover: #e6bb90;
+    --accent-fg: #1d130c;
+    --accent-soft: #3a2a1d;
+    --accent-text: #e3b98f;
+    --danger: #f2877b;
+    --danger-soft: #3b1f1a;
+    --positive: #8fcb8a;
+    --positive-soft: #1e2f1c;
+    --warn: #f0cc4d;
     --warn-soft: #33290f;
-    --overlay: rgb(0 0 0 / 0.6);
+    --overlay: rgb(0 0 0 / 0.65);
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #17110d;
+  --surface: #211914;
+  --surface-2: #2c221b;
+  --border: #392c23;
+  --border-strong: #846e59;
+  --text: #f3eadc;
+  --muted: #c2b2a0;
+  --faint: #a39281;
+  --accent: #d9a777;
+  --accent-hover: #e6bb90;
+  --accent-fg: #1d130c;
+  --accent-soft: #3a2a1d;
+  --accent-text: #e3b98f;
+  --danger: #f2877b;
+  --danger-soft: #3b1f1a;
+  --positive: #8fcb8a;
+  --positive-soft: #1e2f1c;
+  --warn: #f0cc4d;
+  --warn-soft: #33290f;
+  --overlay: rgb(0 0 0 / 0.65);
+}
+
+/* Names used by the About and Privacy pages. Aliases, so there is one
+   palette, not two. */
+:root {
+  --paper: var(--bg);
+  --raise: var(--surface);
+  --ink: var(--text);
+  --ink-2: var(--muted);
+  --ink-3: var(--faint);
+  --line: var(--border);
+  --line-2: var(--border-strong);
 }
 
 @theme inline {
@@ -73,8 +119,19 @@
   --color-positive-soft: var(--positive-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  /* IBM Plex Sans for the interface, Source Serif 4 for prose,
+     IBM Plex Mono for numbers. Loaded in app/layout.tsx. */
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-ui: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-prose: var(--font-source-serif), ui-serif, Georgia, serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Corners are small and square-ish on purpose: no pills.
+     control: buttons, inputs, notes.  card: cards, dialogs.  chip: chips, tags. */
+  --radius-control: 4px;
+  --radius-card: 6px;
+  --radius-chip: 3px;
 }
 
 html,
@@ -84,7 +141,12 @@ body {
 }
 
 body {
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-ui);
+}
+
+::placeholder {
+  color: var(--faint);
+  opacity: 1;
 }
 
 :focus-visible {
@@ -96,7 +158,20 @@ dialog::backdrop {
   background: var(--overlay);
 }
 
-/* Tabular digits for scores, counts, dates. */
+/* Tabular digits for counts and dates set in the UI face. */
 .tnum {
   font-variant-numeric: tabular-nums;
+}
+
+/* Motion is already sparse (a spinner, a progress bar, loading placeholders).
+   People who ask for less get none. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

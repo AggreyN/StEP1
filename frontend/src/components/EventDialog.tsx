@@ -10,7 +10,7 @@ import { Dialog } from "./Dialog";
 import { Button, ErrorNote } from "./ui";
 
 const field =
-  "w-full rounded-lg border border-line-strong bg-surface px-3 text-[15px] placeholder:text-faint focus:border-accent focus:outline-none";
+  "w-full rounded-control border border-line-strong bg-surface px-3 text-[15px] placeholder:text-faint focus:border-accent focus:outline-none";
 
 function EventForm({
   applicationId,

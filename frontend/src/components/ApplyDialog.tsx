@@ -49,7 +49,7 @@ export function ApplyDialog({
               value={date}
               max={todayInput()}
               onChange={(e) => setDate(e.target.value)}
-              className="h-11 w-full rounded-lg border border-line-strong bg-surface px-3 text-[15px] focus:border-accent focus:outline-none"
+              className="h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-[15px] focus:border-accent focus:outline-none"
             />
           </label>
           {error && <ErrorNote>{error}</ErrorNote>}

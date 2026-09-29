@@ -37,7 +37,7 @@ function warnIfDefaulted() {
   if (!RAW_BASE && !warned && typeof window !== "undefined") {
     warned = true;
     console.warn(
-      "[step1] NEXT_PUBLIC_API_BASE is not set — using the in-browser mock API. " +
+      "[step1] NEXT_PUBLIC_API_BASE is not set, so the in-browser mock API is in use. " +
         "Set it to http://localhost:8000 to use the real backend."
     );
   }
@@ -133,7 +133,7 @@ async function send(method: string, path: string, opts: SendOpts = {}): Promise<
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign("/login?expired=1");
     }
-    throw new ApiError(401, "Your session expired — sign in again.");
+    throw new ApiError(401, "Your session expired. Sign in again.");
   }
   if (res.status >= 400) throw new ApiError(res.status, detailOf(res.body, res.status));
   return res;
@@ -235,7 +235,7 @@ async function putUpload(p: Presign, file: File): Promise<void> {
   try {
     r = await fetch(p.upload_url, { method: p.method || "PUT", headers, body: file });
   } catch {
-    throw new ApiError(0, "Upload failed — check your connection and try again.");
+    throw new ApiError(0, "Upload failed. Check your connection and try again.");
   }
   if (!r.ok) {
     let body: unknown = null;

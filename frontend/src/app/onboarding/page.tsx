@@ -14,11 +14,11 @@ import { Button, Chip, ErrorNote, Spinner } from "@/components/ui";
 import { CheckIcon, XIcon } from "@/components/icons";
 
 const input =
-  "h-11 w-full rounded-lg border border-line-strong bg-surface px-3 text-[15px] text-fg placeholder:text-faint focus:border-accent focus:outline-none";
+  "h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-[15px] text-fg placeholder:text-faint focus:border-accent focus:outline-none";
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-line bg-surface p-3.5 sm:p-5">
+    <section className="rounded-card border border-line bg-surface p-3.5 sm:p-5">
       <h2 className="text-base font-semibold">{title}</h2>
       {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
       <div className="mt-4">{children}</div>
@@ -165,7 +165,7 @@ export default function OnboardingPage() {
         <p className="mt-1 text-sm text-muted">
           {existing
             ? "Changes re-rank your matches. Your ranked fields matter most."
-            : "Six fields and a resume. Your ranked fields matter most — they drive the score on every posting."}
+            : "A few fields and a resume. Your ranked fields matter most: they drive the score on every posting."}
         </p>
       </div>
 
@@ -233,7 +233,7 @@ export default function OnboardingPage() {
                     key={t}
                     aria-pressed={on}
                     onClick={() => setTerms(on ? terms.filter((x) => x !== t) : [...terms, t])}
-                    className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-3.5 text-sm ${
+                    className={`inline-flex h-10 items-center gap-1.5 rounded-control border px-3.5 text-sm ${
                       on ? "border-accent bg-accent-soft text-accent-text font-medium" : "border-line-strong bg-surface text-fg"
                     }`}
                   >
@@ -266,7 +266,7 @@ export default function OnboardingPage() {
               />
               <label
                 htmlFor="resume-file"
-                className={`inline-flex h-11 cursor-pointer items-center rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium hover:bg-surface-2 ${uploading ? "pointer-events-none opacity-45" : ""}`}
+                className={`inline-flex h-11 cursor-pointer items-center rounded-control border border-line-strong bg-surface px-4 text-sm font-medium hover:bg-surface-2 ${uploading ? "pointer-events-none opacity-45" : ""}`}
               >
                 {resume ? "Replace PDF" : "Upload PDF"}
               </label>
@@ -280,7 +280,7 @@ export default function OnboardingPage() {
             </div>
             {uploadError && <div className="mt-3"><ErrorNote>{uploadError}</ErrorNote></div>}
             {resume?.needs_ocr && (
-              <p className="mt-3 rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted" role="status">
+              <p className="mt-3 rounded-control bg-surface-2 px-3 py-2 text-sm text-muted" role="status">
                 This PDF looks image-only, so we couldn&apos;t extract skills from it. Try exporting a text PDF from your
                 editor, or add skills below by hand.
               </p>
@@ -288,7 +288,7 @@ export default function OnboardingPage() {
             {resume && (
               <div className="mt-4">
                 <p className="mb-2 text-sm font-medium">
-                  Skills we found <span className="font-normal text-faint">— remove any that are wrong</span>
+                  Skills we found <span className="font-normal text-faint">(remove any that are wrong)</span>
                 </p>
                 {skills.length ? (
                   <ul className="flex flex-wrap gap-2" aria-label="Extracted skills">
@@ -300,7 +300,7 @@ export default function OnboardingPage() {
                             type="button"
                             onClick={() => setSkills(skills.filter((x) => x !== s))}
                             aria-label={`Remove skill ${s}`}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:text-fg"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-chip text-muted hover:text-fg"
                           >
                             <XIcon />
                           </button>

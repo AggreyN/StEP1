@@ -514,7 +514,7 @@ export async function handle(
   const url = new URL(pathAndQuery, "http://mock.local");
   record(`${method} ${url.pathname}${url.search}`);
   if (shouldFail(method, url.pathname)) {
-    return err(500, "The server had a problem. Nothing was changed — try again.");
+    return err(500, "The server had a problem. Nothing was changed. Try again.");
   }
   // Deep-copy so callers can never mutate mock state by reference.
   const res = route(method, url, body as Body, token);

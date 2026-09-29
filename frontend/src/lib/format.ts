@@ -16,12 +16,12 @@ export function postedAge(iso: string | null): string | null {
 }
 
 export function shortDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "unknown";
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 export function longDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "unknown";
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 

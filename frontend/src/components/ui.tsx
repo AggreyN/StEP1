@@ -19,7 +19,7 @@ export function Button({
   const sz = size === "sm" ? "h-9 px-3 text-sm" : "h-11 px-4 text-[15px]";
   return (
     <button
-      className={`inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:opacity-45 disabled:cursor-not-allowed ${sz} ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-control font-medium transition-colors disabled:opacity-45 disabled:cursor-not-allowed ${sz} ${VARIANTS[variant]} ${className}`}
       {...rest}
     />
   );
@@ -45,7 +45,7 @@ export function Chip({
   return (
     <span
       title={title}
-      className={`inline-flex max-w-full items-center gap-1 rounded-md border px-2 py-0.5 text-[13px] leading-5 ${t} ${className}`}
+      className={`inline-flex max-w-full items-center gap-1 rounded-chip border px-2 py-0.5 text-[13px] leading-5 ${t} ${className}`}
     >
       {children}
     </span>
@@ -65,7 +65,7 @@ export function ErrorNote({ children, onRetry }: { children: ReactNode; onRetry?
   return (
     <div
       role="alert"
-      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger"
+      className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger"
     >
       <span>{children}</span>
       {onRetry && (
@@ -79,17 +79,22 @@ export function ErrorNote({ children, onRetry }: { children: ReactNode; onRetry?
 
 export function ProgressBar({ pct, label }: { pct: number; label: string }) {
   const v = Math.max(0, Math.min(100, Math.round(pct)));
+  // Drawn as SVG so the width is an attribute, not an inline style: the
+  // site's Content-Security-Policy does not allow style attributes.
   return (
-    <div
+    <svg
       role="progressbar"
       aria-label={label}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={v}
-      className="h-2 w-full overflow-hidden rounded-full bg-surface-2"
+      viewBox="0 0 100 2"
+      preserveAspectRatio="none"
+      className="block h-2 w-full overflow-hidden rounded-chip"
     >
-      <div className="h-full rounded-full bg-accent transition-[width] duration-300" style={{ width: `${v}%` }} />
-    </div>
+      <rect width="100" height="2" className="fill-surface-2" />
+      <rect width={v} height="2" className="fill-accent" />
+    </svg>
   );
 }
 
@@ -98,7 +103,7 @@ export function CardSkeletons({ n = 4 }: { n?: number }) {
   return (
     <div aria-hidden className="space-y-3">
       {Array.from({ length: n }, (_, i) => (
-        <div key={i} className="h-32 animate-pulse rounded-xl border border-line bg-surface" />
+        <div key={i} className="h-32 animate-pulse rounded-card border border-line bg-surface" />
       ))}
     </div>
   );

@@ -58,10 +58,10 @@ export default function ApplicationsPage() {
       {!items ? (
         !error && <CardSkeletons n={3} />
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-line-strong p-6 text-center">
+        <div className="rounded-card border border-dashed border-line-strong p-6 text-center">
           <p className="font-medium">No applications tracked yet.</p>
           <p className="mt-1 text-sm text-muted">
-            Hit “I applied” on a posting in{" "}
+            Press “I applied” on a posting in{" "}
             <Link href="/" className="font-medium text-accent-text underline underline-offset-2">
               your matches
             </Link>{" "}
@@ -78,21 +78,21 @@ export default function ApplicationsPage() {
                   <span className={quiet ? "text-faint" : ""}>{kindLabel(status)}</span>
                   <span
                     data-testid="group-count"
-                    className="tnum rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted"
+                    className="rounded-chip bg-surface-2 px-1.5 py-0.5 font-mono text-xs font-medium text-muted"
                   >
                     {group.length}
                   </span>
                 </h2>
-                <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+                <ul className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
                   {group.map((a) => (
                     <li key={a.id}>
                       <Link
                         href={`/applications/${a.id}`}
                         data-testid="application-row"
-                        className={`flex min-h-16 items-center gap-3 px-3.5 py-3 hover:bg-surface-2 sm:px-4 ${quiet ? "opacity-70" : ""}`}
+                        className={`flex min-h-16 items-center gap-3 px-3.5 py-3 hover:bg-surface-2 sm:px-4`}
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[15px] font-medium">{a.posting.title}</p>
+                          <p className={`truncate text-[15px] font-medium ${quiet ? "text-muted" : ""}`}>{a.posting.title}</p>
                           <p className="truncate text-sm text-muted">
                             {a.posting.company.name} · applied {shortDate(a.applied_at)}
                             {a.last_event_at && a.last_event_at !== a.applied_at && ` · updated ${shortDate(a.last_event_at)}`}

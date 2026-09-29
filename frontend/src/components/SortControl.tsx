@@ -10,7 +10,7 @@ export function SortControl({ value, onChange }: { value: FeedSort; onChange: (s
       role="radiogroup"
       aria-label="Sort"
       data-testid="sort-control"
-      className="inline-flex shrink-0 rounded-lg bg-surface-2 p-0.5"
+      className="inline-flex shrink-0 rounded-control border border-line-strong bg-surface-2 p-0.5"
     >
       {SORT_OPTIONS.map((o) => {
         const on = o.value === value;
@@ -21,8 +21,10 @@ export function SortControl({ value, onChange }: { value: FeedSort; onChange: (s
             role="radio"
             aria-checked={on}
             onClick={() => onChange(o.value)}
-            className={`h-8 whitespace-nowrap rounded-md px-2.5 text-[13px] sm:px-3 sm:text-sm ${
-              on ? "bg-surface font-medium text-fg shadow-sm" : "text-muted hover:text-fg"
+            className={`h-8 whitespace-nowrap rounded-chip px-2 text-[13px] sm:px-3 sm:text-sm ${
+              on
+                ? "border border-line-strong bg-surface font-medium text-fg"
+                : "border border-transparent text-muted hover:text-fg"
             }`}
           >
             {o.label}

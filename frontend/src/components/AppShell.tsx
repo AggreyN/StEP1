@@ -29,8 +29,8 @@ export function SourcesFooter() {
       and{" "}
       <a className="underline underline-offset-2 hover:text-muted" href="https://github.com/vanshb03/Summer2027-Internships" target="_blank" rel="noreferrer">
         vanshb03
-      </a>{" "}
-      — link out to original postings. StEP1 doesn&apos;t own or host these listings.
+      </a>
+      . Every listing links out to the original posting. StEP1 doesn&apos;t own or host them.
     </footer>
   );
 }
@@ -56,7 +56,7 @@ export function AppShell({ children, wide = false }: { children: ReactNode; wide
                 key={n.href}
                 href={n.href}
                 aria-current={active(n.href) ? "page" : undefined}
-                className={`rounded-md px-3 py-1.5 text-sm ${
+                className={`rounded-chip px-3 py-1.5 text-sm ${
                   active(n.href) ? "bg-surface-2 font-medium text-fg" : "text-muted hover:text-fg"
                 }`}
               >
@@ -69,7 +69,7 @@ export function AppShell({ children, wide = false }: { children: ReactNode; wide
               clearSession();
               router.replace("/login");
             }}
-            className="ml-auto shrink-0 rounded-md px-2 py-1.5 text-sm text-muted hover:text-fg"
+            className="ml-auto shrink-0 rounded-chip px-2 py-1.5 text-sm text-muted hover:text-fg"
           >
             Sign out
           </button>

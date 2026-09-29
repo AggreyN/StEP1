@@ -50,16 +50,16 @@ export function Timeline({ events, status }: { events: ApplicationEvent[]; statu
                   {kindLabel(e.kind)}
                 </span>
                 {current && (
-                  <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted">
+                  <span className="rounded-chip bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted">
                     Current
                   </span>
                 )}
-                <time dateTime={e.occurred_at} className="tnum text-sm text-faint">
+                <time dateTime={e.occurred_at} className="font-mono text-[13px] text-faint">
                   {longDate(e.occurred_at)}
                 </time>
               </div>
               {e.kind === "ghosted" && (
-                <p className="mt-0.5 text-sm">No response after 30 days. Logged automatically — nothing you did.</p>
+                <p className="mt-0.5 text-sm">No response after 30 days. Logged automatically. Nothing you did.</p>
               )}
               {e.note && (
                 <p className={`mt-1 whitespace-pre-wrap break-words text-sm ${quiet ? "" : "text-muted"}`}>{e.note}</p>

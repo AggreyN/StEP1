@@ -84,7 +84,7 @@ export default function SavedPage() {
       {!data ? (
         !error && <CardSkeletons n={3} />
       ) : data.items.length === 0 ? (
-        <div data-testid="saved-empty" className="rounded-xl border border-dashed border-line-strong p-6 text-center">
+        <div data-testid="saved-empty" className="rounded-card border border-dashed border-line-strong p-6 text-center">
           <p className="font-medium">Nothing saved yet.</p>
           <p className="mt-1 text-sm text-muted">
             Star a posting on{" "}

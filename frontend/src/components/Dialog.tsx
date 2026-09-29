@@ -27,8 +27,8 @@ export function Dialog({
   }, [open]);
 
   const pos = sheet
-    ? "mt-auto mb-0 w-full max-w-none rounded-t-2xl max-h-[85vh]"
-    : "m-auto w-[calc(100%-2rem)] max-w-md rounded-xl max-h-[90vh]";
+    ? "mt-auto mb-0 w-full max-w-none rounded-t-card max-h-[85vh]"
+    : "m-auto w-[calc(100%-2rem)] max-w-md rounded-card max-h-[90vh]";
 
   return (
     <dialog
@@ -47,7 +47,7 @@ export function Dialog({
             <button
               onClick={onClose}
               aria-label="Close"
-              className="-mr-2 inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg"
+              className="-mr-2 inline-flex h-9 w-9 items-center justify-center rounded-control text-muted hover:bg-surface-2 hover:text-fg"
             >
               <XIcon />
             </button>

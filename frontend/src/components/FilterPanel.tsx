@@ -11,7 +11,7 @@ import { CheckIcon } from "./icons";
 const SCORE_STEPS = [50, 60, 70, 80, 90];
 
 const field =
-  "h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg placeholder:text-faint focus:border-accent focus:outline-none";
+  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-fg placeholder:text-faint focus:border-accent focus:outline-none";
 
 export function FilterPanel({
   value,
@@ -64,7 +64,7 @@ export function FilterPanel({
             const on = value.roles.includes(k);
             return (
               <li key={k}>
-                <label className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-md px-1.5 py-1 hover:bg-surface-2">
+                <label className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-chip px-1.5 py-1 hover:bg-surface-2">
                   <input
                     type="checkbox"
                     checked={on}
@@ -124,11 +124,11 @@ export function FilterPanel({
         role="switch"
         aria-checked={value.remote}
         onClick={() => onChange({ ...value, remote: !value.remote })}
-        className="flex min-h-10 w-full items-center justify-between rounded-lg border border-line-strong px-3 text-left"
+        className="flex min-h-10 w-full items-center justify-between rounded-control border border-line-strong px-3 text-left"
       >
         <span className="font-medium">Remote only</span>
         <span
-          className={`inline-flex h-5 w-5 items-center justify-center rounded-md border ${
+          className={`inline-flex h-5 w-5 items-center justify-center rounded-chip border ${
             value.remote ? "border-accent bg-accent text-accent-fg" : "border-line-strong"
           }`}
         >

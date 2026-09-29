@@ -7,7 +7,7 @@ import { SourcesFooter, Wordmark } from "@/components/AppShell";
 import { Button, ErrorNote } from "@/components/ui";
 
 const input =
-  "h-11 w-full rounded-lg border border-line-strong bg-surface px-3 text-[15px] text-fg placeholder:text-faint focus:border-accent focus:outline-none";
+  "h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-[15px] text-fg placeholder:text-faint focus:border-accent focus:outline-none";
 
 function LoginForm() {
   const router = useRouter();
@@ -55,12 +55,12 @@ function LoginForm() {
         </div>
 
         {params.get("expired") && mode === "login" && !error && (
-          <p className="mb-4 rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">
+          <p className="mb-4 rounded-control bg-surface-2 px-3 py-2 text-sm text-muted">
             Your session expired. Sign in again to pick up where you left off.
           </p>
         )}
 
-        <div role="tablist" aria-label="Sign in or register" className="mb-5 grid grid-cols-2 rounded-lg bg-surface-2 p-1 text-sm">
+        <div role="tablist" aria-label="Sign in or register" className="mb-5 grid grid-cols-2 rounded-control border border-line-strong bg-surface-2 p-0.5 text-sm">
           {(["login", "register"] as const).map((m) => (
             <button
               key={m}
@@ -70,7 +70,9 @@ function LoginForm() {
                 setMode(m);
                 setError(null);
               }}
-              className={`h-9 rounded-md font-medium ${mode === m ? "bg-surface text-fg shadow-sm" : "text-muted"}`}
+              className={`h-9 rounded-chip border font-medium ${
+                mode === m ? "border-line-strong bg-surface text-fg" : "border-transparent text-muted"
+              }`}
             >
               {m === "login" ? "Sign in" : "Register"}
             </button>

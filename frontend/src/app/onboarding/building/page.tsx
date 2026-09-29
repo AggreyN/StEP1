@@ -86,7 +86,7 @@ function Building() {
       )}
 
       {slow && (
-        <div className="mt-8 rounded-xl border border-line bg-surface p-4 text-sm" role="status">
+        <div className="mt-8 rounded-card border border-line bg-surface p-4 text-sm" role="status">
           <p className="font-medium">This is taking longer than usual.</p>
           <p className="mt-1 text-muted">
             Your matches will keep building in the background. You can head to the dashboard now and they&apos;ll appear

@@ -29,7 +29,7 @@ export function PostingCard({
       data-posting-id={p.id}
       data-score={p.score ?? ""}
       data-date-posted={p.date_posted ?? ""}
-      className="rounded-xl border border-line bg-surface p-3.5 sm:p-4"
+      className="rounded-card border border-line bg-surface p-3.5 sm:p-4"
     >
       <div className="flex items-start gap-3">
         <ScoreBadge score={p.score} />
@@ -53,7 +53,7 @@ export function PostingCard({
           aria-pressed={p.saved}
           aria-label={p.saved ? "Unsave" : "Save"}
           data-testid="save-toggle"
-          className={`-mr-1.5 -mt-1.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${
+          className={`-mr-1.5 -mt-1.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control ${
             p.saved ? "text-accent" : "text-faint hover:bg-surface-2 hover:text-fg"
           }`}
         >
@@ -70,7 +70,7 @@ export function PostingCard({
               <li key={`${r.code}-${i}`} className="max-w-full">
                 <Chip className="!border-transparent !bg-accent-soft !text-accent-text" title={r.detail ?? undefined}>
                   <span className="truncate font-medium">{r.label}</span>
-                  {r.detail && <span className="hidden truncate opacity-80 sm:inline">· {r.detail}</span>}
+                  {r.detail && <span className="hidden truncate sm:inline">· {r.detail}</span>}
                 </Chip>
               </li>
             ))}
@@ -97,7 +97,7 @@ export function PostingCard({
             <Link
               href={`/applications/${p.application.id}`}
               data-testid="application-link"
-              className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-surface-2 px-3 text-sm font-medium hover:bg-line sm:h-9"
+              className="inline-flex h-10 items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium hover:bg-line sm:h-9"
             >
               <CheckIcon className="text-positive" />
               {kindLabel(p.application.status)} · view timeline
@@ -107,7 +107,7 @@ export function PostingCard({
               type="button"
               onClick={() => onApply(p)}
               data-testid="apply-button"
-              className="inline-flex h-10 items-center rounded-lg border border-line-strong bg-surface px-3 text-sm font-medium hover:bg-surface-2 sm:h-9"
+              className="inline-flex h-10 items-center rounded-control border border-line-strong bg-surface px-3 text-sm font-medium hover:bg-surface-2 sm:h-9"
             >
               I applied
             </button>
@@ -116,7 +116,7 @@ export function PostingCard({
             href={p.url}
             target="_blank"
             rel="noreferrer"
-            className="ml-auto inline-flex h-10 items-center gap-1 rounded-lg px-2 text-sm text-muted hover:text-fg sm:h-9"
+            className="ml-auto inline-flex h-10 items-center gap-1 rounded-control px-2 text-sm text-muted hover:text-fg sm:h-9"
           >
             Open posting
             <ExternalIcon />

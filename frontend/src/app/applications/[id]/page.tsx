@@ -61,7 +61,7 @@ export default function ApplicationDetailPage() {
         <Spinner label="Loading timeline" />
       ) : (
         <div className="space-y-4">
-          <header className="rounded-xl border border-line bg-surface p-4">
+          <header className="rounded-card border border-line bg-surface p-4">
             <div className="flex items-start gap-3">
               <ScoreBadge score={app.posting.score} />
               <div className="min-w-0 flex-1">
@@ -88,12 +88,12 @@ export default function ApplicationDetailPage() {
             </div>
           </header>
 
-          <section className="rounded-xl border border-line bg-surface p-4" aria-label="Timeline">
+          <section className="rounded-card border border-line bg-surface p-4" aria-label="Timeline">
             <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-faint">Timeline</h2>
             <Timeline events={app.events} status={app.status} />
           </section>
 
-          <section className="rounded-xl border border-line bg-surface p-4" aria-label="Next steps">
+          <section className="rounded-card border border-line bg-surface p-4" aria-label="Next steps">
             <h2 className="text-base font-semibold">What happened next?</h2>
             {app.next_transitions.length > 0 ? (
               <div className="mt-3 flex flex-wrap gap-2" data-testid="transitions">
@@ -114,7 +114,7 @@ export default function ApplicationDetailPage() {
               </div>
             ) : (
               <p className="mt-1 text-sm text-muted" data-testid="no-transitions">
-                This application is closed — there&apos;s nothing further to record. You can still add notes.
+                This application is closed, so there&apos;s nothing further to record. You can still add notes.
               </p>
             )}
             <div className="mt-3 border-t border-line pt-3">

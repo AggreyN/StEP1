@@ -9,8 +9,8 @@ export const MIN_INTERESTS = 3;
 export const MAX_INTERESTS = 5;
 
 export function interestError(n: number): string | null {
-  if (n < MIN_INTERESTS) return `Pick at least ${MIN_INTERESTS} — ${MIN_INTERESTS - n} more to go.`;
-  if (n > MAX_INTERESTS) return `Pick at most ${MAX_INTERESTS} — remove ${n - MAX_INTERESTS}.`;
+  if (n < MIN_INTERESTS) return `Pick at least ${MIN_INTERESTS}. ${MIN_INTERESTS - n} more to go.`;
+  if (n > MAX_INTERESTS) return `Pick at most ${MAX_INTERESTS}. Remove ${n - MAX_INTERESTS}.`;
   return null;
 }
 
@@ -30,11 +30,11 @@ export function InterestRanker({ value, onChange }: { value: string[]; onChange:
           <li
             key={key}
             data-testid="ranked-interest"
-            className="flex items-center gap-2 rounded-lg border border-line bg-surface py-1.5 pl-2 pr-1 sm:gap-3"
+            className="flex items-center gap-2 rounded-control border border-line bg-surface py-1.5 pl-2 pr-1 sm:gap-3"
           >
             <span
               aria-label={`Rank ${i + 1}`}
-              className="tnum flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-2 text-sm font-semibold"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-chip bg-surface-2 font-mono text-sm font-semibold"
             >
               {i + 1}
             </span>
@@ -44,7 +44,7 @@ export function InterestRanker({ value, onChange }: { value: string[]; onChange:
               onClick={() => move(i, -1)}
               disabled={i === 0}
               aria-label={`Move ${roleLabel(key)} up`}
-              className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg disabled:opacity-30"
+              className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-chip text-muted hover:bg-surface-2 hover:text-fg disabled:opacity-30"
             >
               <UpIcon />
             </button>
@@ -53,7 +53,7 @@ export function InterestRanker({ value, onChange }: { value: string[]; onChange:
               onClick={() => move(i, 1)}
               disabled={i === value.length - 1}
               aria-label={`Move ${roleLabel(key)} down`}
-              className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg disabled:opacity-30"
+              className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-chip text-muted hover:bg-surface-2 hover:text-fg disabled:opacity-30"
             >
               <DownIcon />
             </button>
@@ -61,15 +61,15 @@ export function InterestRanker({ value, onChange }: { value: string[]; onChange:
               type="button"
               onClick={() => onChange(value.filter((k) => k !== key))}
               aria-label={`Remove ${roleLabel(key)}`}
-              className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg"
+              className="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-chip text-muted hover:bg-surface-2 hover:text-fg"
             >
               <XIcon />
             </button>
           </li>
         ))}
         {value.length === 0 && (
-          <li className="rounded-lg border border-dashed border-line-strong px-3 py-4 text-sm text-muted">
-            Nothing picked yet. Tap fields below — the first one you pick is #1.
+          <li className="rounded-control border border-dashed border-line-strong px-3 py-4 text-sm text-muted">
+            Nothing picked yet. Choose fields below. The first one you pick is #1.
           </li>
         )}
       </ol>
@@ -79,7 +79,7 @@ export function InterestRanker({ value, onChange }: { value: string[]; onChange:
         className={`mt-2 text-sm ${err ? (value.length > MAX_INTERESTS ? "text-danger" : "text-muted") : "text-positive"}`}
         aria-live="polite"
       >
-        {err ?? `${value.length} picked — reorder so your top choice is #1.`}
+        {err ?? `${value.length} picked. Reorder so your top choice is #1.`}
       </p>
 
       {available.length > 0 && (
@@ -91,7 +91,7 @@ export function InterestRanker({ value, onChange }: { value: string[]; onChange:
                 type="button"
                 key={key}
                 onClick={() => onChange([...value, key])}
-                className="h-9 rounded-full border border-line-strong bg-surface px-3 text-sm text-fg hover:border-accent hover:text-accent-text"
+                className="h-9 rounded-control border border-line-strong bg-surface px-3 text-sm text-fg hover:border-accent hover:text-accent-text"
               >
                 + {roleLabel(key)}
               </button>

@@ -25,13 +25,13 @@ export function ChipInput({
       {value.length > 0 && (
         <ul className="mb-2 flex flex-wrap gap-2" aria-label={label}>
           {value.map((v) => (
-            <li key={v} className="inline-flex items-center gap-1 rounded-full bg-surface-2 py-1 pl-3 pr-1 text-sm">
+            <li key={v} className="inline-flex items-center gap-1 rounded-chip bg-surface-2 py-1 pl-2.5 pr-1 text-sm">
               {v}
               <button
                 type="button"
                 onClick={() => onChange(value.filter((x) => x !== v))}
                 aria-label={`Remove ${v}`}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted hover:bg-surface hover:text-fg"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-chip text-muted hover:bg-surface hover:text-fg"
               >
                 <XIcon />
               </button>
@@ -51,13 +51,13 @@ export function ChipInput({
               add();
             }
           }}
-          className="h-11 min-w-0 flex-1 rounded-lg border border-line-strong bg-surface px-3 text-[15px] placeholder:text-faint focus:border-accent focus:outline-none"
+          className="h-11 min-w-0 flex-1 rounded-control border border-line-strong bg-surface px-3 text-[15px] placeholder:text-faint focus:border-accent focus:outline-none"
         />
         <button
           type="button"
           onClick={add}
           disabled={!draft.trim()}
-          className="h-11 shrink-0 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium hover:bg-surface-2 disabled:opacity-45"
+          className="h-11 shrink-0 rounded-control border border-line-strong bg-surface px-4 text-sm font-medium hover:bg-surface-2 disabled:opacity-45"
         >
           Add
         </button>
