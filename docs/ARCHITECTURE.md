@@ -511,11 +511,13 @@ profile link only.**
 The Indeed Publisher API is deprecated and access is partner-only — employers,
 ATS platforms, and agencies. There is no self-serve key.
 
-The Indeed connector in this Claude session is a *research* tool: I can query
-it (it just returned live Summer 2027 postings around College Park — Google
-Reston at $82–109k, JHU APL Laurel, Peraton Herndon) and you can use it to
-sanity-check coverage or hand-curate a seed list. **It is not something your
-deployed app can call.** Treat Adzuna and USAJobs as the answer for breadth.
+A manual search was used to sanity-check that claim, not to build on it: it
+returned live Summer 2027 postings around College Park (Google Reston at
+$82–109k, JHU APL Laurel, Peraton Herndon), confirming the postings are
+visible to a person, just not reachable through any key a deployed service
+could hold. Use that kind of manual lookup to sanity-check coverage or
+hand-curate a seed list if you want to. **It is not something your deployed
+app can call.** Treat Adzuna and USAJobs as the answer for breadth.
 
 And don't scrape Indeed or company career pages to work around this. It
 violates their terms, it breaks constantly, and it is the kind of thing that
