@@ -66,11 +66,12 @@ export async function expectNoHorizontalScroll(page: Page) {
   expect(result.bodyScrollWidth).toBeLessThanOrEqual(result.vw);
 }
 
-/** A tiny but valid-looking PDF payload for the upload input. */
-export function pdfFile(name = "resume.pdf") {
-  return {
-    name,
-    mimeType: "application/pdf",
-    buffer: Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n"),
-  };
+/** A small PDF-shaped payload for the upload input. `bytes` sets its size
+ *  (the app accepts 1 KB to 5 MB). */
+export function pdfFile(name = "resume.pdf", bytes = 2048) {
+  const head = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n";
+  const tail = "trailer\n<< /Root 1 0 R >>\n%%EOF\n";
+  const padding = "%".padEnd(Math.max(0, bytes - head.length - tail.length - 1), " ") + "\n";
+  const body = bytes < head.length + tail.length ? head.slice(0, bytes) : head + padding + tail;
+  return { name, mimeType: "application/pdf", buffer: Buffer.from(body) };
 }

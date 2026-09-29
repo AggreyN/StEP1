@@ -10,6 +10,7 @@
 // var is the only change needed when the backend lands.
 
 import { clearSession, getToken } from "./auth";
+import { LIMITS } from "./limits";
 import type {
   ApplicationDetail,
   ApplicationSummary,
@@ -197,13 +198,24 @@ function retryAfterOf(h: Headers, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
-export const RESUME_MAX_BYTES = 5 * 1024 * 1024;
+function fileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} bytes`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
-/** Client-side check before any network call. Returns an error string or null. */
+/** Checked before any request is made: PDF only, 1 KB to 5 MB.
+ *  Returns what is wrong, or null. The server checks again, and also looks
+ *  at the file's contents, which the browser can't be trusted to do. */
 export function validateResume(file: File): string | null {
-  const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
-  if (!isPdf) return "Resume must be a PDF.";
-  if (file.size > RESUME_MAX_BYTES) return "Resume must be 5 MB or smaller.";
+  const isPdf = /\.pdf$/i.test(file.name) && (file.type === "application/pdf" || file.type === "");
+  if (!isPdf) return "Resumes must be PDF files. Export your resume as a PDF and try again.";
+  if (file.size < LIMITS.resumeMinBytes) {
+    return `That file is only ${fileSize(file.size)}, which is too small to be a resume. It needs to be at least 1 KB.`;
+  }
+  if (file.size > LIMITS.resumeMaxBytes) {
+    return `That file is ${fileSize(file.size)}. Resumes can be at most 5 MB.`;
+  }
   return null;
 }
 
@@ -212,7 +224,7 @@ export async function uploadResume(file: File): Promise<Resume> {
   const err = validateResume(file);
   if (err) throw new ApiError(422, err);
   const presign = await json<Presign>("POST", "/profile/resume/presign", {
-    body: { filename: file.name, content_type: "application/pdf" },
+    body: { filename: file.name, content_type: "application/pdf", size: file.size },
   });
   await putUpload(presign, file);
   return json<Resume>("POST", "/profile/resume/commit", {
@@ -220,12 +232,13 @@ export async function uploadResume(file: File): Promise<Resume> {
   });
 }
 
-/** The one place that PUTs file bytes to the upload URL, and the one place
- *  that decides whether the bearer token goes with them.
+/** The one place that PUTs file bytes to the upload URL.
  *
- *  Local backend mode: upload_url is our own API, which requires the bearer.
- *  S3: a presigned URL carries its own signature in the query string and must
- *  not be sent a second credential, so the bearer is dropped. */
+ *  The headers the API returned are sent exactly as given: a presigned URL
+ *  signs them, and a changed or extra header breaks the signature. The only
+ *  thing ever added is our own bearer token, and only when the URL is our
+ *  own API (local storage mode), which needs it like any other route. A
+ *  presigned S3 URL carries its own signature and is sent nothing extra. */
 async function putUpload(p: Presign, file: File): Promise<void> {
   const token = getToken();
   const presigned = /[?&](X-Amz-Signature|Signature)=/i.test(p.upload_url);

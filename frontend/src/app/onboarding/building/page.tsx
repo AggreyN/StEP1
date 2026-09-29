@@ -9,6 +9,7 @@ import { ApiError, getFeedStatus } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import type { FeedStatus } from "@/lib/types";
 import { Wordmark } from "@/components/AppShell";
+import { SiteFooter } from "@/components/SiteFooter";
 import { ErrorNote, ProgressBar } from "@/components/ui";
 
 const SLOW_AFTER_MS = 30_000;
@@ -22,13 +23,17 @@ function Building() {
   const [status, setStatus] = useState<FeedStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [slow, setSlow] = useState(false);
+  // Set when the API says to slow down (429). Polling stops until the
+  // person asks again; nothing is retried behind their back.
+  const [limited, setLimited] = useState<{ attempt: number; message: string } | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const startedAt = useRef<number>(0);
 
   useEffect(() => {
     if (!authed) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    startedAt.current = Date.now();
+    if (!startedAt.current) startedAt.current = Date.now();
 
     const poll = async (delaySec: number) => {
       try {
@@ -45,7 +50,12 @@ function Building() {
       } catch (e) {
         if (cancelled) return;
         if (e instanceof ApiError && e.status === 409) {
-          router.replace("/onboarding"); // no profile yet — nothing is building
+          router.replace("/onboarding"); // no profile yet, so nothing is building
+          return;
+        }
+        if (e instanceof ApiError && e.status === 429) {
+          setError(null);
+          setLimited({ attempt, message: e.message });
           return;
         }
         setError(e instanceof Error ? e.message : "Couldn't check progress.");
@@ -58,13 +68,15 @@ function Building() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [authed, initialRetry, router]);
+  }, [authed, initialRetry, router, attempt]);
 
   if (!authed) return null;
 
   const pct = status?.pct ?? 0;
+  const paused = limited?.attempt === attempt ? limited.message : null;
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-10">
+    <div className="flex min-h-screen flex-col">
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">
       <Wordmark />
       <h1 className="mt-6 text-2xl font-semibold tracking-tight">Starting your career…</h1>
       <p className="mt-1 text-sm text-muted">We&apos;re ranking every open internship against your profile.</p>
@@ -79,9 +91,15 @@ function Building() {
         </div>
       </div>
 
-      {error && (
+      {error && !paused && (
         <div className="mt-6">
           <ErrorNote>{error} Retrying…</ErrorNote>
+        </div>
+      )}
+
+      {paused && (
+        <div className="mt-6">
+          <ErrorNote onRetry={() => setAttempt((n) => n + 1)}>{paused}</ErrorNote>
         </div>
       )}
 
@@ -98,6 +116,8 @@ function Building() {
         </div>
       )}
     </main>
+    <SiteFooter />
+    </div>
   );
 }
 

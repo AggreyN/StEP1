@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { getProfile, putProfile, uploadResume, validateResume } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import { DEFAULT_SCHOOL, DEGREE_LEVELS, TERMS } from "@/lib/labels";
+import { LIMITS, tooLong } from "@/lib/limits";
 import type { Profile, Resume } from "@/lib/types";
 import { AppShell } from "@/components/AppShell";
 import { ChipInput } from "@/components/ChipInput";
@@ -27,13 +28,28 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
   );
 }
 
-function Field({ label, optional, children }: { label: string; optional?: boolean; children: React.ReactNode }) {
+function Field({
+  label,
+  optional,
+  error,
+  children,
+}: {
+  label: string;
+  optional?: boolean;
+  error?: string | null;
+  children: React.ReactNode;
+}) {
   return (
     <label className="block">
       <span className="mb-1 block text-sm font-medium">
         {label} {optional && <span className="font-normal text-faint">(optional)</span>}
       </span>
       {children}
+      {error && (
+        <span role="alert" className="mt-1 block text-sm text-danger">
+          {error}
+        </span>
+      )}
     </label>
   );
 }
@@ -53,7 +69,6 @@ export default function OnboardingPage() {
   const [minor, setMinor] = useState("");
   const [degree, setDegree] = useState("Bachelor's");
   const [gradYear, setGradYear] = useState(String(thisYear + 2));
-  const [gpa, setGpa] = useState("");
   const [terms, setTerms] = useState<string[]>(["Summer 2027"]);
   const [locations, setLocations] = useState<string[]>([]);
   const [remoteOk, setRemoteOk] = useState(true);
@@ -81,7 +96,6 @@ export default function OnboardingPage() {
           setMinor(p.minor ?? "");
           if (p.degree_level) setDegree(p.degree_level);
           if (p.grad_year) setGradYear(String(p.grad_year));
-          setGpa(p.gpa == null ? "" : String(p.gpa));
           setTerms(p.target_terms);
           setLocations(p.preferred_locations);
           setRemoteOk(p.remote_ok);
@@ -120,7 +134,9 @@ export default function OnboardingPage() {
 
   const interestsOk = interests.length >= MIN_INTERESTS && interests.length <= MAX_INTERESTS;
   const gradYearNum = Number(gradYear);
-  const gpaNum = gpa.trim() === "" ? null : Number(gpa);
+  const schoolError = tooLong("School", school, LIMITS.school);
+  const majorError = tooLong("Major", major, LIMITS.major);
+  const minorError = tooLong("Minor", minor, LIMITS.minor);
   const formOk =
     interestsOk &&
     school.trim() &&
@@ -129,7 +145,9 @@ export default function OnboardingPage() {
     Number.isInteger(gradYearNum) &&
     gradYearNum >= thisYear - 1 &&
     gradYearNum <= thisYear + 8 &&
-    (gpaNum === null || (Number.isFinite(gpaNum) && gpaNum >= 0 && gpaNum <= 4));
+    !schoolError &&
+    !majorError &&
+    !minorError;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -143,7 +161,6 @@ export default function OnboardingPage() {
         minor: minor.trim() || null,
         degree_level: degree,
         grad_year: gradYearNum,
-        gpa: gpaNum,
         target_terms: terms,
         preferred_locations: locations,
         remote_ok: remoteOk,
@@ -184,14 +201,14 @@ export default function OnboardingPage() {
           <Section title="School">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <Field label="School">
+                <Field label="School" error={schoolError}>
                   <input className={input} value={school} onChange={(e) => setSchool(e.target.value)} required />
                 </Field>
               </div>
-              <Field label="Major">
+              <Field label="Major" error={majorError}>
                 <input className={input} value={major} onChange={(e) => setMajor(e.target.value)} required placeholder="Information Science" />
               </Field>
-              <Field label="Minor" optional>
+              <Field label="Minor" optional error={minorError}>
                 <input className={input} value={minor} onChange={(e) => setMinor(e.target.value)} />
               </Field>
               <Field label="Degree level">
@@ -201,26 +218,15 @@ export default function OnboardingPage() {
                   ))}
                 </select>
               </Field>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Grad year">
-                  <input
-                    className={`${input} tnum`}
-                    inputMode="numeric"
-                    value={gradYear}
-                    onChange={(e) => setGradYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    required
-                  />
-                </Field>
-                <Field label="GPA" optional>
-                  <input
-                    className={`${input} tnum`}
-                    inputMode="decimal"
-                    placeholder="3.7"
-                    value={gpa}
-                    onChange={(e) => setGpa(e.target.value)}
-                  />
-                </Field>
-              </div>
+              <Field label="Expected graduation year">
+                <input
+                  className={`${input} font-mono`}
+                  inputMode="numeric"
+                  value={gradYear}
+                  onChange={(e) => setGradYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  required
+                />
+              </Field>
             </div>
           </Section>
 
@@ -248,14 +254,21 @@ export default function OnboardingPage() {
             {terms.length === 0 && <p className="mt-2 text-sm text-danger">Pick at least one term.</p>}
 
             <p className="mb-2 mt-5 text-sm font-medium">Preferred locations</p>
-            <ChipInput label="Preferred locations" value={locations} onChange={setLocations} placeholder="Washington, DC" />
+            <ChipInput
+              label="Preferred locations"
+              value={locations}
+              onChange={setLocations}
+              placeholder="Washington, DC"
+              max={LIMITS.locations}
+              maxLength={LIMITS.locationLength}
+            />
             <label className="mt-4 flex cursor-pointer items-center gap-3">
               <input type="checkbox" checked={remoteOk} onChange={(e) => setRemoteOk(e.target.checked)} className="h-5 w-5 accent-[var(--accent)]" />
               <span className="text-[15px]">Remote is fine</span>
             </label>
           </Section>
 
-          <Section title="Resume" hint="PDF, up to 5 MB. We pull your skills out of it to match against postings.">
+          <Section title="Resume" hint="PDF, 1 KB to 5 MB. Your skills are read from it to match against postings.">
             <div className="flex flex-wrap items-center gap-3">
               <input
                 ref={fileRef}
@@ -325,7 +338,7 @@ export default function OnboardingPage() {
                 {!interestsOk
                   ? `Pick ${MIN_INTERESTS}–${MAX_INTERESTS} fields to continue.`
                   : !formOk
-                    ? "Fill in your major, a term, and a valid grad year."
+                    ? (schoolError ?? majorError ?? minorError ?? "Fill in your major, a term, and a valid graduation year.")
                     : existing
                       ? "We'll re-rank your matches."
                       : "We'll rank every open internship for you."}

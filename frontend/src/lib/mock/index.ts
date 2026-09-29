@@ -6,7 +6,8 @@
 // filtered dashboard URL) sees the same saves/applications.
 //
 // For tests, every request is also appended to window.__step1Requests
-// ("METHOD /path?query"), so a spec can check what the client asked for.
+// ("METHOD /path?query"), and its JSON body to window.__step1Bodies under the
+// same index, so a spec can check what the client asked for and sent.
 //
 // Test knobs (localStorage):
 //   step1.mock.instant = "1"            GET /feed/status reports `ready` on
@@ -419,6 +420,13 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
     return ok({ profile_version: version, state: "building" }, 202, { "Retry-After": "1" });
   }
   if (path === "/profile/resume/presign" && method === "POST") {
+    const size = Number(body?.size);
+    const name = String(body?.filename ?? "");
+    if (body?.content_type !== "application/pdf" || !/\.pdf$/i.test(name)) {
+      return err(422, "Resumes must be PDF files (up to 5 MB).");
+    }
+    if (!Number.isInteger(size)) return err(422, "size: Field required");
+    if (size < 1024 || size > 5 * 1024 * 1024) return err(422, "Resumes must be between 1 KB and 5 MB.");
     const key = `resumes/${user.id}/${Date.now()}.pdf`;
     return ok({
       upload_url: `mock://upload/${key}`,
@@ -429,6 +437,9 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
   }
   if (path === "/profile/resume/commit" && method === "POST") {
     const filename = String(body?.filename ?? "resume.pdf");
+    // A filename containing "notpdf" simulates a file whose contents are not
+    // a PDF, which only the server can tell.
+    if (/notpdf/i.test(filename)) return err(400, "That file isn't a PDF.");
     // A filename containing "scan" simulates an image-only PDF.
     const needs_ocr = /scan/i.test(filename);
     const resume: Resume = {
@@ -541,9 +552,13 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
   return err(404, "Not found");
 }
 
-function record(line: string) {
-  const w = window as unknown as { __step1Requests?: string[] };
+function record(line: string, body: unknown) {
+  const w = window as unknown as { __step1Requests?: string[]; __step1Bodies?: unknown[] };
   w.__step1Requests = [...(w.__step1Requests ?? []).slice(-199), line];
+  // Passwords are never kept, even here.
+  const safe =
+    body && typeof body === "object" && "password" in body ? { ...body, password: "[not recorded]" } : (body ?? null);
+  w.__step1Bodies = [...(w.__step1Bodies ?? []).slice(-199), safe];
 }
 
 /** Reads the step1.mock.fail knob: "[status] [always] METHOD /path".
@@ -573,7 +588,7 @@ export async function handle(
 ): Promise<MockResponse> {
   await sleep(DELAY_MS);
   const url = new URL(pathAndQuery, "http://mock.local");
-  record(`${method} ${url.pathname}${url.search}`);
+  record(`${method} ${url.pathname}${url.search}`, body);
   const forced = forcedFailure(method, url.pathname);
   if (forced) return forced;
   // Deep-copy so callers can never mutate mock state by reference.

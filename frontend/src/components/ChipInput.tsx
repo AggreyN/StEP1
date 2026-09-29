@@ -8,16 +8,31 @@ export function ChipInput({
   onChange,
   placeholder,
   label,
+  max,
+  maxLength,
 }: {
   value: string[];
   onChange: (v: string[]) => void;
   placeholder?: string;
   label: string;
+  /** most entries allowed */
+  max: number;
+  /** longest entry allowed, in characters */
+  maxLength: number;
 }) {
   const [draft, setDraft] = useState("");
+  const entry = draft.trim().replace(/,$/, "").trim();
+  const full = value.length >= max;
+  const problem = full
+    ? `That's the most you can add (${max}). Remove one to add another.`
+    : entry.length > maxLength
+      ? `Each one can be at most ${maxLength} characters (this is ${entry.length}).`
+      : null;
+  const hintId = `${label.replace(/\W+/g, "-").toLowerCase()}-hint`;
+
   const add = () => {
-    const v = draft.trim().replace(/,$/, "").trim();
-    if (v && !value.some((x) => x.toLowerCase() === v.toLowerCase())) onChange([...value, v]);
+    if (!entry || problem) return;
+    if (!value.some((x) => x.toLowerCase() === entry.toLowerCase())) onChange([...value, entry]);
     setDraft("");
   };
   return (
@@ -45,6 +60,8 @@ export function ChipInput({
           value={draft}
           placeholder={placeholder}
           onChange={(e) => setDraft(e.target.value)}
+          aria-invalid={problem && entry ? true : undefined}
+          aria-describedby={problem ? hintId : undefined}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === ",") {
               e.preventDefault();
@@ -56,12 +73,17 @@ export function ChipInput({
         <button
           type="button"
           onClick={add}
-          disabled={!draft.trim()}
+          disabled={!entry || !!problem}
           className="h-11 shrink-0 rounded-control border border-line-strong bg-surface px-4 text-sm font-medium hover:bg-surface-2 disabled:opacity-45"
         >
           Add
         </button>
       </div>
+      {problem && (full || entry) && (
+        <p id={hintId} role="status" className={`mt-1.5 text-sm ${full && !entry ? "text-muted" : "text-danger"}`}>
+          {problem}
+        </p>
+      )}
     </div>
   );
 }

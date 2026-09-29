@@ -3,6 +3,7 @@ import { Suspense, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMe, login, register } from "@/lib/api";
 import { setSession } from "@/lib/auth";
+import { LIMITS, tooLong } from "@/lib/limits";
 import { Wordmark } from "@/components/AppShell";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Button, ErrorNote } from "@/components/ui";
@@ -20,9 +21,12 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const nameError = mode === "register" ? tooLong("Name", name, LIMITS.displayName) : null;
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (nameError) return;
     if (password.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
@@ -90,7 +94,18 @@ function LoginForm() {
           {mode === "register" && (
             <label className="block">
               <span className="mb-1 block text-sm font-medium">Name <span className="font-normal text-faint">(optional)</span></span>
-              <input className={input} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+              <input
+                className={input}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="name"
+                aria-invalid={nameError ? true : undefined}
+              />
+              {nameError && (
+                <span role="alert" className="mt-1 block text-sm text-danger">
+                  {nameError}
+                </span>
+              )}
             </label>
           )}
           <label className="block">
@@ -119,7 +134,7 @@ function LoginForm() {
             {mode === "register" && <span className="mt-1 block text-xs text-faint">At least 8 characters.</span>}
           </label>
           {error && <ErrorNote>{error}</ErrorNote>}
-          <Button type="submit" variant="primary" className="w-full" disabled={busy || !email || !password}>
+          <Button type="submit" variant="primary" className="w-full" disabled={busy || !email || !password || !!nameError}>
             {busy ? "One moment…" : mode === "login" ? "Sign in" : "Create account"}
           </Button>
         </form>

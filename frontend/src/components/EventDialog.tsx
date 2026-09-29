@@ -5,6 +5,7 @@ import { useState } from "react";
 import { addEvent } from "@/lib/api";
 import { dateInputToIso, todayInput } from "@/lib/format";
 import { kindLabel } from "@/lib/labels";
+import { LIMITS, tooLong } from "@/lib/limits";
 import type { ApplicationDetail } from "@/lib/types";
 import { Dialog } from "./Dialog";
 import { Button, ErrorNote } from "./ui";
@@ -28,8 +29,10 @@ function EventForm({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const noteError = tooLong("A note", note, LIMITS.note);
 
   async function save() {
+    if (noteError) return;
     setBusy(true);
     setError(null);
     try {
@@ -68,17 +71,25 @@ function EventForm({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
-          maxLength={2000}
+          aria-invalid={noteError ? true : undefined}
+          aria-describedby="note-count"
           placeholder={isNote ? "What do you want to remember?" : "Who you spoke to, what's next…"}
           className={`${field} py-2`}
         />
+        <span
+          id="note-count"
+          role={noteError ? "alert" : undefined}
+          className={`mt-1 block text-[13px] ${noteError ? "text-danger" : "text-faint"}`}
+        >
+          {noteError ?? `${note.trim().length.toLocaleString()} of ${LIMITS.note.toLocaleString()} characters`}
+        </span>
       </label>
       {error && <ErrorNote>{error}</ErrorNote>}
       <div className="flex justify-end gap-2">
         <Button onClick={onClose} disabled={busy}>
           Cancel
         </Button>
-        <Button variant="primary" onClick={save} disabled={busy || (isNote && !note.trim())} data-testid="save-event">
+        <Button variant="primary" onClick={save} disabled={busy || !!noteError || (isNote && !note.trim())} data-testid="save-event">
           {busy ? "Saving…" : isNote ? "Add note" : `Mark as ${kindLabel(kind).toLowerCase()}`}
         </Button>
       </div>

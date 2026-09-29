@@ -56,7 +56,7 @@ test("new student: register through to advancing an application", async ({ page 
   await page.getByRole("textbox", { name: "Preferred locations" }).fill("Washington, DC");
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await page.locator("#resume-file").setInputFiles({ ...pdfFile("notes.docx"), mimeType: "application/msword" });
-  await expect(errorNote(page)).toContainText("must be a PDF");
+  await expect(errorNote(page)).toContainText("Resumes must be PDF files.");
   await page.locator("#resume-file").setInputFiles(pdfFile());
   const skills = page.getByRole("list", { name: "Extracted skills" });
   await expect(skills.getByText("Python")).toBeVisible();
