@@ -34,12 +34,25 @@ def _utc_z(value: datetime) -> str:
 UtcDateTime = Annotated[datetime, PlainSerializer(_utc_z, return_type=str, when_used="json")]
 
 
+class RequestModel(BaseModel):
+    """Base for everything a client sends. Unknown fields are refused, not
+    dropped: a request carrying `status` or `user_id` gets a 422 naming the
+    field, rather than a 200 that quietly did less than was asked.
+
+    Refusing is the second line of defence. The first is that no route
+    unpacks a body into a model: every column is assigned by name, so the
+    only fields a client can set are the ones declared here.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+
 # --------------------------------------------------------------------------- #
 # Auth
 # --------------------------------------------------------------------------- #
 
 
-class RegisterIn(BaseModel):
+class RegisterIn(RequestModel):
     email: EmailStr
     password: str
     display_name: str | None = Field(default=None, max_length=120)
@@ -58,7 +71,7 @@ class RegisterIn(BaseModel):
         return v or None
 
 
-class LoginIn(BaseModel):
+class LoginIn(RequestModel):
     email: EmailStr
     password: str
 
@@ -86,7 +99,7 @@ class MeOut(UserOut):
 # --------------------------------------------------------------------------- #
 
 
-class InterestIn(BaseModel):
+class InterestIn(RequestModel):
     role: str
     rank: int = Field(ge=1, le=5)
 
@@ -111,7 +124,7 @@ class ResumeOut(BaseModel):
     needs_ocr: bool
 
 
-class ProfileIn(BaseModel):
+class ProfileIn(RequestModel):
     school: str = Field(min_length=1, max_length=200)
     major: str = Field(min_length=1, max_length=200)
     minor: str | None = Field(default=None, max_length=200)
@@ -178,7 +191,7 @@ class ProfileAccepted(BaseModel):
     state: Literal["building"] = "building"
 
 
-class PresignIn(BaseModel):
+class PresignIn(RequestModel):
     filename: str = Field(min_length=1, max_length=255)
     content_type: str
 
@@ -190,7 +203,7 @@ class PresignOut(BaseModel):
     headers: dict[str, str]
 
 
-class CommitIn(BaseModel):
+class CommitIn(RequestModel):
     key: str = Field(min_length=1, max_length=512)
     filename: str = Field(min_length=1, max_length=255)
 
@@ -287,12 +300,12 @@ class IngestStatusOut(BaseModel):
 # --------------------------------------------------------------------------- #
 
 
-class ApplicationCreateIn(BaseModel):
+class ApplicationCreateIn(RequestModel):
     posting_id: str
     applied_at: datetime | None = None
 
 
-class EventIn(BaseModel):
+class EventIn(RequestModel):
     kind: str
     occurred_at: datetime | None = None
     note: str | None = Field(default=None, max_length=4000)

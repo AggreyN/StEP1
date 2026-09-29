@@ -86,6 +86,8 @@ async def _validation_error(request: Request, exc: RequestValidationError):
         msg = str(err.get("msg", "invalid value"))
         # Pydantic prefixes custom ValueErrors with "Value error, ".
         msg = msg.removeprefix("Value error, ")
+        if err.get("type") == "extra_forbidden":
+            msg = "this field can't be set"
         where = _loc(tuple(err.get("loc", ())))
         parts.append(f"{where}: {msg}" if where else msg)
     return JSONResponse(status_code=422, content={"detail": "; ".join(parts) or "Invalid request."})
