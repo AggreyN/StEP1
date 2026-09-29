@@ -45,7 +45,16 @@ const DEMO_EMAIL = "demo@umd.edu";
 
 const GRAPH = transitionsData.graph as Record<string, string[]>;
 const NON_STATUS = new Set(transitionsData.non_status_kinds);
-const POSTINGS = feedData.items as Posting[];
+// Keep the fixture's dates relative to today (see feed.json `anchor`), so the
+// server-written "Posted 2 days ago" reasons and the dates agree.
+const DAY_MS = 86_400_000;
+const DRIFT_DAYS = Math.max(0, Math.floor((Date.now() - Date.parse(feedData.anchor)) / DAY_MS));
+const POSTINGS = (feedData.items as Posting[]).map((p) => ({
+  ...p,
+  date_posted: p.date_posted
+    ? new Date(Date.parse(p.date_posted) + DRIFT_DAYS * DAY_MS).toISOString().replace(/\.\d+Z$/, "Z")
+    : null,
+}));
 
 interface MockUser {
   id: number;

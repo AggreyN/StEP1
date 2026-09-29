@@ -1,4 +1,6 @@
 {
+  "_comment": "Mock-only fixture for GET /feed. `anchor` is the day these postings were written against: the mock moves every date_posted forward by the whole days since then, so 'Posted 2 days ago' stays true whenever the app is run. It is not part of the API response.",
+  "anchor": "2026-09-28T00:00:00Z",
   "items": [
     {
       "id": "simplify:fc365bf3-8b8b-f485-50ae-bd93822c8767",
