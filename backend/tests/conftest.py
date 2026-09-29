@@ -35,6 +35,9 @@ os.environ["STORAGE_BACKEND"] = "local"
 os.environ["UPLOAD_DIR"] = str(_TMP / "uploads")
 os.environ["PUBLIC_API_BASE"] = "http://testserver"
 os.environ["JWT_SECRET"] = "test-only-secret-not-a-real-key"
+# The cheapest bcrypt allows. The suite creates hundreds of accounts and none
+# of them protects anything.
+os.environ["BCRYPT_ROUNDS"] = "4"
 os.environ["ALLOWED_ORIGINS"] = "http://localhost:3000"
 # The suite must never reach the network. The scheduler is off here; the
 # tests that exercise it call it directly with a fake source.
@@ -275,3 +278,53 @@ def age_runs(db, hours: float) -> None:
         {"s": hours * 3600},
     )
     db.commit()
+
+
+def api_routes(app) -> dict[tuple[str, str], object]:
+    """Every API route in the app, as {(METHOD, path template): route}.
+
+    Recent FastAPI keeps included routers nested rather than copying their
+    routes onto the app, so `for r in app.routes` finds none of them. A test
+    that walked only the top level would check nothing and pass. This walks
+    all the way down, and works on the older flat layout too.
+    """
+    from fastapi.routing import APIRoute
+
+    found: dict[tuple[str, str], object] = {}
+
+    def walk(routes, prefix: str) -> None:
+        for route in routes:
+            if isinstance(route, APIRoute):
+                for method in route.methods - {"HEAD", "OPTIONS"}:
+                    found[(method, prefix + route.path)] = route
+            elif hasattr(route, "original_router"):
+                inner = getattr(route.include_context, "prefix", "") or ""
+                walk(route.original_router.routes, prefix + inner)
+            elif hasattr(route, "routes"):
+                walk(route.routes, prefix + getattr(route, "path", ""))
+
+    walk(app.routes, "")
+    return found
+
+
+def upload_resume(client, headers: dict, data: bytes | None = None, filename: str = "resume.pdf"):
+    """The whole resume flow as a browser does it: presign, PUT, commit.
+    Returns the commit response."""
+    from app import config
+
+    data = make_pdf() if data is None else data
+    presigned = client.post(
+        "/profile/resume/presign",
+        json={"filename": filename, "content_type": "application/pdf"},
+        headers=headers,
+    )
+    assert presigned.status_code == 200, presigned.text
+    target = presigned.json()
+    path = target["upload_url"].removeprefix(config.PUBLIC_API_BASE)
+    put = client.put(path, content=data, headers={**headers, **target["headers"]})
+    assert put.status_code < 300, put.text
+    return client.post(
+        "/profile/resume/commit",
+        json={"key": target["key"], "filename": filename},
+        headers=headers,
+    )
