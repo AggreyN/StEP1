@@ -39,6 +39,14 @@ JWT_ALGORITHM = "HS256"
 # short enough that a leaked token from a shared lab machine dies overnight.
 JWT_EXPIRY_MINUTES = int(os.getenv("JWT_EXPIRY_MINUTES", "720"))
 
+# bcrypt work factor: each step doubles the cost of one guess. 12 is ~0.25 s
+# per hash on a laptop, which a login never notices and an offline attacker
+# multiplies by every candidate password. Below 10 a stolen table falls to a
+# GPU in days; above 14 a sign-in takes over a second and the endpoint becomes
+# its own denial of service. The test suite lowers it, since it registers
+# hundreds of throwaway accounts.
+BCRYPT_ROUNDS = int(os.getenv("BCRYPT_ROUNDS", "12"))
+
 # Passwords shorter than this are rejected at /auth/register. bcrypt ignores
 # bytes past 72, so there is no useful upper bound to enforce beyond that.
 PASSWORD_MIN_LENGTH = int(os.getenv("PASSWORD_MIN_LENGTH", "8"))

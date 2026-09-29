@@ -33,7 +33,7 @@ from app import config
 from app.database import get_db
 from app.models import User
 
-_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=config.BCRYPT_ROUNDS)
 # auto_error=False so we raise our own 401 with the {"detail": str} shape.
 _bearer = HTTPBearer(auto_error=False)
 
