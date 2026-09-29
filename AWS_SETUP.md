@@ -291,8 +291,12 @@ there is no default worth trusting either way.
   September 2026, and what a Docker build on an Apple Silicon Mac produces
   without a `--platform` flag (§2.5).
 - **0.25 vCPU / 0.5 GB** to start. This is a JSON API in front of Postgres,
-  not a model server; scale the task size up only if `/stats` or the ingest
-  scheduler's memory use says to.
+  not a model server. Measured directly: a full run of the listings refresh
+  (17,400 rows fetched, parsed and upserted) peaks at roughly 210-220 MB RSS,
+  whether run as the standalone `python -m app.sources.backfill` or inside a
+  live server doing it on a background thread the way `AUTO_INGEST=true`
+  does. 0.5 GB leaves comfortable headroom over that; scale the task size up
+  only if that changes (a much larger posting volume, for instance).
 - **Scale to exactly one task.** Set both min and max capacity to 1.
   `AUTO_INGEST`'s advisory lock (backend's own hardening work) is written to
   be safe if a second task ever did start, but there is nothing here two
