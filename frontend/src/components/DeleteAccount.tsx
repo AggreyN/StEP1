@@ -1,30 +1,40 @@
 "use client";
 // "Delete my account", at the bottom of the Profile screen. Quiet on the
-// page, explicit in the dialog: it lists what goes, asks for the password,
-// and needs a ticked box before the button works.
+// page, explicit in the dialog: it lists what goes and needs something typed
+// and a ticked box before the button works. What is typed depends on how
+// people sign in: the password (local), or the word DELETE (Cognito, where
+// this site has no password to ask for).
 import { useState, type FormEvent } from "react";
 import { deleteAccount } from "@/lib/api";
-import { clearLocalState } from "@/lib/auth";
+import { clearLocalState, leaveNotice, signOutDestination } from "@/lib/auth";
+import { AUTH_MODE } from "@/lib/config";
+
+const COGNITO = AUTH_MODE === "cognito";
+const WORD = "DELETE";
 import { Dialog } from "./Dialog";
 import { Button, ErrorNote } from "./ui";
 
 function DeleteForm({ onCancel }: { onCancel: () => void }) {
-  const [password, setPassword] = useState("");
+  // the password in local mode, the word DELETE in cognito mode
+  const [typed, setTyped] = useState("");
   const [sure, setSure] = useState(false);
+  const typedOk = COGNITO ? typed.trim().toUpperCase() === WORD : typed.length > 0;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!password || !sure || busy) return;
+    if (!typedOk || !sure || busy) return;
     setBusy(true);
     setError(null);
     try {
-      await deleteAccount(password);
+      await deleteAccount(COGNITO ? undefined : typed);
       clearLocalState();
+      // Cognito mode leaves by way of Cognito's sign-out, which can't carry a
+      // query string back, so the message waits in this tab instead.
+      if (COGNITO) leaveNotice("deleted");
       // A full page load, so nothing of the old session survives in memory.
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.assign("/login?deleted=1");
+      window.location.assign(signOutDestination("/login?deleted=1"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't delete the account.");
       setBusy(false);
@@ -45,17 +55,33 @@ function DeleteForm({ onCancel }: { onCancel: () => void }) {
         <p className="mt-2 text-muted">There is no undo and no backup to restore from.</p>
       </div>
 
-      <label className="block">
-        <span className="mb-1 block text-sm font-medium">Your password</span>
-        <input
-          type="password"
-          data-autofocus
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-[15px]"
-        />
-      </label>
+      {COGNITO ? (
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium">Type {WORD} to confirm</span>
+          <input
+            type="text"
+            data-autofocus
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            className="h-11 w-full rounded-control border border-line-strong bg-surface px-3 font-mono text-[15px]"
+          />
+        </label>
+      ) : (
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium">Your password</span>
+          <input
+            type="password"
+            data-autofocus
+            autoComplete="current-password"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            className="h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-[15px]"
+          />
+        </label>
+      )}
 
       <label className="flex cursor-pointer items-start gap-3 text-sm">
         <input
@@ -73,7 +99,7 @@ function DeleteForm({ onCancel }: { onCancel: () => void }) {
         <Button type="button" onClick={onCancel} disabled={busy}>
           Keep my account
         </Button>
-        <Button type="submit" variant="danger" disabled={!password || !sure || busy} data-testid="confirm-delete">
+        <Button type="submit" variant="danger" disabled={!typedOk || !sure || busy} data-testid="confirm-delete">
           {busy ? "Deleting…" : "Delete my account"}
         </Button>
       </div>

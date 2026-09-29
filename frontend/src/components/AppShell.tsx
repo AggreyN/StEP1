@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { clearSession } from "@/lib/auth";
+import { clearSession, signOut } from "@/lib/auth";
+import { AUTH_MODE } from "@/lib/config";
 import { SiteFooter } from "./SiteFooter";
 
 const NAV = [
@@ -57,6 +58,10 @@ export function AppShell({ children, wide = false }: { children: ReactNode; wide
           </nav>
           <button
             onClick={() => {
+              if (AUTH_MODE === "cognito") {
+                signOut(); // by way of Cognito's sign-out, which ends its session too
+                return;
+              }
               clearSession();
               router.replace("/login");
             }}

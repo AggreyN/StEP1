@@ -7,6 +7,14 @@ test("login and onboarding fit at 375px", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await expectNoHorizontalScroll(page);
 
+  await page.goto("/no/such/page");
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await expectNoHorizontalScroll(page);
+  await page.goto("/auth/callback");
+  await expect(page.getByRole("heading", { name: "Nothing to finish here" })).toBeVisible();
+  await expectNoHorizontalScroll(page);
+  await page.goto("/login");
+
   await signIn(page, freshEmail("mobile"), "register");
   await expect(page).toHaveURL(/\/onboarding$/);
   await expect(page.getByLabel("Major")).toBeVisible();

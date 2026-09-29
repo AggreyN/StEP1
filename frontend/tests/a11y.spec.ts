@@ -46,6 +46,14 @@ for (const scheme of ["light", "dark"] as const) {
       await page.goto("/privacy");
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       await expectNoViolations(page, "privacy");
+
+      await page.goto("/no/such/page");
+      await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+      await expectNoViolations(page, "page not found");
+
+      await page.goto("/auth/callback");
+      await expect(page.getByRole("heading", { name: "Nothing to finish here" })).toBeVisible();
+      await expectNoViolations(page, "sign-in callback, local mode");
     });
 
     test("profile, its delete dialog, and the building screen", async ({ page }) => {

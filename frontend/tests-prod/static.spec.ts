@@ -3,10 +3,11 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import { SITE } from "../playwright.prod.config";
+import { SITES } from "./support/sites.mjs";
 import { metaPolicy, securityHeaders } from "../security-headers.mjs";
 import { PASSWORD, freshEmail, pdfFile } from "../tests/helpers";
 
+const SITE = SITES.local;
 test.use({ baseURL: `http://localhost:${SITE.port}` });
 
 const OUT = path.resolve(__dirname, "..", SITE.dir);
@@ -49,6 +50,7 @@ test.describe("the files", () => {
     for (const file of [
       "index.html",
       "login.html",
+      "auth/callback.html",
       "onboarding.html",
       "onboarding/building.html",
       "saved.html",
@@ -85,7 +87,7 @@ test.describe("the files", () => {
     expect(expected).toContain("connect-src 'self';");
     expect(expected).not.toContain("frame-ancestors"); // not allowed in a <meta> tag; the header has it
     const pages = walk(OUT).filter((f) => f.endsWith(".html"));
-    expect(pages.length).toBeGreaterThanOrEqual(11);
+    expect(pages.length).toBeGreaterThanOrEqual(12);
     for (const f of pages) {
       const html = readFileSync(f, "utf8").replace(/&#x27;/g, "'");
       expect(html, path.relative(OUT, f)).toContain(`http-equiv="Content-Security-Policy" content="${expected}"`);
