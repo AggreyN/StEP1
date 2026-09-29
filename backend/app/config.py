@@ -33,7 +33,14 @@ DB_CONNECT_TIMEOUT = int(os.getenv("DB_CONNECT_TIMEOUT", "10"))
 # --- Auth mode: "local" (bcrypt + our HS256 tokens) or "cognito" ---
 AUTH_MODE = os.getenv("AUTH_MODE", "local").lower()
 
-JWT_SECRET = get_secret("JWT_SECRET", "dev-secret-change-me-in-production")
+# The default is public: it is in this file, in the repository. Anyone who
+# has read it can sign a token for any user id. It exists so the app runs on
+# a laptop with no setup, and production refuses to start with it (below).
+DEFAULT_JWT_SECRET = "dev-secret-change-me-in-production"
+JWT_SECRET = get_secret("JWT_SECRET", DEFAULT_JWT_SECRET)
+# HS256 is only as strong as its key. Shorter than this and the key, not the
+# algorithm, is what an attacker goes after.
+JWT_SECRET_MIN_LENGTH = 32
 JWT_ALGORITHM = "HS256"
 # 12h. Long enough that a student isn't logged out mid-application-spree,
 # short enough that a leaked token from a shared lab machine dies overnight.
@@ -191,4 +198,70 @@ def _check_rate_limits() -> None:
             ) from exc
 
 
+def production_problems(
+    *,
+    auth_mode: str,
+    jwt_secret: str,
+    bcrypt_rounds: int,
+    allowed_origins: list[str],
+) -> list[str]:
+    """Settings that are fine on a laptop and must not reach production.
+    Each is a way in, not a preference, so the app does not start with any
+    of them. Returned rather than raised so that all are reported at once."""
+    problems = []
+    if auth_mode == "local":
+        if jwt_secret == DEFAULT_JWT_SECRET:
+            problems.append(
+                "JWT_SECRET is the development default, which is public. Anyone could "
+                "sign in as anyone. Set JWT_SECRET to a long random value, for example "
+                "the output of: python -c 'import secrets; print(secrets.token_urlsafe(48))'"
+            )
+        elif len(jwt_secret) < JWT_SECRET_MIN_LENGTH:
+            problems.append(
+                f"JWT_SECRET is {len(jwt_secret)} characters; it must be at least "
+                f"{JWT_SECRET_MIN_LENGTH}."
+            )
+        if bcrypt_rounds < 10:
+            problems.append(
+                f"BCRYPT_ROUNDS is {bcrypt_rounds}; below 10, stolen password hashes "
+                "can be cracked in days."
+            )
+    if "*" in allowed_origins:
+        problems.append(
+            "ALLOWED_ORIGINS contains '*'. With credentials allowed, that lets any "
+            "website act as a signed-in user. List the frontend's origin instead."
+        )
+    return problems
+
+
+def _check_production() -> None:
+    if APP_ENV != "prod":
+        return
+    problems = production_problems(
+        auth_mode=AUTH_MODE,
+        jwt_secret=JWT_SECRET,
+        bcrypt_rounds=BCRYPT_ROUNDS,
+        allowed_origins=ALLOWED_ORIGINS,
+    )
+    if problems:
+        raise RuntimeError("Refusing to start with APP_ENV=prod:\n  - " + "\n  - ".join(problems))
+    # Not fatal, but each changes what a protection actually does.
+    import logging
+
+    log = logging.getLogger(__name__)
+    if not TRUST_PROXY:
+        log.warning(
+            "TRUST_PROXY is false in production. Behind App Runner every request "
+            "appears to come from the proxy, so all clients share one rate limit."
+        )
+    if STORAGE_BACKEND == "local":
+        log.warning(
+            "STORAGE_BACKEND is local in production. Resumes are written to the "
+            "container's disk, unencrypted, and lost when it is replaced."
+        )
+    if AUTH_MODE == "local" and not RATE_LIMIT_ENABLED:
+        log.warning("RATE_LIMIT_ENABLED is false in production: sign-in is not throttled.")
+
+
 _check_rate_limits()
+_check_production()
