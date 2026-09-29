@@ -51,6 +51,26 @@ BCRYPT_ROUNDS = int(os.getenv("BCRYPT_ROUNDS", "12"))
 # bytes past 72, so there is no useful upper bound to enforce beyond that.
 PASSWORD_MIN_LENGTH = int(os.getenv("PASSWORD_MIN_LENGTH", "8"))
 
+# --- Rate limits ---
+# On by default. The test suite turns it off, except for the tests of the
+# limits themselves: a suite that registers hundreds of accounts from one
+# address would otherwise be refused by the thing it is testing.
+RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+# "<count>/<period>", per client address. Sign-in is the one that matters:
+# at 10 a minute, working through a list of the 10,000 most common passwords
+# takes most of a day from one address, against 40 minutes unthrottled. Much
+# lower and a student who has forgotten which password they used is locked
+# out by their own attempts.
+LOGIN_RATE_LIMIT = os.getenv("LOGIN_RATE_LIMIT", "10/minute")
+# Nobody registers five times in an hour by accident.
+REGISTER_RATE_LIMIT = os.getenv("REGISTER_RATE_LIMIT", "5/hour")
+# Deleting an account asks for the password, which makes it a second place
+# to guess one.
+DELETE_ACCOUNT_RATE_LIMIT = os.getenv("DELETE_ACCOUNT_RATE_LIMIT", "5/hour")
+# Public and cached for five minutes by whoever asks; this is for whoever
+# does not honour the cache.
+STATS_RATE_LIMIT = os.getenv("STATS_RATE_LIMIT", "60/minute")
+
 # --- Amazon Cognito (only used when AUTH_MODE=cognito; untested in v1) ---
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 COGNITO_USER_POOL_ID = get_secret("COGNITO_USER_POOL_ID", "")
@@ -149,3 +169,26 @@ SCORES_MAX_AGE_HOURS = float(os.getenv("SCORES_MAX_AGE_HOURS", "24"))
 # --- Application timeline ---
 # applied|acknowledged with no company-side event for this long -> ghosted.
 GHOST_AFTER_DAYS = int(os.getenv("GHOST_AFTER_DAYS", "30"))
+
+
+def _check_rate_limits() -> None:
+    """A mistyped limit should stop the app from starting, not silently
+    leave a route unlimited or refuse every request to it."""
+    from limits import parse
+
+    for name in (
+        "LOGIN_RATE_LIMIT",
+        "REGISTER_RATE_LIMIT",
+        "DELETE_ACCOUNT_RATE_LIMIT",
+        "STATS_RATE_LIMIT",
+    ):
+        try:
+            parse(globals()[name])
+        except ValueError as exc:
+            raise RuntimeError(
+                f"{name}={globals()[name]!r} is not a rate limit. Use '<count>/<period>', "
+                "for example 10/minute."
+            ) from exc
+
+
+_check_rate_limits()

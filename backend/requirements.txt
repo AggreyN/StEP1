@@ -22,6 +22,7 @@ bcrypt<4.1                  # PIN: passlib 1.7.4's backend probe breaks on bcryp
                             # 4.1+ ("password cannot be longer than 72 bytes"),
                             # which makes every hash_password() call raise.
 python-jose[cryptography]>=3.3   # JWT sign/verify (local HS256 + Cognito RS256)
+slowapi>=0.1.9              # rate limits on /auth/* and the public routes
 boto3>=1.34                 # S3 presign (STORAGE_BACKEND=s3) + Secrets Manager (APP_ENV=prod)
 
 # --- Validation + config ---

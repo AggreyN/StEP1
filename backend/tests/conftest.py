@@ -38,6 +38,10 @@ os.environ["JWT_SECRET"] = "test-only-secret-not-a-real-key"
 # The cheapest bcrypt allows. The suite creates hundreds of accounts and none
 # of them protects anything.
 os.environ["BCRYPT_ROUNDS"] = "4"
+# Every test comes from the same address. The limits are tested in their own
+# file, which switches them on.
+os.environ["RATE_LIMIT_ENABLED"] = "false"
+os.environ["TRUST_PROXY"] = "false"
 os.environ["ALLOWED_ORIGINS"] = "http://localhost:3000"
 # The suite must never reach the network. The scheduler is off here; the
 # tests that exercise it call it directly with a fake source.

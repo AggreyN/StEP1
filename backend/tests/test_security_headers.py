@@ -241,7 +241,12 @@ def test_behind_proxies_the_address_is_counted_from_the_right(
 
 
 def test_proxy_settings_default_to_not_trusting():
-    import os
+    """Read from the source, because the suite pins the value and a .env
+    could too: what matters is what happens when nobody has said anything."""
+    from pathlib import Path
 
-    assert "TRUST_PROXY" not in os.environ
+    source = Path(config.__file__).read_text()
+    assert 'os.getenv("TRUST_PROXY", "false")' in source
+    assert 'os.getenv("TRUSTED_PROXY_HOPS", "1")' in source
+    assert 'os.getenv("RATE_LIMIT_ENABLED", "true")' in source
     assert config.TRUST_PROXY is False and config.TRUSTED_PROXY_HOPS == 1

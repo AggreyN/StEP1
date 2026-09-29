@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app import config
@@ -23,6 +24,7 @@ from app.middleware import (
 
 setup_logging()
 
+from app.ratelimit import limiter, too_many_requests  # noqa: E402
 from app.routes import (  # noqa: E402  (logging must be configured first)
     applications,
     auth,
@@ -135,6 +137,8 @@ def create_app(*, prod: bool = config.APP_ENV == "prod") -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware, prod=prod)
     app.add_middleware(AccessLogMiddleware)
 
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, too_many_requests)
     app.add_exception_handler(RequestValidationError, _validation_error)
     app.add_exception_handler(OperationalError, _db_unreachable)
     app.add_exception_handler(ProgrammingError, _db_schema_broken)
