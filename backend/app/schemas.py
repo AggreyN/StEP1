@@ -260,6 +260,18 @@ class ProfileAccepted(BaseModel):
 class PresignIn(RequestModel):
     filename: str = Field(min_length=1, max_length=limits.FILENAME_MAX)
     content_type: str = Field(max_length=100)
+    # The file's length in bytes. The upload is then held to exactly this.
+    size: int
+
+    @field_validator("size")
+    @classmethod
+    def _size(cls, v: int) -> int:
+        if not limits.RESUME_MIN_BYTES <= v <= config.RESUME_MAX_BYTES:
+            raise ValueError(
+                f"a resume must be between {limits.RESUME_MIN_BYTES // 1024} KB and "
+                f"{config.RESUME_MAX_BYTES / (1024 * 1024):g} MB"
+            )
+        return v
 
 
 class PresignOut(BaseModel):

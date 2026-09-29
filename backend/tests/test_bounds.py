@@ -204,7 +204,7 @@ def test_note_bound(client, board):
 
 
 def test_filename_bound(client, board):
-    body = {"content_type": "application/pdf"}
+    body = {"content_type": "application/pdf", "size": 4096}
     ok = client.post(
         "/profile/resume/presign", json={**body, "filename": "r" * 251 + ".pdf"}, headers=board
     )
@@ -309,7 +309,7 @@ def test_the_limit_does_not_apply_to_reads_or_uploads(client, auth):
     # The upload route is exempt from the JSON limit: an unknown key is a 404
     # from the route itself, not a 413 from the middleware.
     r = client.put(
-        "/profile/resume/local/resumes/1/0123456789ab-x.pdf",
+        f"/profile/resume/local/resumes/1/{'0' * 32}.pdf",
         content=b"%PDF-" + b"0" * (limits.JSON_BODY_MAX_BYTES + 10),
         headers={**auth, "Content-Type": "application/pdf"},
     )

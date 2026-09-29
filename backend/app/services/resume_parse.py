@@ -19,6 +19,7 @@ from __future__ import annotations
 import re
 
 from app import config, limits
+from app.services import pdf_worker
 
 # --------------------------------------------------------------------------- #
 # The vocabulary. canonical name -> aliases. Keep it curated: every entry is
@@ -368,31 +369,27 @@ def canonicalize(skills: list[str]) -> list[str]:
 
 
 class ResumeParseError(Exception):
-    """The bytes are not a PDF PyMuPDF can open."""
+    """The file cannot be used as a resume. The message is for the student."""
 
 
 # A resume is 1-2 pages. Anything past this is a portfolio or the wrong file,
 # and reading all of it only makes the request slow.
-_MAX_PAGES = 10
-_MAX_CHARS = 100_000
+MAX_PAGES = 10
+MAX_CHARS = 100_000
 
 
 def extract_text(data: bytes) -> str:
-    if not data.startswith(b"%PDF-"):
-        raise ResumeParseError("That file is not a PDF.")
-    import pymupdf
-
-    try:
-        with pymupdf.open(stream=data, filetype="pdf") as doc:
-            if doc.needs_pass:
-                raise ResumeParseError("That PDF is password-protected.")
-            parts = [page.get_text() for page in list(doc)[:_MAX_PAGES]]
-    except ResumeParseError:
-        raise
-    except Exception as exc:  # PyMuPDF raises several unrelated types
-        raise ResumeParseError("That PDF could not be read.") from exc
-    # Postgres TEXT cannot hold NUL, and some PDF generators emit it.
-    return "\n".join(parts).replace("\x00", "")[:_MAX_CHARS].strip()
+    """The PDF's text layer. Raises ResumeParseError, and nothing else, for a
+    file that is not a PDF, is locked, is malformed, or will not finish."""
+    outcome, text = pdf_worker.extract(
+        data,
+        max_pages=MAX_PAGES,
+        max_chars=MAX_CHARS,
+        seconds=config.RESUME_PARSE_TIMEOUT_S,
+    )
+    if outcome != pdf_worker.OK:
+        raise ResumeParseError(outcome)
+    return text
 
 
 def parse_resume(data: bytes) -> tuple[str, list[str], bool]:

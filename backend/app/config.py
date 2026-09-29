@@ -88,6 +88,10 @@ RESUME_MAX_BYTES = int(os.getenv("RESUME_MAX_BYTES", str(5 * 1024 * 1024)))
 # "a name and an email", i.e. the text layer is missing.
 RESUME_MIN_TEXT_CHARS = int(os.getenv("RESUME_MIN_TEXT_CHARS", "200"))
 
+# How long a resume may take to parse before the attempt is abandoned. A real
+# resume takes well under a second. This is for the file built to take hours.
+RESUME_PARSE_TIMEOUT_S = float(os.getenv("RESUME_PARSE_TIMEOUT_S", "10"))
+
 # --- Sources ---
 # The Simplify repo name rolls forward every cycle (Summer2026- redirects to
 # Summer2027-), so it's config, not a constant.

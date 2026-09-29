@@ -64,11 +64,11 @@ def _bodies(app_id: int) -> dict[tuple[str, str], tuple[str, dict]]:
         ("PUT", "/profile"): ("/profile", dict(PROFILE)),
         ("POST", "/profile/resume/presign"): (
             "/profile/resume/presign",
-            {"filename": "resume.pdf", "content_type": "application/pdf"},
+            {"filename": "resume.pdf", "content_type": "application/pdf", "size": 4096},
         ),
         ("POST", "/profile/resume/commit"): (
             "/profile/resume/commit",
-            {"key": "resumes/1/0123456789ab-resume.pdf", "filename": "resume.pdf"},
+            {"key": f"resumes/1/{'0' * 32}.pdf", "filename": "resume.pdf"},
         ),
         ("POST", "/applications"): ("/applications", {"posting_id": "simplify:b"}),
         ("POST", "/applications/{application_id}/events"): (

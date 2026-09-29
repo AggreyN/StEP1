@@ -48,7 +48,8 @@ os.environ["INGEST_CHECK_MINUTES"] = "30"
 
 _TABLES = (
     "application_events, applications, saved_postings, match_scores, profile_interests, "
-    "profiles, outreach_messages, contacts, integrations, users, postings, companies, ingest_runs"
+    "profiles, resume_uploads, outreach_messages, contacts, integrations, users, postings, "
+    "companies, ingest_runs"
 )
 
 
@@ -76,6 +77,11 @@ def _clean_tables(_migrated):
 
     with engine.begin() as conn:
         conn.execute(text(f"TRUNCATE {_TABLES} RESTART IDENTITY CASCADE"))
+    # Ids restart at 1 with every test, so a file left in resumes/1/ would
+    # belong to the next test's user 1.
+    import shutil
+
+    shutil.rmtree(os.environ["UPLOAD_DIR"], ignore_errors=True)
 
 
 @pytest.fixture()
@@ -156,12 +162,14 @@ Wrote machine learning models for ranking; improved precision by 12 percent.
 """
 
 
-def make_pdf(text: str = RESUME_TEXT) -> bytes:
+def make_pdf(text: str = RESUME_TEXT, *, extra: str = "") -> bytes:
+    """A real, text-bearing PDF. `extra` adds a line to the standard resume,
+    for a second resume that is recognisably not the first."""
     import pymupdf
 
     doc = pymupdf.open()
     page = doc.new_page()
-    page.insert_textbox(pymupdf.Rect(50, 50, 560, 780), text, fontsize=10)
+    page.insert_textbox(pymupdf.Rect(50, 50, 560, 780), text + extra, fontsize=10)
     data = doc.tobytes()
     doc.close()
     return data
@@ -307,24 +315,50 @@ def api_routes(app) -> dict[tuple[str, str], object]:
     return found
 
 
+def presign(client, headers: dict, size: int, filename: str = "resume.pdf") -> dict:
+    r = client.post(
+        "/profile/resume/presign",
+        json={"filename": filename, "content_type": "application/pdf", "size": size},
+        headers=headers,
+    )
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def put_upload(client, headers: dict, target: dict, data, **extra_headers):
+    """PUT bytes to an upload slot the way a browser would: the slot's
+    headers, the bearer token, and a Content-Length the client library
+    computes from the body itself."""
+    from app import config
+
+    path = target["upload_url"].removeprefix(config.PUBLIC_API_BASE)
+    send = {k: v for k, v in target["headers"].items() if k.lower() != "content-length"}
+    return client.put(path, content=data, headers={**headers, **send, **extra_headers})
+
+
 def upload_resume(client, headers: dict, data: bytes | None = None, filename: str = "resume.pdf"):
     """The whole resume flow as a browser does it: presign, PUT, commit.
     Returns the commit response."""
-    from app import config
-
     data = make_pdf() if data is None else data
-    presigned = client.post(
-        "/profile/resume/presign",
-        json={"filename": filename, "content_type": "application/pdf"},
-        headers=headers,
-    )
-    assert presigned.status_code == 200, presigned.text
-    target = presigned.json()
-    path = target["upload_url"].removeprefix(config.PUBLIC_API_BASE)
-    put = client.put(path, content=data, headers={**headers, **target["headers"]})
-    assert put.status_code < 300, put.text
+    target = presign(client, headers, len(data), filename)
+    put = put_upload(client, headers, target, data)
+    assert put.status_code == 204, put.text
     return client.post(
         "/profile/resume/commit",
         json={"key": target["key"], "filename": filename},
         headers=headers,
     )
+
+
+def make_scanned_pdf() -> bytes:
+    """A PDF with a page of drawing and no text layer, as a scanner makes."""
+    import pymupdf
+
+    doc = pymupdf.open()
+    page = doc.new_page()
+    for n in range(60):
+        page.draw_line((40, 40 + n * 12), (550, 46 + n * 12), width=0.7)
+        page.draw_rect(pymupdf.Rect(40 + n * 8, 60, 46 + n * 8, 760), width=0.3)
+    data = doc.tobytes()
+    doc.close()
+    return data

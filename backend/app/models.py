@@ -137,6 +137,35 @@ class Profile(Base):
     )
 
 
+class ResumeUpload(Base):
+    """One upload slot, issued by POST /profile/resume/presign.
+
+    The slot is what makes an upload accountable: it records who may use the
+    key, exactly how many bytes they said they would send, and until when.
+    A PUT or a commit for a key with no slot, or someone else's, is a 404.
+
+    The filename is what the student's file was called, kept to show back to
+    them. It is never part of the storage key or of any path.
+    """
+
+    __tablename__ = "resume_uploads"
+    __table_args__ = (
+        CheckConstraint("size > 0", name="ck_resume_uploads_size"),
+        Index("ix_resume_uploads_user_id", "user_id"),
+    )
+
+    key: Mapped[str] = mapped_column(String(200), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    filename: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(100))
+    size: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(TS)
+    # Set once, by the PUT that succeeded. A slot takes one upload.
+    uploaded_at: Mapped[datetime | None] = mapped_column(TS)
+    committed_at: Mapped[datetime | None] = mapped_column(TS)
+
+
 class ProfileInterest(Base):
     """The "3–5 fields" a student ranks. Rank 1 is the strongest interest."""
 

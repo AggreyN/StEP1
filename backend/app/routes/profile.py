@@ -2,25 +2,34 @@
 
 Upload is three calls, identical in local and S3 mode:
 
-    POST /profile/resume/presign   -> where to PUT the file
+    POST /profile/resume/presign   -> an upload slot: where to PUT, and how
     PUT  <upload_url>              -> the browser sends the bytes
-    POST /profile/resume/commit    -> we verify the object, extract text + skills
+    POST /profile/resume/commit    -> we examine the object, then read it
 
 In S3 mode the PUT goes straight to S3. In local mode it comes back to
-PUT /profile/resume/local/{key} below.
+PUT /profile/resume/local/{key} below, which enforces what S3's signature
+would.
+
+Nothing a client says about a file is believed. The slot records what was
+promised (who, how many bytes, until when); the PUT is held to it; and commit
+looks at what is actually in storage, its real size and its first bytes,
+before any parser sees it.
 """
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import logging
+import unicodedata
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
-from sqlalchemy import delete, insert
+from fastapi.concurrency import run_in_threadpool
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.orm import Session
 
-from app import config
+from app import config, limits
 from app.deps import current_user, get_db
-from app.models import Profile, ProfileInterest, User
+from app.models import Profile, ProfileInterest, ResumeUpload, User
 from app.schemas import (
     CommitIn,
     InterestOut,
@@ -31,17 +40,15 @@ from app.schemas import (
     ProfileOut,
     ResumeOut,
 )
-from app.services import feed_state, resume_parse, storage
+from app.services import feed_state, pdf_worker, resume_parse, storage
 from app.sources.roles import ROLE_LABELS
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
 PDF = "application/pdf"
 _MB = 1024 * 1024
-
-
-def _limit_text() -> str:
-    return f"{config.RESUME_MAX_BYTES / _MB:g} MB"
 
 
 def resume_out(profile: Profile) -> ResumeOut | None:
@@ -144,52 +151,174 @@ def put_profile(
 # Resume
 # --------------------------------------------------------------------------- #
 
+_UNKNOWN_KEY = "Unknown upload key."
+_START_AGAIN = "Start the upload again."
+# Slots nobody came back for are swept up after this long. Generous next to
+# the five minutes a slot is valid: the point is to not keep a stranger's
+# half-finished upload for ever, not to race anyone.
+_ABANDONED_AFTER = timedelta(hours=1)
+# Bytes read from the socket at a time when receiving an upload.
+_CHUNK = 64 * 1024
+
+
+def _mb(n: int) -> str:
+    return f"{n / _MB:g} MB"
+
+
+def display_filename(name: str) -> str:
+    """What the student's file was called, made safe to show. It is shown,
+    and nothing else: it is never part of a key, a path or a header."""
+    name = name.replace("\\", "/").rsplit("/", 1)[-1]
+    # A tab or a newline was a space to whoever named the file. Any other
+    # control or format character was nothing to anyone, and is dropped.
+    name = "".join(
+        " " if ch.isspace() else ch
+        for ch in name
+        if ch.isspace() or unicodedata.category(ch)[0] != "C"
+    )
+    return " ".join(name.split())[: limits.FILENAME_MAX] or "resume.pdf"
+
+
+def _slot(db: Session, user: User, key: str) -> ResumeUpload:
+    """The caller's upload slot for this key. Someone else's key, a key that
+    was never issued and a string that is not a key at all get the same 404:
+    which of the three it was is not the caller's to learn."""
+    slot = None
+    if isinstance(key, str) and len(key) <= limits.STORAGE_KEY_MAX and storage.owns(user.id, key):
+        slot = db.scalar(
+            select(ResumeUpload).where(ResumeUpload.key == key, ResumeUpload.user_id == user.id)
+        )
+    if slot is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _UNKNOWN_KEY)
+    return slot
+
+
+def _discard(db: Session, slots: list[ResumeUpload]) -> None:
+    """Delete slots and whatever was uploaded to them. The object goes first:
+    if that fails, the row stays, so the object can still be found."""
+    for slot in slots:
+        if storage.delete(slot.key):
+            db.delete(slot)
+        else:
+            log.error("could not delete an abandoned upload", extra={"user_id": slot.user_id})
+    db.commit()
+
+
+def _sweep(db: Session, user: User) -> None:
+    """Before issuing a slot: drop this user's unfinished uploads, so they
+    hold at most one at a time, and a few that anyone abandoned long ago."""
+    unfinished = ResumeUpload.committed_at.is_(None)
+    mine = db.scalars(select(ResumeUpload).where(ResumeUpload.user_id == user.id, unfinished)).all()
+    abandoned = db.scalars(
+        select(ResumeUpload)
+        .where(unfinished, ResumeUpload.expires_at < datetime.now(UTC) - _ABANDONED_AFTER)
+        .limit(20)
+    ).all()
+    _discard(db, list({s.key: s for s in [*mine, *abandoned]}.values()))
+
 
 @router.post("/resume/presign", response_model=PresignOut)
-def presign_resume(body: PresignIn, user: User = Depends(current_user)):
+def presign_resume(
+    body: PresignIn, user: User = Depends(current_user), db: Session = Depends(get_db)
+):
     content_type = body.content_type.split(";")[0].strip().lower()
     if content_type != PDF or not body.filename.lower().endswith(".pdf"):
         raise HTTPException(
-            422,
-            f"Resumes must be PDF files (up to {_limit_text()}).",
+            422, f"Resumes must be PDF files (up to {_mb(config.RESUME_MAX_BYTES)})."
         )
-    key = storage.resume_key(user.id, body.filename)
-    url, headers = storage.presign_put(key, PDF)
+
+    _sweep(db, user)
+    key = storage.new_key(user.id)
+    db.add(
+        ResumeUpload(
+            key=key,
+            user_id=user.id,
+            filename=display_filename(body.filename),
+            content_type=PDF,
+            size=body.size,
+            expires_at=datetime.now(UTC) + timedelta(seconds=config.PRESIGN_EXPIRY_SECONDS),
+        )
+    )
+    db.commit()
+    url, headers = storage.presign_put(key, PDF, body.size)
     return PresignOut(upload_url=url, key=key, headers=headers)
 
 
-@router.put("/resume/local/{key:path}")
-async def upload_resume_local(key: str, request: Request, user: User = Depends(current_user)):
-    """Local stand-in for the S3 presigned PUT. Same verb, same headers, so
-    the frontend's upload code has one path."""
-    if config.STORAGE_BACKEND != "local":
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Local uploads are disabled.")
-    # 404 rather than 403: whether another user's key exists is not ours to say.
-    if not storage.owns(user.id, key):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown upload key.")
-    content_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
-    if content_type != PDF:
-        raise HTTPException(
-            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Resumes must be uploaded as application/pdf."
-        )
+def _claim(db: Session, key: str) -> bool:
+    """Mark the slot used, if it has not been. One statement, so that of two
+    uploads racing for the same slot exactly one wins."""
+    won = db.execute(
+        update(ResumeUpload)
+        .where(ResumeUpload.key == key, ResumeUpload.uploaded_at.is_(None))
+        .values(uploaded_at=datetime.now(UTC))
+    ).rowcount
+    db.commit()
+    return won == 1
 
-    too_large = HTTPException(413, f"Resumes can be at most {_limit_text()}.")
+
+def _release(db: Session, key: str) -> None:
+    db.execute(update(ResumeUpload).where(ResumeUpload.key == key).values(uploaded_at=None))
+    db.commit()
+
+
+@router.put(
+    "/resume/local/{key:path}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response
+)
+async def upload_resume_local(
+    key: str,
+    request: Request,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    """Local stand-in for the S3 presigned PUT: same verb, same headers, and
+    the same refusals S3 would make from the signature."""
+    if config.STORAGE_BACKEND != "local":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _UNKNOWN_KEY)
+    slot = await run_in_threadpool(_slot, db, user, key)
+
+    if slot.uploaded_at is not None:
+        raise HTTPException(409, f"That upload link has already been used. {_START_AGAIN}")
+    if slot.expires_at < datetime.now(UTC):
+        raise HTTPException(410, f"That upload link has expired. {_START_AGAIN}")
+    content_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+    if content_type != slot.content_type:
+        raise HTTPException(415, "Resumes must be uploaded as application/pdf.")
+
+    wrong_size = HTTPException(
+        400, f"That upload link is for a file of exactly {slot.size:,} bytes. {_START_AGAIN}"
+    )
+    too_large = HTTPException(413, f"Resumes can be at most {_mb(config.RESUME_MAX_BYTES)}.")
     declared = request.headers.get("content-length")
-    if declared and declared.isdigit() and int(declared) > config.RESUME_MAX_BYTES:
-        raise too_large
-    # Content-Length can lie or be absent (chunked), so count what arrives.
+    if declared is not None:
+        if not declared.isdigit():
+            raise wrong_size
+        if int(declared) > config.RESUME_MAX_BYTES:
+            raise too_large
+        if int(declared) != slot.size:
+            raise wrong_size
+
+    # Content-Length can be absent or untrue, so the bytes are counted as
+    # they arrive, and reading stops the moment there are too many.
     chunks: list[bytes] = []
     received = 0
     async for chunk in request.stream():
         received += len(chunk)
         if received > config.RESUME_MAX_BYTES:
             raise too_large
+        if received > slot.size:
+            raise wrong_size
         chunks.append(chunk)
-    if received == 0:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The upload was empty.")
+    if received != slot.size:
+        raise wrong_size
 
-    storage.write_local(key, b"".join(chunks))
-    return {"key": key, "size": received}
+    if not await run_in_threadpool(_claim, db, key):
+        raise HTTPException(409, f"That upload link has already been used. {_START_AGAIN}")
+    try:
+        await run_in_threadpool(storage.write_local, key, b"".join(chunks))
+    except Exception:
+        await run_in_threadpool(_release, db, key)
+        raise
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/resume/commit", response_model=ResumeOut)
@@ -199,38 +328,60 @@ def commit_resume(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    if not storage.owns(user.id, body.key):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown upload key.")
-    # Trust the storage, not the client: the object must really be there.
-    size = storage.size(body.key)
-    if size is None:
+    slot = _slot(db, user, body.key)
+    profile = _get_or_create(db, user)
+    if slot.committed_at is not None and profile.resume_s3_key == slot.key:
+        # A retry of a commit that already worked (the response was lost).
+        return resume_out(profile)
+
+    def refuse(message: str) -> HTTPException:
+        """The file is not acceptable: it does not stay, and neither does
+        the slot."""
+        _discard(db, [slot])
+        return HTTPException(status.HTTP_400_BAD_REQUEST, message)
+
+    # What is in storage, not what anyone said would be.
+    stored = storage.size(slot.key)
+    if stored is None:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "No uploaded file found for that key. Upload it first."
         )
-    if size > config.RESUME_MAX_BYTES:
-        storage.delete(body.key)
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Resumes can be at most {_limit_text()}.")
-    try:
-        text, skills, needs_ocr = resume_parse.parse_resume(storage.read(body.key))
-    except resume_parse.ResumeParseError as exc:
-        storage.delete(body.key)
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+    if stored > config.RESUME_MAX_BYTES:
+        raise refuse(f"Resumes can be at most {_mb(config.RESUME_MAX_BYTES)}.")
+    if stored != slot.size or stored < limits.RESUME_MIN_BYTES:
+        raise refuse(f"That upload is not the file that was described. {_START_AGAIN}")
+    # The first bytes, before anything else is read and before any parser
+    # is involved. The name and the declared type were the client's to choose.
+    if storage.head(slot.key, len(pdf_worker.MAGIC)) != pdf_worker.MAGIC:
+        raise refuse(pdf_worker.NOT_A_PDF)
 
-    profile = _get_or_create(db, user)
+    try:
+        data = storage.read(slot.key, most=config.RESUME_MAX_BYTES)
+        text, skills, needs_ocr = resume_parse.parse_resume(data)
+    except resume_parse.ResumeParseError as exc:
+        raise refuse(str(exc)) from None
+    except storage.StorageError:
+        raise refuse(f"Resumes can be at most {_mb(config.RESUME_MAX_BYTES)}.") from None
+
     previous = profile.resume_s3_key
-    profile.resume_s3_key = body.key
-    # Display name only; the storage key carries its own sanitized copy.
-    profile.resume_filename = body.filename.replace("\\", "/").rsplit("/", 1)[-1].strip()[:255]
-    profile.resume_uploaded_at = datetime.now(UTC)
+    now = datetime.now(UTC)
+    profile.resume_s3_key = slot.key
+    profile.resume_filename = display_filename(body.filename)
+    profile.resume_uploaded_at = now
     profile.resume_text = text
     profile.resume_skills = skills
     profile.resume_needs_ocr = needs_ocr
     # Skills feed the scorer, so a new resume invalidates cached scores.
     profile.profile_version += 1
+    slot.committed_at = now
     db.commit()
 
-    if previous and previous != body.key:
-        storage.delete(previous)
+    if previous and previous != slot.key:
+        # The resume this one replaces. Gone from storage, and its slot too.
+        if not storage.delete(previous):
+            log.error("could not delete a replaced resume", extra={"user_id": user.id})
+        db.execute(delete(ResumeUpload).where(ResumeUpload.key == previous))
+        db.commit()
     if profile.onboarded_at is not None:
         feed_state.begin(user.id)
         background.add_task(feed_state.run_build, user.id)

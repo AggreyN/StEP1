@@ -39,6 +39,7 @@ from tests.conftest import (
     make_pdf,
     make_row,
     onboard,
+    presign,
     register,
     seed,
     upload_resume,
@@ -72,6 +73,7 @@ class World:
     b_id: int
     a_application: int
     a_resume_key: str
+    a_pending_key: str  # a slot A was issued and has not uploaded to yet
     saved: str = "simplify:p-saved"  # A saved it
     applied: str = "simplify:p-applied"  # A applied to it
     other: str = "simplify:p-other"
@@ -126,6 +128,9 @@ def world(client) -> World:
         skills=["Verilog"],
     )
 
+    # Presigned last: issuing a slot discards the owner's unfinished ones.
+    pending = presign(client, a, len(make_pdf()), "alpha-next-resume.pdf")["key"]
+
     with SessionLocal() as db:
         a_id, b_id = (
             db.execute(text("SELECT id FROM users WHERE email = :e"), {"e": e}).scalar_one()
@@ -137,7 +142,9 @@ def world(client) -> World:
 
     return World(
         a=a, b=b, c=c, a_id=a_id, b_id=b_id, a_application=application, a_resume_key=key,
-        secrets=[A_SCHOOL, A_MAJOR, A_NOTE, A_RESUME_NAME, A_EMAIL, A_NAME, key],
+        a_pending_key=pending,
+        secrets=[A_SCHOOL, A_MAJOR, A_NOTE, A_RESUME_NAME, "alpha-next-resume", A_EMAIL,
+                 A_NAME, key, pending],
     )  # fmt: skip
 
 
@@ -157,6 +164,7 @@ OWNED_TABLES = {
     "contacts": "user_id = :u",
     "outreach_messages": "application_id IN (SELECT id FROM applications WHERE user_id = :u)",
     "integrations": "user_id = :u",
+    "resume_uploads": "user_id = :u",
 }
 # Shared by everyone, or bookkeeping: no row in these belongs to a user.
 SHARED_TABLES = {"postings", "companies", "ingest_runs", "alembic_version"}
@@ -269,7 +277,8 @@ def cases(w: World) -> dict[tuple[str, str], list[Attempt]]:
     app_id = w.a_application
     note = {"kind": "note", "note": "written by someone else"}
     body = {**PROFILE, "school": "Bravo College II"}
-    presign = {"filename": "mine.pdf", "content_type": "application/pdf"}
+    slot = {"filename": "mine.pdf", "content_type": "application/pdf", "size": 4096}
+    pdf = make_pdf()
     return {
         ("GET", "/me"): [Attempt("b", "reads /me", "GET", "/me", OWN, check=_is_b)],
         ("GET", "/profile"): [
@@ -282,18 +291,25 @@ def cases(w: World) -> dict[tuple[str, str], list[Attempt]]:
         ],
         ("POST", "/profile/resume/presign"): [
             Attempt("b", "asks for an upload slot", "POST", "/profile/resume/presign", OWN,
-                    json=presign, check=_key_is_in_bs_namespace),
+                    json=slot, check=_key_is_in_bs_namespace),
         ],
         ("PUT", "/profile/resume/local/{key:path}"): [
-            Attempt(who, "overwrites A's stored resume", "PUT",
-                    f"/profile/resume/local/{w.a_resume_key}", HIDDEN,
-                    content=make_pdf("replaced by someone else " * 40), headers=PDF)
+            Attempt(who, what, "PUT", f"/profile/resume/local/{key}", HIDDEN,
+                    content=pdf, headers=PDF)
             for who in ("b", "c")
+            for what, key in [
+                ("overwrites A's stored resume", w.a_resume_key),
+                ("uploads into the slot A was issued", w.a_pending_key),
+            ]
         ],
         ("POST", "/profile/resume/commit"): [
-            Attempt(who, "claims A's resume as their own", "POST", "/profile/resume/commit",
-                    HIDDEN, json={"key": w.a_resume_key, "filename": "stolen.pdf"})
+            Attempt(who, what, "POST", "/profile/resume/commit", HIDDEN,
+                    json={"key": key, "filename": "stolen.pdf"})
             for who in ("b", "c")
+            for what, key in [
+                ("claims A's resume as their own", w.a_resume_key),
+                ("commits the slot A was issued", w.a_pending_key),
+            ]
         ],
         ("GET", "/feed"): [
             Attempt("b", "reads the feed", "GET", "/feed?page_size=100", OWN,
@@ -440,7 +456,13 @@ def test_a_missing_object_and_someone_elses_look_the_same(client, world):
             )
         )
 
-    for key in (world.a_resume_key, f"resumes/{world.a_id}/0123456789ab-never-uploaded.pdf"):
+    never_issued = [
+        f"resumes/{world.a_id}/{'0' * 32}.pdf",
+        f"resumes/{world.b_id}/{'0' * 32}.pdf",  # in B's own namespace, but never issued
+        f"resumes/{world.a_id}/0123456789ab-old-style-name.pdf",
+        "not-a-key-at-all",
+    ]
+    for key in (world.a_resume_key, world.a_pending_key, *never_issued):
         put = client.put(
             f"/profile/resume/local/{key}", content=make_pdf(), headers={**world.b, **PDF}
         )
