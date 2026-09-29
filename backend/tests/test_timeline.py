@@ -125,3 +125,22 @@ def test_ghost_job_skips_recent_applications(db):
     timeline.start_application(db, fresh, applied_at=now - timedelta(days=10))
     db.commit()
     assert timeline.ghost_stale_applications(db, now=now) == 0
+
+
+def test_a_time_echoed_back_to_the_second_is_not_backdating(db):
+    """The API shows 12:00:00 for an event stored at 12:00:00.750. A client
+    that sends that time back is naming the same moment, and the new event
+    must win, not be refused and not be silently outranked."""
+    app = _app(db)
+    stored = T0.replace(microsecond=750_000)
+    timeline.start_application(db, app, applied_at=stored)
+
+    shown = stored.replace(microsecond=0)
+    timeline.record_user_event(db, app, kind="acknowledged", occurred_at=shown)
+    assert app.status == "acknowledged"
+    assert app.events[-1].occurred_at == stored
+
+    with pytest.raises(TransitionError, match="can't be dated before"):
+        timeline.record_user_event(
+            db, app, kind="interview_scheduled", occurred_at=shown - timedelta(seconds=1)
+        )

@@ -28,11 +28,13 @@ from app.services.terms import canonical_term
 def _utc_z(value: datetime) -> str:
     if value.tzinfo is None:
         value = value.replace(tzinfo=UTC)
-    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+    return value.astimezone(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-# Every timestamp leaves the API as UTC with a trailing Z, whatever zone it
-# was stored or submitted in. The frontend compares and sorts these as strings.
+# Every timestamp leaves the API in one form: UTC, to the second, with a
+# trailing Z ("2026-09-29T02:42:53Z"), whatever zone or precision it was
+# stored or submitted in. The frontend compares and sorts these as strings,
+# and strings of one shape sort the way the instants do.
 UtcDateTime = Annotated[datetime, PlainSerializer(_utc_z, return_type=str, when_used="json")]
 
 

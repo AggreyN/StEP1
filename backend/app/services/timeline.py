@@ -176,10 +176,15 @@ def record_user_event(
         # Status is "newest event wins", so a backdated event older than the
         # current status would be silently ignored. Refuse it instead.
         if latest is not None and occurred_at < latest:
-            raise TransitionError(
-                f"'{_human(kind)}' can't be dated before the current status "
-                f"({_human(application.status)}, {latest.date().isoformat()})."
-            )
+            if occurred_at < latest.replace(microsecond=0):
+                raise TransitionError(
+                    f"'{_human(kind)}' can't be dated before the current status "
+                    f"({_human(application.status)}, {latest.date().isoformat()})."
+                )
+            # Within the same second. The API shows times to the second, so
+            # a client sending back the time it was shown is sending the
+            # current status's own time, not an earlier one. Treat it so.
+            occurred_at = latest
     return _append(db, application, kind=kind, occurred_at=occurred_at, note=note, source="manual")
 
 

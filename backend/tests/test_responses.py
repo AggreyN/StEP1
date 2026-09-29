@@ -246,3 +246,32 @@ def test_error_responses_leak_nothing_either(client, auth, db):
     )
     assert wrong_password.status_code == no_such_user.status_code == 401
     assert wrong_password.json() == no_such_user.json()
+
+
+def test_every_timestamp_has_one_form(client):
+    """UTC, to the second, with a Z: 2026-09-29T02:42:53Z. Everywhere."""
+    import re
+
+    from app.services import ingest_scheduler
+    from tests.conftest import fake_source
+
+    ingest_scheduler.run_due({"simplify": fake_source("simplify")})
+    me = register(client)
+    upload_resume(client, me)
+    onboard(client, me)
+    client.post("/saved/simplify:a", headers=me)
+    app_id = client.post("/applications", json={"posting_id": "simplify:b"}, headers=me).json()[
+        "id"
+    ]
+    client.post(f"/applications/{app_id}/events", json={"kind": "acknowledged"}, headers=me)
+
+    form = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+    looks_like_a_time = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]")
+    found = 0
+    for path in ("/profile", "/feed", "/saved", "/applications", f"/applications/{app_id}",
+                 "/postings/simplify:a", "/ingest/status", "/stats"):  # fmt: skip
+        for where, key, value in _walk(client.get(path, headers=me).json()):
+            if isinstance(value, str) and looks_like_a_time.match(value):
+                found += 1
+                assert form.match(value), f"{path} {where}.{key} = {value!r}"
+    assert found >= 12
