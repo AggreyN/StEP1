@@ -432,12 +432,16 @@ def test_the_production_example_lists_every_setting_the_app_reads():
     assert not missing, f".env.production.example does not mention: {sorted(missing)}"
 
 
-def test_the_production_example_holds_no_real_values():
+def test_the_production_example_holds_no_real_secrets():
     example = _example()
     placeholder = ("<", "CHANGE-ME")
-    for name in ("DATABASE_URL", "JWT_SECRET", "S3_BUCKET", "ALLOWED_ORIGINS", "PUBLIC_API_BASE"):
+    for name in ("DATABASE_URL", "JWT_SECRET", "S3_BUCKET"):
         assert any(mark in example[name] for mark in placeholder), name
     assert config.DEFAULT_JWT_SECRET not in (BACKEND / ".env.production.example").read_text()
+    # The domain is the project's own, fixed no matter who deploys it, not a
+    # per-deployment secret — so unlike the above, it is real here.
+    assert example["ALLOWED_ORIGINS"] == "https://step1careers.com"
+    assert example["PUBLIC_API_BASE"] == "https://api.step1careers.com"
 
 
 def test_the_production_example_starts_once_its_placeholders_are_filled():
@@ -445,8 +449,6 @@ def test_the_production_example_starts_once_its_placeholders_are_filled():
         "DATABASE_URL": GOOD_DATABASE,
         "JWT_SECRET": GOOD_SECRET,
         "S3_BUCKET": "step1-resumes-ab12cd",
-        "ALLOWED_ORIGINS": "https://step1.example",
-        "PUBLIC_API_BASE": "https://api.step1.example",
     }
     assert filled["APP_ENV"] == "prod" and filled["TRUST_PROXY"] == "true"
     assert filled["TRUSTED_PROXY_HOPS"] == "1" and filled["AUTO_INGEST"] == "true"
@@ -457,14 +459,18 @@ def test_the_production_example_starts_once_its_placeholders_are_filled():
 
 
 def test_the_production_example_as_written_does_not_start():
-    """Copied and not edited, it must fail rather than run on placeholders.
-    The placeholder for JWT_SECRET is long enough to pass for a secret, and
-    it is published with the code."""
+    """Copied and not edited, it must fail rather than run on placeholder
+    secrets. The placeholder for JWT_SECRET is long enough to pass for a
+    real one, and it is published with the code. ALLOWED_ORIGINS and
+    PUBLIC_API_BASE are not placeholders: the domain is fixed for this
+    project, so the example already carries it rather than a stand-in."""
     done = start(_example())
     assert done.returncode != 0
     assert "Refusing to start with APP_ENV=prod" in done.stderr
-    for name in ("DATABASE_URL", "JWT_SECRET", "S3_BUCKET", "PUBLIC_API_BASE", "ALLOWED_ORIGINS"):
+    for name in ("DATABASE_URL", "JWT_SECRET", "S3_BUCKET"):
         assert f"  - {name} still holds the placeholder" in done.stderr, name
+    assert "ALLOWED_ORIGINS" not in done.stderr
+    assert "PUBLIC_API_BASE" not in done.stderr
     assert "CHANGE-ME" not in done.stderr  # not even a placeholder is echoed
 
 
