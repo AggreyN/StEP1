@@ -1,12 +1,14 @@
-# StEP1 backend dependencies.  Install:  pip install -r requirements.txt
+# StEP1 backend runtime dependencies. Install:  pip install -r requirements.txt
+# For running the tests and lint locally, use requirements-dev.txt instead
+# (it pulls this file in too).
+#
 # The Docker image runs python:3.12-slim. Every package here ships wheels for
 # 3.12 through 3.14; nothing had to be downgraded to run on 3.14.
 #
 # Last verified together (Python 3.14, 2026-09-28):
 #   fastapi 0.141.1, starlette 1.7.0, uvicorn 0.54.0, SQLAlchemy 2.1.1,
 #   alembic 1.20.0, psycopg 3.3.6, pydantic 2.13.5, passlib 1.7.4, bcrypt 4.0.1,
-#   PyJWT 2.15.1, slowapi 0.1.10, PyMuPDF 1.28.2, boto3 1.43.103, pytest 9.1.1,
-#   ruff 0.16.9
+#   PyJWT 2.15.1, slowapi 0.1.10, PyMuPDF 1.28.2, boto3 1.43.103
 
 # --- Web framework + server ---
 fastapi>=0.115
@@ -38,8 +40,3 @@ requests>=2.31
 
 # --- Resume parsing ---
 PyMuPDF>=1.24.3             # imported as `pymupdf` (the name 1.24.3 introduced)
-
-# --- Tests + lint ---
-pytest>=8.0
-httpx>=0.27                 # required by fastapi.testclient
-ruff>=0.5

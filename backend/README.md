@@ -13,7 +13,8 @@ Needs Python 3.12+ and PostgreSQL 16.
 ```bash
 cd backend
 python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+.venv/bin/pip install -r requirements-dev.txt   # runtime deps plus tests and lint
+                                                 # (requirements.txt alone runs the API)
 
 createdb step1
 createdb step1_test                       # only needed to run the tests
@@ -255,8 +256,8 @@ All have defaults. The ones you are likely to touch:
 | `REGISTER_RATE_LIMIT` | `5/hour` | Per client address |
 | `DELETE_ACCOUNT_RATE_LIMIT` | `5/hour` | Per client address |
 | `STATS_RATE_LIMIT` | `60/minute` | Per client address |
-| `TRUST_PROXY` | `false` | Believe `X-Forwarded-For` and `X-Forwarded-Proto`. **Set `true` on App Runner, and only behind a proxy** |
-| `TRUSTED_PROXY_HOPS` | `1` | Proxies between the internet and the API. App Runner alone is 1 |
+| `TRUST_PROXY` | `false` | Believe `X-Forwarded-For` and `X-Forwarded-Proto`. **Set `true` behind a load balancer, never otherwise** |
+| `TRUSTED_PROXY_HOPS` | `1` | Proxies between the internet and the API. A load balancer alone (ECS Express Mode's ALB) is 1 |
 | `JWT_EXPIRY_MINUTES` | `720` | Token lifetime |
 | `ALLOWED_ORIGINS` | `http://localhost:3000` | CORS origins, comma-separated |
 | `PUBLIC_API_BASE` | `http://localhost:8000` | This API's URL as the browser sees it; used to build local upload URLs |
@@ -270,17 +271,30 @@ All have defaults. The ones you are likely to touch:
 | `AUTO_INGEST` | `true` in dev | Refresh the listings automatically |
 | `INGEST_INTERVAL_HOURS` | `24` | How often each source is refreshed |
 | `INGEST_CHECK_MINUTES` | `30` | How often the API checks whether a refresh is due |
+| `INGEST_SHUTDOWN_GRACE_S` | `15` | Seconds a refresh in progress is given to stop cleanly on SIGTERM before the process gives up on it |
 | `POSTING_MAX_AGE_DAYS` | `120` | Older postings are left out of the feed |
 | `SCORES_MAX_AGE_HOURS` | `24` | Cached scores older than this are recomputed |
 | `GHOST_AFTER_DAYS` | `30` | Silence before an application is marked ghosted |
-| `APP_ENV` | `dev` | `prod` reads secrets from AWS Secrets Manager first |
+| `APP_ENV` | `dev` | `prod` turns on every check in [Before deploying](#before-deploying) |
+| `SECRETS_BACKEND` | `env`, or `secretsmanager` when `APP_ENV=prod` | Where `DATABASE_URL`, `JWT_SECRET` and the Cognito ids are read from |
+| `HEALTH_DB_TIMEOUT_S` | `2` | How long `/health` waits on the database before answering 503 |
+| `COGNITO_JWKS_URL` | derived from the pool id | Override for where the pool's public keys are fetched |
+| `COGNITO_JWKS_PATH` | unset | A local file instead, for a pool's keys cached outside an HTTPS fetch |
+| `S3_ENDPOINT_URL` | unset | Never set in production; points `STORAGE_BACKEND=s3` at a stand-in for tests |
 
 Secret-bearing values (`DATABASE_URL`, `JWT_SECRET`, the Cognito ids) go
-through `services/secrets.get_secret()`: the environment in development, AWS
-Secrets Manager under `<SECRETS_PREFIX>/<NAME>` when `APP_ENV=prod`.
+through `services/secrets.get_secret()`: a plain environment variable by
+default, or AWS Secrets Manager under `<SECRETS_PREFIX>/<NAME>` when
+`SECRETS_BACKEND=secretsmanager` (the default when `APP_ENV=prod`, though the
+recommended production setup injects secrets as environment variables
+through the container platform instead (see `.env.production.example`).
 
-`AUTH_MODE=cognito` and `STORAGE_BACKEND=s3` are written but have never been
-run against AWS. Treat them as untested.
+`AUTH_MODE=cognito` and `STORAGE_BACKEND=s3` are both tested without an AWS
+account: Cognito's token verification against a local JWKS stub server
+signing with a throwaway RS256 key pair (`tests/test_cognito.py`), and S3
+against a local S3-compatible stand-in with a from-scratch SigV4 signature
+check in front of it (`tests/test_s3_storage.py`). Neither has been run
+against a real AWS account.
 
 ## API
 
@@ -481,7 +495,7 @@ checklist marks as not applying to this app (3, 4, 9, 12) are not listed.
 | 16 | Uploads restricted | `routes/profile.py`, `services/storage.py`, `services/pdf_worker.py` | `test_resume.py` |
 | 17 | Responses trimmed | `response_model=` on every route | `test_responses.py` |
 | 18 | Security headers | `middleware.py: SecurityHeadersMiddleware` | `test_security_headers.py` |
-| 19 | HTTPS | App Runner and Amplify serve nothing else; HSTS is sent | `test_security_headers.py` |
+| 19 | HTTPS | The load balancer and Amplify serve nothing else; HSTS is sent | `test_security_headers.py` |
 | 20 | Dependencies scanned | `security.yml` (pip-audit), `.github/dependabot.yml` | CI, every push and weekly |
 
 Most of those tests are written to be exhaustive rather than thorough. They
@@ -492,35 +506,68 @@ pass.
 
 ### Before deploying
 
-Three things cannot be done in code, or cannot be done later.
+Start from `.env.production.example`, not `.env.example`: it is the one
+supported production configuration, documented setting by setting, for one
+task on ECS behind a load balancer (`AWS_SETUP.md`, `docs/ARCHITECTURE.md`).
 
-**Turn on RDS storage encryption when the instance is created.** It is a
-checkbox at creation (`--storage-encrypted` in the CLI) and cannot be switched
-on afterwards: encrypting an existing instance means snapshotting it, copying
-the snapshot with encryption, and restoring to a new instance. This database
-holds resumes' text and application histories. Do it first.
+**With `APP_ENV=prod`, the app refuses to start rather than run on a missing
+or unsafe setting, and names the exact variable.** This covers what used to
+be a checklist of things to remember by hand: `DATABASE_URL` not set, not
+PostgreSQL, pointing at the machine the API itself runs on, missing a
+password, or not requiring TLS (`sslmode=require`, `verify-ca` or
+`verify-full`); `JWT_SECRET` left at the published development default or
+under 32 characters; `BCRYPT_ROUNDS` below 10; `ALLOWED_ORIGINS` empty, `*`,
+or not https; `PUBLIC_API_BASE` not set; `STORAGE_BACKEND=s3` without
+`S3_BUCKET`; `AUTH_MODE=cognito` without both Cognito ids, or a
+`COGNITO_JWKS_URL` that is not https; and any of the above left exactly as
+the `<CHANGE-ME...>` placeholder the example file ships with. All problems
+are reported together, not one at a time. This is `production_problems()` in
+`config.py`, and `tests/test_production_config.py` is exhaustive over it: a
+new required production setting has to be added there or the suite does not
+pass.
 
-**Set a real `JWT_SECRET`.** The default is in this repository, so anyone can
-sign a token for any user with it. With `APP_ENV=prod` and local auth the app
-refuses to start on the default, or on a secret shorter than 32 characters,
-and says so:
+**One thing still cannot be done in code, or done later: turn on RDS storage
+encryption when the instance is created.** It is a checkbox at creation
+(`--storage-encrypted` in the CLI) and cannot be switched on afterwards:
+encrypting an existing instance means snapshotting it, copying the snapshot
+with encryption, and restoring to a new instance. This database holds
+resumes' text and application histories. Do it first.
 
-```bash
-python -c 'import secrets; print(secrets.token_urlsafe(48))'
-```
+**Set `TRUST_PROXY=true` behind a load balancer, never otherwise.** A load
+balancer connects to the container itself, so without this every request
+appears to come from one address and all clients share a single rate limit:
+ten sign-ins a minute for everyone together. With it, the client's address is
+read from `X-Forwarded-For`, counting `TRUSTED_PROXY_HOPS` entries from the
+right. One load balancer alone (ECS Express Mode's ALB) is 1. If CloudFront
+is put in front of that, it is 2. Entries further left were sent by the
+client and are never used. Leave `TRUST_PROXY` `false` anywhere there is no
+proxy; there the header is whatever the client chose to send.
 
-It also refuses `BCRYPT_ROUNDS` below 10 and `*` in `ALLOWED_ORIGINS`.
+**`/health` is built for a load balancer's health check**, not for a person:
+it answers in under `HEALTH_DB_TIMEOUT_S` seconds, needs no token, is never
+rate limited, never starts a listings refresh, and answers
+`{"status": "degraded", "db": "error"}` with a 503 the moment the database is
+unreachable rather than hanging until a client gives up.
 
-**Set `TRUST_PROXY=true` on App Runner.** App Runner's load balancer connects
-to the container, so without it every request appears to come from one
-address and all clients share a single rate limit: ten sign-ins a minute for
-everyone together. With it, the client's address is read from
-`X-Forwarded-For`, counting `TRUSTED_PROXY_HOPS` entries from the right. App
-Runner alone is 1. If CloudFront is put in front, it is 2. Entries further
-left were sent by the client and are never used.
+**Stopping the container is graceful.** On SIGTERM the server stops taking
+new connections, gives in-flight requests uvicorn's own grace period to
+finish, and, if a listings refresh happens to be running, asks it to stop
+too, waiting up to `INGEST_SHUTDOWN_GRACE_S` seconds. A refresh that does not
+get to finish in time is recorded as interrupted rather than left looking
+like it succeeded or silently vanishing. Size the container platform's own
+stop timeout to fit both numbers (`entrypoint.sh` runs uvicorn with
+`--timeout-graceful-shutdown 10`; ECS's default stop timeout is 30 seconds,
+which is enough for the defaults of both).
 
-Leave it `false` anywhere there is no proxy. There the header is whatever the
-client chose to send.
+**Migrations run before the API starts serving,** not by hand against a
+production database: `entrypoint.sh` runs `alembic upgrade head`, retrying
+briefly if the database isn't reachable yet, before starting uvicorn. If more
+than one task starts at once (a deploy, a restart), only one of them
+actually runs the migration; the others wait behind a Postgres advisory lock
+(`alembic/env.py`) and then find there is nothing left to do. This is safe by
+construction rather than by timing: `tests/test_migrations_concurrent.py`
+starts several at once against a real database and checks exactly one of
+them does the work.
 
 ### Rate limits
 
@@ -612,10 +659,12 @@ looser policy, enough for Swagger UI.
 # What CI runs, locally
 gitleaks git --redact .
 pip-audit -r backend/requirements.txt
+pip-audit -r backend/requirements-dev.txt
 ```
 
 Dependabot opens pull requests weekly for `backend/requirements.txt`,
-`frontend/package.json` and the GitHub Actions. `bcrypt` is held below 4.1
+`backend/requirements-dev.txt`, `frontend/package.json` and the GitHub
+Actions. `bcrypt` is held below 4.1
 until passlib can use it.
 
 ## Where this differs from the architecture document

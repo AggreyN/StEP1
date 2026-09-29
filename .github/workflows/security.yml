@@ -80,3 +80,9 @@ jobs:
         # by others. There is no ignore list. If one is ever needed, it goes
         # here as --ignore-vuln <id> with the reason beside it.
         run: pip-audit --requirement backend/requirements.txt --progress-spinner off
+
+      - name: Audit backend/requirements-dev.txt
+        # The test and lint tooling (pytest, ruff, moto's S3 stand-in) never
+        # ships, but it does run here and on every contributor's machine, so
+        # it is held to the same bar.
+        run: pip-audit --requirement backend/requirements-dev.txt --progress-spinner off

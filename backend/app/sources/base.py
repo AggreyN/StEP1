@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import threading
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -24,6 +25,23 @@ _NON_ALNUM = re.compile(r"[^a-z0-9 ]+")
 _COMPANY_SUFFIX = re.compile(
     r"\b(inc|incorporated|llc|ltd|limited|corp|corporation|co|company|plc|gmbh|sa|ag)\b\.?$"
 )
+
+
+class Cancelled(Exception):
+    """The process has been told to stop, and the ingest is stopping with it."""
+
+
+# Set when the process is asked to stop. An ingest looks at it between the
+# steps where stopping is clean: between chunks of a download, before it
+# writes, between batches. It is a module-level flag because the code that
+# has to look (a source's fetch, several calls deep) and the code that sets it
+# (a signal handler, the server's shutdown) share nothing else.
+cancel = threading.Event()
+
+
+def check_cancelled() -> None:
+    if cancel.is_set():
+        raise Cancelled("the process is stopping")
 
 
 @dataclass
@@ -80,9 +98,12 @@ class Source(ABC):
 
     @abstractmethod
     def fetch(self) -> Iterable[NormalizedPosting]:
-        """Pull the source and yield normalized rows. Raise on a failed fetch —
+        """Pull the source and yield normalized rows. Raise on a failed fetch:
         backfill records the error and, crucially, does NOT deactivate anything
-        on the strength of an empty result."""
+        on the strength of an empty result.
+
+        A fetch that can take more than a moment calls check_cancelled() as it
+        goes, so that a process told to stop is not kept waiting for it."""
 
 
 # --------------------------------------------------------------------------- #
