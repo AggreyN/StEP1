@@ -21,10 +21,10 @@ import threading
 import time
 from datetime import UTC, datetime, timedelta
 
+import jwt
 import requests
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -62,9 +62,17 @@ def create_local_token(user: User) -> str:
 
 def _user_from_local_token(token: str, db: Session) -> User:
     try:
-        payload = jwt.decode(token, config.JWT_SECRET, algorithms=[config.JWT_ALGORITHM])
+        # `algorithms` is a list of one, and it is ours. A token that names
+        # another algorithm in its own header ("none", or RS256 with our
+        # secret as the public key) is refused for that alone.
+        payload = jwt.decode(
+            token,
+            config.JWT_SECRET,
+            algorithms=[config.JWT_ALGORITHM],
+            options={"require": ["exp", "sub"]},
+        )
         user_id = int(payload["sub"])
-    except (JWTError, KeyError, ValueError):
+    except (jwt.InvalidTokenError, KeyError, ValueError):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token.") from None
     user = db.get(User, user_id)
     if user is None:
@@ -118,7 +126,7 @@ def _key_for(kid: str | None) -> dict | None:
 def _verify_cognito_token(token: str) -> dict:
     try:
         header = jwt.get_unverified_header(token)
-    except JWTError:
+    except jwt.InvalidTokenError:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Malformed token header.") from None
     key = _key_for(header.get("kid"))
     if key is None:
@@ -126,15 +134,16 @@ def _verify_cognito_token(token: str) -> dict:
     try:
         return jwt.decode(
             token,
-            key,
+            jwt.PyJWK(key).key,
             algorithms=["RS256"],
             audience=config.COGNITO_APP_CLIENT_ID,
             issuer=config.COGNITO_ISSUER,
+            options={"require": ["exp", "sub"]},
         )
-    except JWTError as exc:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, f"Token validation failed: {exc}"
-        ) from None
+    except (jwt.InvalidTokenError, jwt.PyJWKError):
+        # Not the library's message: it can describe the key, and the reason
+        # a token failed is of no use to whoever is forging one.
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token.") from None
 
 
 def _upsert_cognito_user(claims: dict, db: Session) -> User:

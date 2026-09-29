@@ -151,9 +151,10 @@ def _sub_from_scope(scope) -> str | None:
             parts = value.decode("latin-1").split(" ", 1)
             if len(parts) == 2 and parts[0].lower() == "bearer":
                 try:
-                    from jose import jwt
+                    import jwt
 
-                    return jwt.get_unverified_claims(parts[1]).get("sub")
+                    claims = jwt.decode(parts[1], options={"verify_signature": False})
+                    return claims.get("sub")
                 except Exception:
                     return None
     return None

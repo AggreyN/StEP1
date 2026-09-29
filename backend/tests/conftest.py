@@ -9,6 +9,7 @@ and a generated column — SQLite can't stand in).
 
 from __future__ import annotations
 
+import functools
 import os
 import sys
 import tempfile
@@ -34,7 +35,7 @@ os.environ["AUTH_MODE"] = "local"
 os.environ["STORAGE_BACKEND"] = "local"
 os.environ["UPLOAD_DIR"] = str(_TMP / "uploads")
 os.environ["PUBLIC_API_BASE"] = "http://testserver"
-os.environ["JWT_SECRET"] = "test-only-secret-not-a-real-key"
+os.environ["JWT_SECRET"] = "test-only-secret-not-a-real-key-and-long-enough"
 # The cheapest bcrypt allows. The suite creates hundreds of accounts and none
 # of them protects anything.
 os.environ["BCRYPT_ROUNDS"] = "4"
@@ -166,9 +167,15 @@ Wrote machine learning models for ranking; improved precision by 12 percent.
 """
 
 
+@functools.cache
 def make_pdf(text: str = RESUME_TEXT, *, extra: str = "") -> bytes:
     """A real, text-bearing PDF. `extra` adds a line to the standard resume,
-    for a second resume that is recognisably not the first."""
+    for a second resume that is recognisably not the first.
+
+    Cached, so that the same arguments give the same bytes. Two PDFs made
+    from the same text are not the same length (each carries its own id and
+    timestamp), and an upload is held to the exact length it declared.
+    """
     import pymupdf
 
     doc = pymupdf.open()
@@ -354,6 +361,7 @@ def upload_resume(client, headers: dict, data: bytes | None = None, filename: st
     )
 
 
+@functools.cache
 def make_scanned_pdf() -> bytes:
     """A PDF with a page of drawing and no text layer, as a scanner makes."""
     import pymupdf
