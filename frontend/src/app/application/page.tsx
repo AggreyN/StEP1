@@ -1,10 +1,15 @@
 "use client";
-// Application detail: the timeline. The buttons under it are rendered from
-// the API's `next_transitions` — this page has no idea which state may
-// follow which.
-import { useEffect, useRef, useState } from "react";
+// Application detail: the timeline, at /application?id=12.
+//
+// The id is in the query string so that this is one static file for every
+// application. Old-style addresses, /applications/12, have no file; the
+// not-found page sends them here (see components/NotFound.tsx).
+//
+// The buttons under the timeline are rendered from the API's
+// `next_transitions`. This page has no idea which state may follow which.
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { ApiError, getApplication } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import { formatSalary, longDate } from "@/lib/format";
@@ -18,9 +23,10 @@ import { Timeline } from "@/components/Timeline";
 import { ExternalIcon } from "@/components/icons";
 import { Button, ErrorNote, Spinner } from "@/components/ui";
 
-export default function ApplicationDetailPage() {
+function ApplicationDetail() {
   const authed = useRequireAuth();
-  const { id } = useParams<{ id: string }>();
+  const id = useSearchParams().get("id") ?? "";
+
   const [loaded, setLoaded] = useState<{ id: string; detail: ApplicationDetail } | null>(null);
   const [failure, setFailure] = useState<{ id: string; message: string; missing: boolean } | null>(null);
   const [dialogKind, setDialogKind] = useState<string | null>(null);
@@ -57,7 +63,11 @@ export default function ApplicationDetailPage() {
   if (!authed) return null;
 
   const app = loaded?.id === id ? loaded.detail : null;
-  const error = failure?.id === id ? failure : null;
+  const error = !id
+    ? { id, message: "This link doesn't say which application to show.", missing: true }
+    : failure?.id === id
+      ? failure
+      : null;
 
   return (
     <AppShell>
@@ -163,5 +173,13 @@ export default function ApplicationDetailPage() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+export default function ApplicationPage() {
+  return (
+    <Suspense>
+      <ApplicationDetail />
+    </Suspense>
   );
 }

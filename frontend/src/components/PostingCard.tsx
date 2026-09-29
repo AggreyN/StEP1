@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { formatSalary, postedAge } from "@/lib/format";
 import { kindLabel } from "@/lib/labels";
+import { applicationHref } from "@/lib/routes";
 import type { Posting } from "@/lib/types";
 import { CheckIcon, ExternalIcon, StarIcon } from "./icons";
 import { ScoreBadge } from "./ScoreBadge";
@@ -110,7 +111,7 @@ export function PostingCard({
           {p.application ? (
             <Link
               ref={applicationLink}
-              href={`/applications/${p.application.id}`}
+              href={applicationHref(p.application.id)}
               data-testid="application-link"
               className="inline-flex h-10 items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium hover:bg-line sm:h-9"
             >

@@ -70,7 +70,7 @@ test("dashboard, filter sheet, saved and applications fit at 375px", async ({ pa
   await expect(page.getByTestId("application-row").first()).toBeVisible();
   await expectNoHorizontalScroll(page);
 
-  await page.goto("/applications/12");
+  await page.goto("/application?id=12");
   await expect(page.getByTestId("timeline")).toBeVisible();
   await expectNoHorizontalScroll(page);
   await page.getByTestId("transition-button").first().click();
