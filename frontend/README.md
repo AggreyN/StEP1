@@ -4,7 +4,7 @@ Internship discovery and application tracking. Next.js (App Router),
 TypeScript and Tailwind, tested with Playwright.
 
 Design and API contract: [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)
-(§5 API, §6 timeline) and [`../FRONTEND_BRIEF.md`](../FRONTEND_BRIEF.md).
+(§5 API, §6 timeline).
 
 ## Run it
 
