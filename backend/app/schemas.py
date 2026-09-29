@@ -36,6 +36,11 @@ def _utc_z(value: datetime) -> str:
 UtcDateTime = Annotated[datetime, PlainSerializer(_utc_z, return_type=str, when_used="json")]
 
 
+class HealthOut(BaseModel):
+    status: Literal["ok", "degraded"]
+    db: Literal["ok", "error"]
+
+
 class RequestModel(BaseModel):
     """Base for everything a client sends. Unknown fields are refused, not
     dropped: a request carrying `status` or `user_id` gets a 422 naming the
