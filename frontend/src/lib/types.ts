@@ -165,6 +165,14 @@ export interface ApplicationDetail {
   next_transitions: string[];
 }
 
+/** GET /stats — public, no auth. */
+export interface Stats {
+  active_postings: number;
+  companies: number;
+  role_families: number;
+  updated_at: string | null;
+}
+
 /** One upstream list in GET /ingest/status. */
 export interface IngestSource {
   source: string;

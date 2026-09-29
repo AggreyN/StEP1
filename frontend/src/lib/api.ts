@@ -26,6 +26,7 @@ import type {
   ProfileAccepted,
   ProfileInput,
   Resume,
+  Stats,
 } from "./types";
 
 const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE;
@@ -279,6 +280,12 @@ export async function getFeedStatus(): Promise<FeedStatus & { retryAfter: number
   const res = await send("GET", "/feed/status");
   const h = res.headers.get("Retry-After");
   return { ...(res.body as FeedStatus), retryAfter: h ? retryAfterOf(res.headers, 1) : null };
+}
+
+/** Public numbers for the About page. No account needed, and a failure here
+ *  never redirects anyone. */
+export function getStats() {
+  return json<Stats>("GET", "/stats", { authRedirect: false });
 }
 
 /** How fresh the listings are. This only feeds one informational line, so a

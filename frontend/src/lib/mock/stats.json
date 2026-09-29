@@ -1,0 +1,9 @@
+{
+  "_comment": "Mock-only fixture for GET /stats. `updated_hours_ago` becomes the contract's `updated_at` timestamp and is removed before responding.",
+  "stats": {
+    "active_postings": 4769,
+    "companies": 1241,
+    "role_families": 15,
+    "updated_hours_ago": 3
+  }
+}

@@ -18,7 +18,9 @@
 //                                       manual); "error" makes the route 404,
 //                                       like a backend that predates it
 //   step1.mock.fail = "POST /saved"     the next request whose "METHOD /path"
-//                                       starts with this fails once with a 500
+//                                       starts with this fails once with a 500.
+//                                       "429 POST /auth/login" picks the status;
+//                                       "always GET /stats" keeps failing
 
 import feedData from "./feed.json";
 import profileData from "./profile.json";
@@ -26,6 +28,7 @@ import applicationsData from "./applications.json";
 import statusData from "./status.json";
 import transitionsData from "./transitions.json";
 import ingestData from "./ingest.json";
+import statsData from "./stats.json";
 import type {
   ApplicationDetail,
   ApplicationEvent,
@@ -319,6 +322,15 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
     return ok(authResponse(s.users[email]));
   }
 
+  // ---- public ----
+  if (method === "GET" && path === "/stats") {
+    const { updated_hours_ago, ...counts } = statsData.stats;
+    return ok({
+      ...counts,
+      updated_at: new Date(Date.now() - updated_hours_ago * 3_600_000).toISOString().replace(/\.\d+Z$/, "Z"),
+    });
+  }
+
   const user = userFromToken(token);
   if (!user) return err(401, "Not authenticated");
   const email = user.email;
@@ -491,17 +503,23 @@ function record(line: string) {
   w.__step1Requests = [...(w.__step1Requests ?? []).slice(-199), line];
 }
 
-function shouldFail(method: string, path: string): boolean {
+/** Reads the step1.mock.fail knob: "[status] [always] METHOD /path".
+ *  Without "always" the rule is used up by the first request it matches. */
+function forcedFailure(method: string, path: string): MockResponse | null {
   try {
-    const rule = window.localStorage.getItem("step1.mock.fail");
-    if (rule && `${method} ${path}`.startsWith(rule)) {
-      window.localStorage.removeItem("step1.mock.fail");
-      return true;
+    const raw = window.localStorage.getItem("step1.mock.fail");
+    if (!raw) return null;
+    const m = raw.match(/^(?:(\d{3})\s+)?(?:(always)\s+)?(\S+ \S+)$/);
+    if (!m || !`${method} ${path}`.startsWith(m[3])) return null;
+    if (!m[2]) window.localStorage.removeItem("step1.mock.fail");
+    const status = m[1] ? Number(m[1]) : 500;
+    if (status === 429) {
+      return ok({ detail: "Too many attempts. Wait a minute and try again." }, 429, { "Retry-After": "60" });
     }
+    return err(status, "The server had a problem. Nothing was changed. Try again.");
   } catch {
-    // ignore
+    return null;
   }
-  return false;
 }
 
 export async function handle(
@@ -513,9 +531,8 @@ export async function handle(
   await sleep(DELAY_MS);
   const url = new URL(pathAndQuery, "http://mock.local");
   record(`${method} ${url.pathname}${url.search}`);
-  if (shouldFail(method, url.pathname)) {
-    return err(500, "The server had a problem. Nothing was changed. Try again.");
-  }
+  const forced = forcedFailure(method, url.pathname);
+  if (forced) return forced;
   // Deep-copy so callers can never mutate mock state by reference.
   const res = route(method, url, body as Body, token);
   return { ...res, body: res.body == null ? null : JSON.parse(JSON.stringify(res.body)) };
