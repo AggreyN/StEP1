@@ -23,6 +23,10 @@ createdb step1_test                       # only needed to run the tests
 .venv/bin/uvicorn app.main:app --reload --port 8000
 ```
 
+The backfill line is optional: the API pulls the listings itself the first
+time it starts and keeps them fresh after that. See
+[Keeping the listings fresh](#keeping-the-listings-fresh).
+
 Then open <http://localhost:8000/docs>, or:
 
 ```bash
@@ -91,13 +95,105 @@ curl "http://localhost:8000/feed?page_size=5" -H "Authorization: Bearer $TOKEN"
 |---|---|
 | Run the API | `.venv/bin/uvicorn app.main:app --reload --port 8000` |
 | Apply migrations | `.venv/bin/alembic upgrade head` |
-| Backfill every source | `.venv/bin/python -m app.sources.backfill` |
-| Backfill one source | `.venv/bin/python -m app.sources.backfill --source=simplify` (or `vanshb03`) |
+| Refresh every source now | `.venv/bin/python -m app.sources.backfill` |
+| Refresh one source now | `.venv/bin/python -m app.sources.backfill --source=simplify` (or `vanshb03`) |
 | Mark silent applications ghosted | `.venv/bin/python -m app.jobs.ghost` |
 | Tests | `.venv/bin/pytest` |
 | Lint | `.venv/bin/ruff check . && .venv/bin/ruff format --check .` |
 
-### Backfill
+### Keeping the listings fresh
+
+**The API refreshes the listings by itself, once a day.** There is nothing to
+schedule.
+
+While the API is running, a background task looks at the `ingest_runs` table
+when the server starts and every 30 minutes after. Any source whose last
+*successful* run is more than 24 hours old is pulled again, using the same
+code as the command below. It runs in a worker thread, so the API keeps
+answering while it works (a refresh takes about three seconds).
+
+What that means in practice:
+
+- **A laptop that was off overnight catches up when you start the server.**
+  The first check happens at startup.
+- **Restarting does not reset anything.** The decision comes from the table,
+  not from a timer, so `--reload` restarting the server all afternoon does not
+  cause extra pulls or delay the next one.
+- **A failed pull is retried at the next check,** 30 minutes later, not the
+  next day. The failure is recorded with its error, and the postings already
+  stored are left exactly as they were.
+- **Only one refresh runs at a time,** across processes. Every refresh holds
+  a Postgres advisory lock; a second server or worker that finds it taken
+  skips that round.
+
+**To check how fresh the data is,** ask the API (any signed-in user):
+
+```bash
+curl http://localhost:8000/ingest/status -H "Authorization: Bearer $TOKEN"
+```
+
+```jsonc
+{ "last_success_at": "2026-09-29T02:42:53.164496Z",  // every source is at least this fresh
+  "next_due_at":     "2026-09-30T02:42:53.164496Z",  // last_success_at + the interval
+  "interval_hours": 24,
+  "auto": true,              // AUTO_INGEST
+  "running": false,          // a refresh is in progress right now, in any process
+  "active_postings": 4769,
+  "sources": [
+    { "source": "simplify", "last_success_at": "...", "last_attempt_at": "...",
+      "fetched": 16914, "upserted": 86, "deactivated": 0,
+      "error": null }        // the last attempt's error, if it failed
+  ] }
+```
+
+`last_success_at` is the oldest of the sources' last successes. If
+`next_due_at` is in the past, a refresh is overdue: either the API was not
+running, or the last attempts failed, in which case the source's `error` says
+why. `fetched`, `upserted` and `deactivated` describe the last attempt.
+
+Or look at the table directly:
+
+```sql
+SELECT source, fetched, upserted, deactivated, error, finished_at
+  FROM ingest_runs ORDER BY id DESC LIMIT 4;
+```
+
+**To force a refresh now,** run the backfill. It ignores the 24 hours and
+pulls immediately:
+
+```bash
+.venv/bin/python -m app.sources.backfill                     # every source
+.venv/bin/python -m app.sources.backfill --source=simplify   # one source
+docker compose exec api python -m app.sources.backfill       # under Docker
+```
+
+This is safe while the API is running. It takes the same lock, so if an
+automatic refresh is in progress it waits for that to finish first. Feeds pick
+up the new postings on their next request, and the next automatic refresh is
+due 24 hours after this one.
+
+**To change or turn off the schedule,** set these in `.env`:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `AUTO_INGEST` | `true` when `APP_ENV=dev`, otherwise `false` | `false` turns automatic refresh off; the listings then change only when you run the backfill |
+| `INGEST_INTERVAL_HOURS` | `24` | How old a source's last success may be before it is pulled again |
+| `INGEST_CHECK_MINUTES` | `30` | How often the API looks. Also how late a refresh can be, and how soon a failed one is retried |
+
+Automatic refresh is off by default outside development because the
+production design pulls from a scheduled Lambda (§1 of the architecture
+document) and the API should not also be pulling. Set `AUTO_INGEST=true` to
+have the API do it there too.
+
+Each run writes one JSON log line, whoever started it:
+
+```json
+{"message": "ingest finished", "source": "simplify", "fetched": 16914, "inserted": 18,
+ "updated": 68, "unchanged": 16828, "upserted": 86, "deactivated": 0,
+ "duration_ms": 2902, "error": null}
+```
+
+### What a refresh does
 
 Safe to run as often as you like. It upserts on `(source, source_id)`, skips
 rows whose content hash is unchanged, marks rows that dropped out of a list as
@@ -115,7 +211,12 @@ the feed is read.
 If a fetch fails, the error is recorded and nothing is deactivated. If a fetch
 returns less than half of what is currently open, deactivation is skipped for
 that run (`DEACTIVATE_GUARD_RATIO`), so a truncated upstream file cannot close
-the whole board.
+the whole board. Neither counts as a successful run, so both are retried at
+the next check.
+
+If the process is stopped partway through a refresh, the transaction is rolled
+back and the run is left without a finish time. The next refresh marks it
+`Interrupted before it finished.` and carries on.
 
 The Simplify repository is renamed every recruiting cycle. When the backfill
 starts failing with a 404, update `SIMPLIFY_REPO`.
@@ -156,6 +257,9 @@ All have defaults. The ones you are likely to touch:
 | `RESUME_MAX_BYTES` | `5242880` | Resume size cap (5 MB) |
 | `SIMPLIFY_REPO` | `SimplifyJobs/Summer2027-Internships` | Rolls forward each cycle |
 | `VANSHB03_REPO` | `vanshb03/Summer2027-Internships` | Secondary list |
+| `AUTO_INGEST` | `true` in dev | Refresh the listings automatically |
+| `INGEST_INTERVAL_HOURS` | `24` | How often each source is refreshed |
+| `INGEST_CHECK_MINUTES` | `30` | How often the API checks whether a refresh is due |
 | `POSTING_MAX_AGE_DAYS` | `120` | Older postings are left out of the feed |
 | `SCORES_MAX_AGE_HOURS` | `24` | Cached scores older than this are recomputed |
 | `GHOST_AFTER_DAYS` | `30` | Silence before an application is marked ghosted |
@@ -183,9 +287,10 @@ POST   /profile/resume/presign   -> where to upload
 PUT    /profile/resume/local/{key}   (local storage only)
 POST   /profile/resume/commit    -> extracted skills
 
-GET    /feed?page=&page_size=&roles=&location=&term=&min_score=&remote=
+GET    /feed?page=&page_size=&sort=&roles=&location=&term=&min_score=&remote=
 GET    /feed/status
 GET    /postings/{id}
+GET    /ingest/status            -> how fresh the listings are
 
 GET    /saved                    POST /saved/{id}            DELETE /saved/{id}
 
@@ -196,6 +301,20 @@ GET    /applications/{id}        POST /applications/{id}/events
 A posting's id is `"{source}:{source_id}"`, for example
 `simplify:2909b23b-d049-4f31-9d5e-a71faacba4af`. URL-encode the colon or not;
 both work.
+
+### Feed order
+
+`GET /feed` takes `sort`:
+
+| `sort` | Order |
+|---|---|
+| `recent` (default) | Newest first by date posted, undated postings last; then best score |
+| `score` | Best score first; then newest |
+
+Anything else is a 422. The filters, `page`, `page_size`, `total` and
+`has_more` behave the same under both: `sort` changes the order of the same
+set of postings and nothing else. Every posting still carries its score and
+reasons under `recent`. `GET /saved` is always newest-saved first.
 
 ## How matching works
 
@@ -231,7 +350,7 @@ Each component that earns points adds a reason (`role_rank`, `skills`,
 `location`, `term`, `fresh`, `company`) that the frontend shows as a chip.
 
 Scores are cached in `match_scores` and recomputed when the profile changes,
-when a backfill changes the board, or after 24 hours. Scoring the whole board
+when a refresh (automatic or manual) changes the board, or after 24 hours. Scoring the whole board
 for one student is one SQL query and one Python pass, about 70 ms for 4,500
 postings.
 
@@ -253,7 +372,9 @@ contradicted itself, or could not be implemented as written.
 | §4 skills: Jaccard against `search_tsv` lexemes | Share of the skills named in the **title** that you have, matched by the same code that reads the resume | See below |
 | §4 company: "or a repeat employer of UMD students" | Only "saved or applied to the same company" | There is no data for the second half |
 | §4 reasons for every component | A reason only when the component earned points | The chips are reasons to apply |
-| §5 `GET /feed?category=` | `?roles=` (comma-separated), plus `page_size` and `remote` | Follows from roles replacing category |
+| §5 `GET /feed?category=` | `?roles=` (comma-separated), plus `page_size`, `remote` and `sort` | Follows from roles replacing category; `sort` defaults to newest first |
+| §1 ingest is a nightly Lambda | In development the API refreshes the listings itself every 24 hours | A laptop has no EventBridge; off by default outside development |
+| §5 has no freshness endpoint | `GET /ingest/status` | So a student can see the data is current |
 | §6 diagram | `applied` may skip to `oa_sent` or `interview_scheduled`; `oa_completed` sits after `oa_sent`; `ghosted` can still move on a late reply | The diagram omits an event kind it lists, and companies skip steps |
 | §2.2 vanshb03 has `season` instead of `terms` | The year is inferred from the posting date | A bare "Summer" cannot be compared with "Summer 2027" |
 
@@ -275,9 +396,9 @@ change what a posting id means.
 app/
   main.py  config.py  database.py  models.py  schemas.py
   auth.py  deps.py  logging_config.py
-  routes/    health auth profile feed postings saved applications
+  routes/    health auth profile feed postings saved applications ingest
   services/  secrets storage resume_parse locations matching
-             feed_state postings timeline
+             feed_state postings timeline ingest_scheduler
   sources/   base roles github_list simplify vanshb03 backfill
   jobs/      ghost
 alembic/versions/0001_initial_schema.py
