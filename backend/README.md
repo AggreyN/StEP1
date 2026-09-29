@@ -13,7 +13,8 @@ Needs Python 3.12+ and PostgreSQL 16.
 ```bash
 cd backend
 python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+.venv/bin/pip install -r requirements-dev.txt   # runtime deps plus tests and lint
+                                                 # (requirements.txt alone runs the API)
 
 createdb step1
 createdb step1_test                       # only needed to run the tests
@@ -612,10 +613,12 @@ looser policy, enough for Swagger UI.
 # What CI runs, locally
 gitleaks git --redact .
 pip-audit -r backend/requirements.txt
+pip-audit -r backend/requirements-dev.txt
 ```
 
 Dependabot opens pull requests weekly for `backend/requirements.txt`,
-`frontend/package.json` and the GitHub Actions. `bcrypt` is held below 4.1
+`backend/requirements-dev.txt`, `frontend/package.json` and the GitHub
+Actions. `bcrypt` is held below 4.1
 until passlib can use it.
 
 ## Where this differs from the architecture document
