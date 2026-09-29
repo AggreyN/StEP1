@@ -163,7 +163,7 @@ test.describe("limits are stated in the form", () => {
 
   test("a note stops at 2000 characters", async ({ page }) => {
     await signInDemo(page);
-    await page.goto("/applications/12");
+    await page.goto("/application?id=12");
     await page.getByTestId("add-note").click();
     const note = page.getByPlaceholder("What do you want to remember?");
     await note.fill("n".repeat(2000));

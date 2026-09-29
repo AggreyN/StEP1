@@ -85,7 +85,7 @@ for (const scheme of ["light", "dark"] as const) {
     await expect(page.getByTestId("application-row").first()).toBeVisible();
     await shot("applications");
 
-    await page.goto("/applications/12");
+    await page.goto("/application?id=12");
     await expect(page.getByTestId("timeline")).toBeVisible();
     await shot("timeline", true);
     await page.getByTestId("transition-button").first().click();
@@ -93,7 +93,7 @@ for (const scheme of ["light", "dark"] as const) {
     await shot("timeline-dialog");
     await page.getByRole("button", { name: "Cancel" }).click();
 
-    await page.goto("/applications/9");
+    await page.goto("/application?id=9");
     await expect(page.getByTestId("timeline")).toBeVisible();
     await shot("timeline-ghosted", true);
   });

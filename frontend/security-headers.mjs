@@ -1,9 +1,26 @@
-// The site's security headers, in one place. next.config.ts serves them on
-// every response, scripts/amplify-headers.mjs writes the same set into
-// ../amplify.yml, and the tests read them from here.
+// The site's security headers and Content-Security-Policy, defined once.
+//
+// The production site is plain files on a static host, so nothing in the
+// app can set a response header. The policy is therefore delivered twice,
+// and both copies come from this file:
+//
+//   1. As response headers, by the host. `npm run headers:amplify` writes
+//      them into ../amplify.yml. These are the same for every environment:
+//      they name no domain.
+//   2. As a <meta http-equiv="Content-Security-Policy"> tag in every page,
+//      written at build time by app/layout.tsx. This copy knows the
+//      environment: it lists exactly the origins the build was configured
+//      with (the API, the upload bucket, the sign-in service).
+//
+// A browser enforces both, so a request has to be allowed by each. The
+// header says "this site, over HTTPS"; the tag narrows that to the exact
+// origins. Changing an environment variable and rebuilding is enough: there
+// is nothing to edit by hand and nothing that can drift.
+//
+// `next dev` serves the header copy itself (next.config.ts).
 
-/** "https://api.example.com/x" -> "https://api.example.com"; anything that
- *  isn't an absolute http(s) URL (unset, "mock") -> null. */
+/** "https://api.step1careers.com/x" -> "https://api.step1careers.com";
+ *  anything that isn't an absolute http(s) URL (unset, "mock") -> null. */
 export function originOf(value) {
   if (!value) return null;
   try {
@@ -15,17 +32,35 @@ export function originOf(value) {
 }
 
 /**
- * @param {object} o
- * @param {boolean} o.dev            true under `next dev`
- * @param {string[]} o.connect       extra origins the browser may call:
- *                                   the API, and the upload host if any
+ * The origins the browser may call, from the build's configuration.
+ * @param {Record<string, string | undefined>} env
+ * @returns {string[]}
  */
-export function contentSecurityPolicy({ dev, connect }) {
+export function connectOrigins(env) {
+  return [
+    originOf(env.NEXT_PUBLIC_API_BASE),
+    originOf(env.NEXT_PUBLIC_UPLOAD_ORIGIN),
+    // Only in cognito mode: the token endpoint is called from the browser.
+    env.NEXT_PUBLIC_AUTH_MODE === "cognito" ? originOf(env.NEXT_PUBLIC_COGNITO_DOMAIN) : null,
+  ].filter((o, i, all) => o && all.indexOf(o) === i);
+}
+
+/** What the header copy allows for connections when no origins are given:
+ *  any HTTPS origin. The <meta> copy narrows it to the real ones. */
+export const ANY_HTTPS = ["https:"];
+
+/**
+ * @param {object} o
+ * @param {boolean} [o.dev]       true under `next dev`
+ * @param {string[]} o.connect    origins (or schemes) allowed in connect-src, besides 'self'
+ * @param {boolean} [o.meta]      true for the <meta> copy, which can't carry frame-ancestors
+ */
+export function contentSecurityPolicy({ dev = false, connect, meta = false }) {
   const directives = {
     "default-src": ["'self'"],
     // 'unsafe-inline' for scripts: Next writes the data each page needs to
     // start (the React Server Components payload) into inline <script> tags.
-    // These pages are prerendered, so there is no request in which to mint a
+    // The pages are static files, so there is no request in which to mint a
     // nonce, and the payload differs per page and per build, so it can't be
     // listed by hash in one header. Without this the pages load but never
     // become interactive. No eval in production.
@@ -39,7 +74,9 @@ export function contentSecurityPolicy({ dev, connect }) {
     // Dev adds the hot-reload websocket.
     "connect-src": ["'self'", ...connect, ...(dev ? ["ws:"] : [])],
     "object-src": ["'none'"],
-    "frame-ancestors": ["'none'"],
+    // Signing in with Cognito leaves the site by navigation, which a
+    // Content-Security-Policy does not govern; nothing is needed for it here.
+    ...(meta ? {} : { "frame-ancestors": ["'none'"] }),
     "base-uri": ["'self'"],
     "form-action": ["'self'"],
   };
@@ -49,21 +86,27 @@ export function contentSecurityPolicy({ dev, connect }) {
 }
 
 /**
+ * The response headers.
  * @param {object} [o]
  * @param {boolean} [o.dev]
- * @param {string}  [o.apiBase]       NEXT_PUBLIC_API_BASE
- * @param {string}  [o.uploadOrigin]  NEXT_PUBLIC_UPLOAD_ORIGIN (the S3 host resumes are PUT to)
- * @param {string[]} [o.connect]      used instead of the two above when given
+ * @param {string[]} [o.connect]  exact origins; leave out for "any HTTPS origin"
  * @returns {{ key: string, value: string }[]}
  */
-export function securityHeaders({ dev = false, apiBase, uploadOrigin, connect } = {}) {
-  const origins = connect ?? [originOf(apiBase), originOf(uploadOrigin)].filter(Boolean);
+export function securityHeaders({ dev = false, connect } = {}) {
   return [
     { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
     { key: "X-Content-Type-Options", value: "nosniff" },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
     { key: "X-Frame-Options", value: "DENY" },
     { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-    { key: "Content-Security-Policy", value: contentSecurityPolicy({ dev, connect: origins }) },
+    { key: "Content-Security-Policy", value: contentSecurityPolicy({ dev, connect: connect ?? ANY_HTTPS }) },
   ];
+}
+
+/**
+ * The content of the <meta http-equiv="Content-Security-Policy"> tag.
+ * @param {Record<string, string | undefined>} env
+ */
+export function metaPolicy(env) {
+  return contentSecurityPolicy({ dev: env.NODE_ENV !== "production", connect: connectOrigins(env), meta: true });
 }

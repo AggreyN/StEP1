@@ -40,6 +40,7 @@ import type {
   ProfileInput,
   Resume,
 } from "../types";
+import { AUTH_MODE, COGNITO, REGISTRATION_OPEN } from "../config";
 import { roleLabel } from "../roles";
 
 const DELAY_MS = 300;
@@ -159,7 +160,32 @@ function err(status: number, detail: string): MockResponse {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const nowIso = () => new Date().toISOString();
 
+/** Cognito mode: the bearer token is Cognito's ID token. The mock checks
+ *  what the real API checks, except the signature: the audience, the token
+ *  use and the expiry. It then finds or creates the user by email, as the
+ *  API does on first sight of a new Cognito user. */
+function userFromIdToken(token: string): MockUser | null {
+  try {
+    const part = token.split(".")[1];
+    const binary = atob(part.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(part.length / 4) * 4, "="));
+    const claims = JSON.parse(new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0))));
+    const audience = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+    if (claims.token_use !== "id" || !audience.includes(COGNITO.clientId)) return null;
+    if (typeof claims.exp !== "number" || claims.exp * 1000 <= Date.now()) return null;
+    const email = String(claims.email ?? `${claims.sub}@cognito.local`).toLowerCase();
+    const s = db();
+    if (!s.users[email]) {
+      s.users[email] = { id: s.nextId++, email, display_name: typeof claims.name === "string" ? claims.name : null };
+      persist();
+    }
+    return s.users[email];
+  } catch {
+    return null;
+  }
+}
+
 function userFromToken(token: string | null): MockUser | null {
+  if (AUTH_MODE === "cognito") return token ? userFromIdToken(token) : null;
   if (!token?.startsWith("mock.")) return null;
   try {
     const email = decodeURIComponent(atob(token.slice(5)));
@@ -330,6 +356,10 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
 
   // ---- auth (no token needed) ----
   if (method === "POST" && (path === "/auth/register" || path === "/auth/login")) {
+    if (AUTH_MODE === "cognito") {
+      return err(404, path === "/auth/register" ? "Registration is handled by Cognito." : "Login is handled by Cognito.");
+    }
+    if (path === "/auth/register" && !REGISTRATION_OPEN) return err(403, "Registration is closed.");
     const email = String(body?.email ?? "").trim().toLowerCase();
     const password = String(body?.password ?? "");
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return err(422, "Enter a valid email address.");
@@ -341,7 +371,10 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
     if (path === "/auth/register") {
       if (s.users[email]) return err(409, "An account with that email already exists.");
     }
-    // Mock login accepts any email + password >= 8; unknown emails get an account.
+    // Mock login accepts any email + password >= 8; unknown emails get an
+    // account. With registration closed only people who already have one
+    // can sign in.
+    if (!s.users[email] && !REGISTRATION_OPEN) return err(401, "Incorrect email or password.");
     if (!s.users[email]) {
       const name = typeof body?.display_name === "string" ? body.display_name : null;
       s.users[email] = { id: s.nextId++, email, display_name: name };
@@ -370,9 +403,11 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
     return ok({ ...user, onboarded: !!s.profiles[email] });
   }
   if (method === "DELETE" && path === "/me") {
-    const password = String(body?.password ?? "");
-    if (!password) return err(422, "password: Field required");
-    if (fingerprint(password) !== mine.pw) return err(403, "Password is incorrect.");
+    if (AUTH_MODE !== "cognito") {
+      const password = String(body?.password ?? "");
+      if (!password) return err(422, "password: Field required");
+      if (fingerprint(password) !== mine.pw) return err(403, "Password is incorrect.");
+    }
     // Everything that belonged to this user goes: account, profile, resume,
     // saved postings, applications and their events.
     delete s.users[email];

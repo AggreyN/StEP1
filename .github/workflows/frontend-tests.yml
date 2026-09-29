@@ -1,8 +1,8 @@
 name: Frontend tests
 
-# Lint, type check, build and the full Playwright suite for frontend/, plus a
-# dependency audit. Everything runs against the in-browser mock API, so no
-# backend or secrets are needed.
+# Lint, type check, build and both Playwright suites for frontend/, plus a
+# dependency audit. Everything runs against the in-browser mock API and a
+# stand-in for Cognito, so no backend, AWS account or secrets are needed.
 
 on:
   push:
@@ -52,8 +52,13 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Build
-        run: npm run build
+      - name: Deploy settings are checked (and refuse the mock)
+        run: |
+          if npm run --silent check:deploy; then echo "check:deploy should refuse a build with no API"; exit 1; fi
+          NEXT_PUBLIC_API_BASE=https://api.step1careers.com npm run --silent check:deploy
+
+      - name: Build (static export)
+        run: npm run build && test -f out/index.html && test -f out/404.html && test -f out/application.html
 
       # after the build, which writes the generated route types
       - name: Type check
@@ -62,7 +67,7 @@ jobs:
       - name: Colour contrast
         run: npm run contrast
 
-      - name: amplify.yml headers match next.config
+      - name: amplify.yml headers match the definition
         run: npm run headers:amplify -- --check
 
       - name: Install browser
@@ -71,7 +76,7 @@ jobs:
       - name: Tests (mock API, dev server)
         run: npm test
 
-      - name: Tests (production build, under the Content-Security-Policy)
+      - name: Tests (the exported site, served as files, three ways)
         run: npm run test:prod
 
       - name: Keep the report when something fails

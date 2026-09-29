@@ -17,7 +17,7 @@ test("applications are grouped by status with a count per group", async ({ page 
 });
 
 test("ghosted is quiet and muted, not styled like a rejection", async ({ page }) => {
-  await page.goto("/applications/9");
+  await page.goto("/application?id=9");
   const ghosted = page.locator('[data-testid="timeline-event"][data-kind="ghosted"]');
   await expect(ghosted).toContainText("Ghosted");
   await expect(ghosted).toContainText("Logged automatically");
@@ -45,7 +45,7 @@ test("ghosted is quiet and muted, not styled like a rejection", async ({ page })
   expect(ghost.background).toBe("rgba(0, 0, 0, 0)"); // no fill
   expect(ghost.border).toBe("dashed");
 
-  await page.goto("/applications/7");
+  await page.goto("/application?id=7");
   const rejected = await look("rejected");
   expect(rejected.color).toBe(await token("danger"));
   expect(rejected.background).toBe(await page.evaluate(() => {
@@ -60,6 +60,24 @@ test("ghosted is quiet and muted, not styled like a rejection", async ({ page })
 });
 
 test("an unknown application shows the API's message", async ({ page }) => {
-  await page.goto("/applications/99999");
+  await page.goto("/application?id=99999");
   await expect(errorNote(page)).toContainText("Application not found");
+});
+
+test("old-style /applications/12 links go to the timeline", async ({ page }) => {
+  await page.goto("/applications/12");
+  await expect(page).toHaveURL(/\/application\?id=12$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Software Development Intern");
+});
+
+test("a timeline link with no id says so", async ({ page }) => {
+  await page.goto("/application");
+  await expect(page.getByRole("alert").filter({ hasText: "doesn't say which application" })).toBeVisible();
+});
+
+test("an unknown address shows the not-found page", async ({ page }) => {
+  await page.goto("/nothing/here");
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await page.getByRole("link", { name: "Your applications" }).click();
+  await expect(page).toHaveURL(/\/applications$/);
 });

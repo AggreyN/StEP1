@@ -42,6 +42,7 @@ next-env.d.ts
 
 # separate build dirs (NEXT_DIST_DIR), e.g. the Playwright dev server's
 /.next-*/
+/out-*/
 
 # Playwright
 /test-results/

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
+import { metaPolicy } from "../../security-headers.mjs";
 
 // Self-hosted at build time by next/font, so no request leaves for a font CDN.
 const plexSans = IBM_Plex_Sans({
@@ -44,6 +45,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       lang="en"
       className={`${plexSans.variable} ${sourceSerif.variable} ${plexMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* The Content-Security-Policy, with the exact origins this build was
+            configured with. The host sends a broader copy as a header; the
+            browser enforces both. See security-headers.mjs. */}
+        <meta httpEquiv="Content-Security-Policy" content={metaPolicy(process.env)} />
+      </head>
       <body className="flex min-h-full flex-col text-[15px] leading-normal">{children}</body>
     </html>
   );

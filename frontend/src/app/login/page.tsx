@@ -1,8 +1,11 @@
 "use client";
-import { Suspense, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMe, login, register } from "@/lib/api";
-import { setSession } from "@/lib/auth";
+import { clearNotice, peekNotice, setSession } from "@/lib/auth";
+import { PROBLEM_TEXT, SignInError, beginSignIn } from "@/lib/cognito";
+import { AUTH_MODE, REGISTRATION_OPEN } from "@/lib/config";
 import { LIMITS, tooLong } from "@/lib/limits";
 import { Wordmark } from "@/components/AppShell";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -14,6 +17,7 @@ const input =
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
+  // With registration closed there is only one mode.
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -71,43 +75,49 @@ function LoginForm() {
           </p>
         )}
 
-        <div
-          role="tablist"
-          aria-label="Sign in or register"
-          onKeyDown={(e) => {
-            // arrow keys switch tabs; Tab moves on to the form
-            if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
-            e.preventDefault();
-            const next = mode === "login" ? "register" : "login";
-            setMode(next);
-            setError(null);
-            e.currentTarget.querySelector<HTMLElement>(`#tab-${next}`)?.focus();
-          }}
-          className="mb-5 grid grid-cols-2 rounded-control border border-line-strong bg-surface-2 p-0.5 text-sm"
-        >
-          {(["login", "register"] as const).map((m) => (
-            <button
-              key={m}
-              id={`tab-${m}`}
-              type="button"
-              role="tab"
-              aria-selected={mode === m}
-              aria-controls="sign-in-form"
-              tabIndex={mode === m ? 0 : -1}
-              onClick={() => {
-                setMode(m);
-                setError(null);
-              }}
-              className={`h-9 rounded-chip border font-medium ${
-                mode === m ? "border-line-strong bg-surface text-fg" : "border-transparent text-muted"
-              }`}
-            >
-              {m === "login" ? "Sign in" : "Register"}
-            </button>
-          ))}
-        </div>
+        {REGISTRATION_OPEN && (
+          <div
+            role="tablist"
+            aria-label="Sign in or register"
+            onKeyDown={(e) => {
+              // arrow keys switch tabs; Tab moves on to the form
+              if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+              e.preventDefault();
+              const next = mode === "login" ? "register" : "login";
+              setMode(next);
+              setError(null);
+              e.currentTarget.querySelector<HTMLElement>(`#tab-${next}`)?.focus();
+            }}
+            className="mb-5 grid grid-cols-2 rounded-control border border-line-strong bg-surface-2 p-0.5 text-sm"
+          >
+            {(["login", "register"] as const).map((m) => (
+              <button
+                key={m}
+                id={`tab-${m}`}
+                type="button"
+                role="tab"
+                aria-selected={mode === m}
+                aria-controls="sign-in-form"
+                tabIndex={mode === m ? 0 : -1}
+                onClick={() => {
+                  setMode(m);
+                  setError(null);
+                }}
+                className={`h-9 rounded-chip border font-medium ${
+                  mode === m ? "border-line-strong bg-surface text-fg" : "border-transparent text-muted"
+                }`}
+              >
+                {m === "login" ? "Sign in" : "Register"}
+              </button>
+            ))}
+          </div>
+        )}
 
-        <div id="sign-in-form" role="tabpanel" aria-labelledby={`tab-${mode}`}>
+        <div
+          id="sign-in-form"
+          role={REGISTRATION_OPEN ? "tabpanel" : undefined}
+          aria-labelledby={REGISTRATION_OPEN ? `tab-${mode}` : undefined}
+        >
         <form onSubmit={submit} className="space-y-4" noValidate>
           {mode === "register" && (
             <label className="block">
@@ -157,6 +167,92 @@ function LoginForm() {
           </Button>
         </form>
         </div>
+
+        {!REGISTRATION_OPEN && (
+          <p className="mt-5 text-sm text-muted" data-testid="invite-only">
+            Accounts are by invitation.{" "}
+            <Link href="/about" className="font-medium text-accent-text underline underline-offset-2">
+              Ask for one
+            </Link>
+            .
+          </p>
+        )}
+      </main>
+      <SiteFooter />
+    </div>
+  );
+}
+
+const never = () => () => {};
+
+/** Cognito mode: no password is typed on this site. One button leaves for
+ *  Cognito's managed login and comes back signed in. */
+function CognitoSignIn() {
+  const params = useSearchParams();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // A message left for this page before a trip through Cognito's sign-out.
+  // It is read once, kept for as long as this page is showing, and removed
+  // from storage so that a reload doesn't show it again.
+  const waiting = useSyncExternalStore(never, peekNotice, () => null);
+  const [notice, setNotice] = useState<string | null>(null);
+  if (waiting && waiting !== notice) setNotice(waiting);
+  useEffect(() => {
+    if (notice) clearNotice();
+  }, [notice]);
+  const deleted = notice === "deleted" || !!params.get("deleted");
+
+  async function go() {
+    setBusy(true);
+    setError(null);
+    try {
+      await beginSignIn();
+    } catch (e) {
+      setError(e instanceof SignInError ? PROBLEM_TEXT[e.problem].body : "Sign-in could not be started.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-10">
+        <div className="mb-8">
+          <Wordmark />
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight">Sign in</h1>
+          <p className="mt-1 text-sm text-muted">
+            Internships ranked against your fields and skills, and every application in one timeline.
+          </p>
+        </div>
+
+        {deleted && (
+          <p role="status" data-testid="deleted-notice" className="mb-4 rounded-control bg-surface-2 px-3 py-2 text-sm text-fg">
+            Your account and everything in it have been deleted.
+          </p>
+        )}
+        {params.get("expired") && !deleted && !error && (
+          <p role="status" data-testid="expired-notice" className="mb-4 rounded-control bg-surface-2 px-3 py-2 text-sm text-muted">
+            Your session expired. Sign in again and you will be back where you were.
+          </p>
+        )}
+        {error && (
+          <div className="mb-4">
+            <ErrorNote>{error}</ErrorNote>
+          </div>
+        )}
+
+        <Button variant="primary" className="w-full" onClick={go} busy={busy} data-testid="cognito-sign-in">
+          {busy ? "One moment…" : "Sign in"}
+        </Button>
+        <p className="mt-3 text-sm text-muted">
+          You sign in on a page run by Amazon Cognito and come straight back. StEP1 never sees your password.
+        </p>
+        <p className="mt-5 text-sm text-muted" data-testid="invite-only">
+          Accounts are by invitation.{" "}
+          <Link href="/about" className="font-medium text-accent-text underline underline-offset-2">
+            Ask for one
+          </Link>
+          .
+        </p>
       </main>
       <SiteFooter />
     </div>
@@ -164,9 +260,5 @@ function LoginForm() {
 }
 
 export default function LoginPage() {
-  return (
-    <Suspense>
-      <LoginForm />
-    </Suspense>
-  );
+  return <Suspense>{AUTH_MODE === "cognito" ? <CognitoSignIn /> : <LoginForm />}</Suspense>;
 }

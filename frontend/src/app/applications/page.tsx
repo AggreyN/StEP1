@@ -6,6 +6,7 @@ import { getApplications } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import { shortDate } from "@/lib/format";
 import { KIND_LABELS, kindLabel, statusTone } from "@/lib/labels";
+import { applicationHref } from "@/lib/routes";
 import type { ApplicationSummary } from "@/lib/types";
 import { AppShell } from "@/components/AppShell";
 import { StatusPill } from "@/components/StatusPill";
@@ -87,7 +88,7 @@ export default function ApplicationsPage() {
                   {group.map((a) => (
                     <li key={a.id}>
                       <Link
-                        href={`/applications/${a.id}`}
+                        href={applicationHref(a.id)}
                         data-testid="application-row"
                         className={`flex min-h-16 items-center gap-3 px-3.5 py-3 hover:bg-surface-2 sm:px-4`}
                       >
