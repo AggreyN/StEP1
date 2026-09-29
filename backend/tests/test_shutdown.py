@@ -171,7 +171,9 @@ class Trickle(http.server.BaseHTTPRequestHandler):
 @pytest.fixture()
 def upstream(monkeypatch):
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Trickle)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
+    threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True
+    ).start()
     url = f"http://127.0.0.1:{server.server_address[1]}/listings.json"
     monkeypatch.setattr(github_list, "listings_url", lambda repo: url)
     Trickle.body = None
