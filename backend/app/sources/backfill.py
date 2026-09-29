@@ -59,6 +59,11 @@ LOCK_KEY = (5172, 1)
 
 INTERRUPTED = "Interrupted before it finished."
 
+# Two whole statements rather than one with the function name dropped in:
+# no SQL in this codebase is assembled from strings, even trusted ones.
+_LOCK_WAIT = text("SELECT pg_advisory_lock(:a, :b)")
+_LOCK_TRY = text("SELECT pg_try_advisory_lock(:a, :b)")
+
 # Rows per INSERT statement. psycopg's parameter limit is 65,535; postings
 # have ~22 columns, so 1,000 rows is a comfortable ~22k parameters.
 _BATCH = 1000
@@ -102,9 +107,8 @@ def ingest_lock(*, wait: bool) -> Iterator[bool]:
     # AUTOCOMMIT: an ingest takes seconds, and this connection must not sit
     # idle inside a transaction for all of them.
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-        fn = "pg_advisory_lock" if wait else "pg_try_advisory_lock"
         got = conn.execute(
-            text(f"SELECT {fn}(:a, :b)"), {"a": LOCK_KEY[0], "b": LOCK_KEY[1]}
+            _LOCK_WAIT if wait else _LOCK_TRY, {"a": LOCK_KEY[0], "b": LOCK_KEY[1]}
         ).scalar()
         # pg_advisory_lock returns void once it has the lock.
         held = True if wait else bool(got)
