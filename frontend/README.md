@@ -49,10 +49,10 @@ None is a secret: every `NEXT_PUBLIC_` value ends up in the browser.
 | `NEXT_PUBLIC_UPLOAD_ORIGIN` | Only when resumes upload straight to S3: the bucket's origin. |
 | `NEXT_PUBLIC_AUTH_MODE` | `local` (email and password, the default) or `cognito`. |
 | `NEXT_PUBLIC_REGISTRATION` | Local mode only. `open` (the default) or `closed`, which hides Register. |
-| `NEXT_PUBLIC_COGNITO_DOMAIN` | Cognito mode. The user pool's domain, `https://<prefix>.auth.<region>.amazoncognito.com`. |
+| `NEXT_PUBLIC_COGNITO_DOMAIN` | Cognito mode. The **user pool's own domain**, not the site's: `https://<prefix>.auth.<region>.amazoncognito.com`, or a custom Cognito domain. Unrelated to step1careers.com. |
 | `NEXT_PUBLIC_COGNITO_CLIENT_ID` | Cognito mode. The app client id. It is a public client, with no secret. |
-| `NEXT_PUBLIC_COGNITO_REDIRECT_URI` | Cognito mode. `https://<site>/auth/callback`, exactly as registered, no trailing slash. |
-| `NEXT_PUBLIC_COGNITO_LOGOUT_URI` | Cognito mode. Where Cognito returns after sign-out, for example `https://<site>/login`. |
+| `NEXT_PUBLIC_COGNITO_REDIRECT_URI` | Cognito mode. `https://step1careers.com/auth/callback`, exactly as registered, no trailing slash. |
+| `NEXT_PUBLIC_COGNITO_LOGOUT_URI` | Cognito mode. Where Cognito returns after sign-out, for example `https://step1careers.com/login`. |
 
 ### The production build
 
@@ -426,13 +426,17 @@ off. StEP1 never sees a password.
 
 1. "Sign in" makes a code verifier, a state and a nonce, keeps them in the
    tab's `sessionStorage`, and sends the browser to
-   `<domain>/oauth2/authorize` with `response_type=code`,
-   `code_challenge_method=S256`, the challenge, the state, the nonce and
-   `scope=openid email profile`. There is no client secret.
-2. Cognito signs the person in and returns to `/auth/callback?code=...&state=...`.
+   `<cognito domain>/oauth2/authorize` (the user pool's own domain, from
+   `NEXT_PUBLIC_COGNITO_DOMAIN`, not step1careers.com) with
+   `response_type=code`, `code_challenge_method=S256`, the challenge, the
+   state, the nonce and `scope=openid email profile`. There is no client
+   secret.
+2. Cognito signs the person in and returns to
+   `https://step1careers.com/auth/callback?code=...&state=...`.
 3. The callback page checks the state, exchanges the code and the verifier
-   at `<domain>/oauth2/token`, checks the ID token's nonce, audience and
-   expiry, stores the session, and goes on to where the person was heading.
+   at `<cognito domain>/oauth2/token`, checks the ID token's nonce, audience
+   and expiry, stores the session, and goes on to where the person was
+   heading.
 
 **Which token goes to the API: the ID token.** Its `aud` is the app client
 id and its `token_use` is `id`, and it carries `email` and `name`, which the
@@ -446,8 +450,8 @@ and the request repeated once. If it can't be renewed, the page the person
 was on is remembered, they sign in again, and they come back to it.
 
 **Signing out** clears the session here and goes through
-`<domain>/logout?client_id=...&logout_uri=...`, which ends Cognito's own
-session.
+`<cognito domain>/logout?client_id=...&logout_uri=...`, which ends Cognito's
+own session.
 
 **Delete my account** asks for the word DELETE instead of a password, and
 leaves through Cognito's sign-out.
@@ -463,10 +467,10 @@ What the person is told when it goes wrong:
 
 ## Deploying to Amplify
 
-The site is hosted as **static files**. AWS Amplify Hosting runs Next.js
-server rendering only up to Next.js 15, and this is Next.js 16; nothing here
-needs a server, because every page is rendered in the browser against the
-API.
+The site is `step1careers.com`, its API is `api.step1careers.com`, and it is
+hosted as **static files**. AWS Amplify Hosting runs Next.js server
+rendering only up to Next.js 15, and this is Next.js 16; nothing here needs
+a server, because every page is rendered in the browser against the API.
 
 Nothing below has been done. These are the steps, in order, with where each
 fact comes from. "Docs" means the AWS Amplify Hosting user guide or the
@@ -496,12 +500,12 @@ site would quietly run on made-up data.
 
 | Variable | Value |
 |---|---|
-| `NEXT_PUBLIC_API_BASE` | `https://api.<domain>` |
+| `NEXT_PUBLIC_API_BASE` | `https://api.step1careers.com` |
 | `NEXT_PUBLIC_AUTH_MODE` | `cognito` |
-| `NEXT_PUBLIC_COGNITO_DOMAIN` | the user pool's domain |
+| `NEXT_PUBLIC_COGNITO_DOMAIN` | the user pool's **own** domain, e.g. `https://step1careers.auth.us-east-1.amazoncognito.com`: a Cognito prefix or custom domain, not `step1careers.com` itself |
 | `NEXT_PUBLIC_COGNITO_CLIENT_ID` | the app client id |
-| `NEXT_PUBLIC_COGNITO_REDIRECT_URI` | `https://<domain>/auth/callback` |
-| `NEXT_PUBLIC_COGNITO_LOGOUT_URI` | `https://<domain>/login` |
+| `NEXT_PUBLIC_COGNITO_REDIRECT_URI` | `https://step1careers.com/auth/callback` |
+| `NEXT_PUBLIC_COGNITO_LOGOUT_URI` | `https://step1careers.com/login` |
 | `NEXT_PUBLIC_UPLOAD_ORIGIN` | the resume bucket's origin, if uploads go straight to S3 |
 
 In Cognito, the app client needs the redirect URI among its allowed callback
@@ -564,27 +568,31 @@ them, save the output of `npm run headers:amplify -- --print` as
 
 ### 5. Check the live site
 
-Replace `<site>` with the address Amplify gives you, or the domain.
+Before the domain is attached, use the address Amplify gives you
+(`https://<branch>.<app-id>.amplifyapp.com`) in place of
+`https://step1careers.com` below; afterwards, use the real domain.
 
 ```bash
+site=https://step1careers.com
+
 # every page is a file, and answers 200
 for p in / /login /auth/callback /onboarding /onboarding/building /saved \
          /applications "/application?id=1" /about /privacy; do
-  curl -s -o /dev/null -w "%{http_code}  $p\n" "https://<site>$p"
+  curl -s -o /dev/null -w "%{http_code}  $p\n" "$site$p"
 done
 
 # an unknown address answers 404 with the site's own page
-curl -s -o /dev/null -w "%{http_code}\n" https://<site>/no/such/page      # 404
-curl -s https://<site>/no/such/page | grep -c "Page not found"            # 1
+curl -s -o /dev/null -w "%{http_code}\n" "$site/no/such/page"      # 404
+curl -s "$site/no/such/page" | grep -c "Page not found"            # 1
 
 # the headers
-curl -sI https://<site>/ | grep -iE "strict-transport|x-frame|x-content|referrer|permissions|content-security"
+curl -sI "$site/" | grep -iE "strict-transport|x-frame|x-content|referrer|permissions|content-security"
 
 # the policy in the page names the real API and Cognito origins
-curl -s https://<site>/login | grep -o 'connect-src[^;]*'
+curl -s "$site/login" | grep -o 'connect-src[^;]*'
 
 # nothing is fetched from anywhere but the site
-curl -s https://<site>/login | grep -oE 'https?://[^"]+' | sort -u
+curl -s "$site/login" | grep -oE 'https?://[^"]+' | sort -u
 ```
 
 Then, in a browser, with the developer tools console open:

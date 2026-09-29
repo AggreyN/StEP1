@@ -4,12 +4,15 @@
 //
 //   1. beginSignIn()   makes a code verifier, a state and a nonce, keeps them
 //                      in this tab's sessionStorage, and sends the browser to
-//                      <domain>/oauth2/authorize.
+//                      <cognito domain>/oauth2/authorize (the user pool's
+//                      own domain, NEXT_PUBLIC_COGNITO_DOMAIN, not
+//                      step1careers.com).
 //   2. Cognito signs the person in and sends the browser back to
-//      /auth/callback?code=...&state=...
+//      step1careers.com/auth/callback?code=...&state=...
 //   3. finishSignIn()  checks the state, exchanges the code (with the
-//                      verifier) at <domain>/oauth2/token, checks the ID
-//                      token's nonce and audience, and stores the session.
+//                      verifier) at <cognito domain>/oauth2/token, checks
+//                      the ID token's nonce and audience, and stores the
+//                      session.
 //
 // The endpoints and their parameters are Cognito's, from the Amazon Cognito
 // developer guide ("The redirect and authorization endpoint", "The token

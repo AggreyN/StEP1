@@ -55,7 +55,7 @@ jobs:
       - name: Deploy settings are checked (and refuse the mock)
         run: |
           if npm run --silent check:deploy; then echo "check:deploy should refuse a build with no API"; exit 1; fi
-          NEXT_PUBLIC_API_BASE=https://api.example.org npm run --silent check:deploy
+          NEXT_PUBLIC_API_BASE=https://api.step1careers.com npm run --silent check:deploy
 
       - name: Build (static export)
         run: npm run build && test -f out/index.html && test -f out/404.html && test -f out/application.html

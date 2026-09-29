@@ -19,8 +19,8 @@
 //
 // `next dev` serves the header copy itself (next.config.ts).
 
-/** "https://api.example.org/x" -> "https://api.example.org"; anything that
- *  isn't an absolute http(s) URL (unset, "mock") -> null. */
+/** "https://api.step1careers.com/x" -> "https://api.step1careers.com";
+ *  anything that isn't an absolute http(s) URL (unset, "mock") -> null. */
 export function originOf(value) {
   if (!value) return null;
   try {

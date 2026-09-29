@@ -107,17 +107,28 @@ test("amplify.yml carries the security headers from the one definition", () => {
   expect(yml).toContain("appRoot: frontend");
 });
 
-test("nothing names a domain for the site or the API", () => {
-  // The domain isn't chosen. Addresses come from environment variables.
+test("amplify.yml and the rewrite rules still name no domain", () => {
+  // The domain (step1careers.com) is chosen, but nothing that ships to
+  // Amplify's build settings should hardcode it: both files apply to any
+  // branch or preview URL, and the real address comes from Amplify's own
+  // domain association plus the environment variables in README.md.
   const yml = readFileSync(path.resolve(ROOT, "../amplify.yml"), "utf8");
   const rules = readFileSync(path.join(ROOT, "amplify-rewrites.json"), "utf8");
   for (const [name, text] of [["amplify.yml", yml], ["amplify-rewrites.json", rules]] as const) {
     expect(text, name).not.toMatch(/https?:\/\/[a-z0-9.-]+\.[a-z]{2,}/i);
   }
+});
+
+test("the site's own domain is never hardcoded outside a comment", () => {
+  // step1careers.com is real now, and is explained in comments (so the
+  // Cognito domain, which is a different, unrelated address, is never
+  // confused with it). It must still never be a literal that an API call, a
+  // redirect, or the Content-Security-Policy relies on: every one of those
+  // comes from an environment variable, so a preview deploy or a future
+  // domain change is a settings change, not a code change.
   const hits: string[] = [];
   for (const file of SRC) {
-    const text = code(file);
-    if (/step1\.(com|org|net|io|app|dev)\b/i.test(text)) hits.push(path.relative(ROOT, file));
+    if (/step1careers\.(com|org|net|io|app|dev)\b/i.test(code(file))) hits.push(path.relative(ROOT, file));
   }
   expect(hits).toEqual([]);
 });

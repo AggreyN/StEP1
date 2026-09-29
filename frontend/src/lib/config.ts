@@ -15,12 +15,15 @@ export const REGISTRATION_OPEN = process.env.NEXT_PUBLIC_REGISTRATION !== "close
 const trim = (v: string | undefined) => (v ?? "").replace(/\/+$/, "");
 
 export const COGNITO = {
-  /** The user pool's domain, e.g. https://<prefix>.auth.<region>.amazoncognito.com */
+  /** The user pool's OWN domain, e.g.
+   *  https://<prefix>.auth.<region>.amazoncognito.com: a Cognito prefix or
+   *  custom domain, unrelated to and never the same as step1careers.com. */
   domain: trim(process.env.NEXT_PUBLIC_COGNITO_DOMAIN),
   /** The app client. It is a public client: there is no client secret. */
   clientId: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID ?? "",
-  /** Where Cognito sends the browser after sign-in: <site>/auth/callback.
-   *  Must match an allowed callback URL of the app client exactly. */
+  /** Where Cognito sends the browser after sign-in:
+   *  https://step1careers.com/auth/callback. Must match an allowed callback
+   *  URL of the app client exactly. */
   redirectUri: process.env.NEXT_PUBLIC_COGNITO_REDIRECT_URI ?? "",
   /** Where Cognito sends the browser after sign-out. Must match an allowed
    *  sign-out URL of the app client exactly. */
