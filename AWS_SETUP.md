@@ -148,6 +148,10 @@ template if offered, otherwise Dev/Test.
 - Storage: 20 GB gp3, **turn off storage autoscaling** (it's how small
   databases quietly become expensive ones)
 - Public access: **No**
+- Encryption: **turn on storage encryption** (the default AWS-managed key is
+  fine). This can only be chosen at creation — an unencrypted instance cannot
+  be encrypted later without a snapshot restore — so do it before there is
+  any data in it
 - Backups: 7 days
 - Note the master username and password — put them in Secrets Manager, not a
   text file
