@@ -23,6 +23,7 @@ from app.routes import (  # noqa: E402  (logging must be configured first)
     auth,
     feed,
     health,
+    ingest,
     postings,
     profile,
     saved,
@@ -129,3 +130,4 @@ app.include_router(feed.router)
 app.include_router(postings.router)
 app.include_router(saved.router)
 app.include_router(applications.router)
+app.include_router(ingest.router)

@@ -256,6 +256,33 @@ class FeedStatusOut(BaseModel):
 
 
 # --------------------------------------------------------------------------- #
+# Freshness
+# --------------------------------------------------------------------------- #
+
+
+class IngestSourceOut(BaseModel):
+    source: str
+    last_success_at: UtcDateTime | None
+    last_attempt_at: UtcDateTime | None
+    fetched: int
+    upserted: int
+    deactivated: int
+    error: str | None
+
+
+class IngestStatusOut(BaseModel):
+    last_success_at: UtcDateTime | None
+    next_due_at: UtcDateTime | None
+    # int when it is a whole number of hours (the usual 24), so the JSON reads
+    # 24 and not 24.0.
+    interval_hours: int | float
+    auto: bool
+    running: bool
+    active_postings: int
+    sources: list[IngestSourceOut]
+
+
+# --------------------------------------------------------------------------- #
 # Applications
 # --------------------------------------------------------------------------- #
 
