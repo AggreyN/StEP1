@@ -1,0 +1,49 @@
+# Dependabot: a pull request when a dependency has a newer version, and at
+# once when one has a security fix.
+#
+# Weekly, on Mondays, so that updates arrive as one batch to look at rather
+# than as a trickle. Minor and patch updates are grouped into a single pull
+# request per ecosystem; a major version gets its own, because it is the one
+# that needs reading.
+
+version: 2
+
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [dependencies, backend]
+    groups:
+      backend-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # passlib 1.7.4 cannot use bcrypt 4.1 or later: every password hash
+      # raises. The pin is in requirements.txt with the same explanation.
+      # Remove this when passlib is replaced or fixed.
+      - dependency-name: bcrypt
+        versions: [">=4.1"]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [dependencies, frontend]
+    groups:
+      frontend-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [dependencies, ci]
+    groups:
+      actions:
+        patterns: ["*"]

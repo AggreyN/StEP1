@@ -6,6 +6,9 @@ on:
   pull_request:
     paths: ["backend/**", ".github/workflows/backend-tests.yml"]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -29,8 +32,10 @@ jobs:
       TEST_DATABASE_URL: postgresql+psycopg://step1:step1@localhost:5432/step1_test
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
           cache: pip
