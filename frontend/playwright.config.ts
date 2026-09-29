@@ -17,7 +17,9 @@ export default defineConfig({
   expect: { timeout: process.env.CI ? 15_000 : 10_000 },
   use: {
     baseURL: `http://localhost:${PORT}`,
-    trace: "on-first-retry",
+    // Local runs don't retry, so keep the trace of any failure: an
+    // intermittent one is only diagnosable if it left something behind.
+    trace: "retain-on-failure",
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] }, testIgnore: /mobile\.spec\.ts/ },
