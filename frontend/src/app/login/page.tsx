@@ -3,7 +3,8 @@ import { Suspense, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMe, login, register } from "@/lib/api";
 import { setSession } from "@/lib/auth";
-import { SourcesFooter, Wordmark } from "@/components/AppShell";
+import { Wordmark } from "@/components/AppShell";
+import { SiteFooter } from "@/components/SiteFooter";
 import { Button, ErrorNote } from "@/components/ui";
 
 const input =
@@ -117,7 +118,7 @@ function LoginForm() {
           </Button>
         </form>
       </main>
-      <SourcesFooter />
+      <SiteFooter />
     </div>
   );
 }

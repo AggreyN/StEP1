@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { clearSession } from "@/lib/auth";
+import { SiteFooter } from "./SiteFooter";
 
 const NAV = [
   { href: "/", label: "Matches" },
@@ -16,22 +17,6 @@ export function Wordmark() {
     <span className="text-[17px] font-semibold tracking-tight">
       St<span className="text-accent">EP</span>1
     </span>
-  );
-}
-
-export function SourcesFooter() {
-  return (
-    <footer className="mt-auto border-t border-line px-4 py-5 text-center text-xs text-faint">
-      Listings from{" "}
-      <a className="underline underline-offset-2 hover:text-muted" href="https://github.com/SimplifyJobs/Summer2027-Internships" target="_blank" rel="noreferrer">
-        SimplifyJobs
-      </a>{" "}
-      and{" "}
-      <a className="underline underline-offset-2 hover:text-muted" href="https://github.com/vanshb03/Summer2027-Internships" target="_blank" rel="noreferrer">
-        vanshb03
-      </a>
-      . Every listing links out to the original posting. StEP1 doesn&apos;t own or host them.
-    </footer>
   );
 }
 
@@ -77,7 +62,7 @@ export function AppShell({ children, wide = false }: { children: ReactNode; wide
       </header>
 
       <main className={`mx-auto w-full flex-1 px-4 py-4 sm:py-5 ${width}`}>{children}</main>
-      <SourcesFooter />
+      <SiteFooter />
 
       <nav
         aria-label="Main"
