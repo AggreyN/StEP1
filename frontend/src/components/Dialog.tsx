@@ -1,6 +1,9 @@
 "use client";
-// Native <dialog> (focus trap, Esc, backdrop for free). `sheet` renders as a
-// bottom sheet — used for the mobile filter panel.
+// Native <dialog>, opened with showModal(). The browser then does the
+// keyboard work: focus stays inside while it is open, Esc closes it, and
+// focus returns to whatever opened it when it closes. Focus starts on the
+// element marked data-autofocus, or on the first control if there is none.
+// `sheet` renders as a bottom sheet, used for the mobile filter panel.
 import { useEffect, useRef, type ReactNode } from "react";
 import { XIcon } from "./icons";
 
@@ -22,7 +25,10 @@ export function Dialog({
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
-    if (open && !d.open) d.showModal();
+    if (open && !d.open) {
+      d.showModal();
+      d.querySelector<HTMLElement>("[data-autofocus]")?.focus();
+    }
     if (!open && d.open) d.close();
   }, [open]);
 
@@ -45,6 +51,7 @@ export function Dialog({
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <h2 className="text-base font-semibold">{title}</h2>
             <button
+              type="button"
               onClick={onClose}
               aria-label="Close"
               className="-mr-2 inline-flex h-9 w-9 items-center justify-center rounded-control text-muted hover:bg-surface-2 hover:text-fg"

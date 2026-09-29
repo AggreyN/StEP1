@@ -16,7 +16,7 @@ import { Button, Chip, ErrorNote, Spinner } from "@/components/ui";
 import { CheckIcon, XIcon } from "@/components/icons";
 
 const input =
-  "h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-[15px] text-fg placeholder:text-faint focus:border-accent focus:outline-none";
+  "h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-[15px] text-fg placeholder:text-faint";
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -274,14 +274,14 @@ export default function OnboardingPage() {
                 ref={fileRef}
                 type="file"
                 accept="application/pdf,.pdf"
-                className="sr-only"
+                className="peer sr-only"
                 id="resume-file"
                 onChange={(e) => onFile(e.target.files?.[0])}
                 disabled={uploading}
               />
               <label
                 htmlFor="resume-file"
-                className={`inline-flex h-11 cursor-pointer items-center rounded-control border border-line-strong bg-surface px-4 text-sm font-medium hover:bg-surface-2 ${uploading ? "pointer-events-none opacity-45" : ""}`}
+                className={`inline-flex h-11 cursor-pointer items-center rounded-control border border-line-strong bg-surface px-4 text-sm font-medium hover:bg-surface-2 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent ${uploading ? "pointer-events-none opacity-45" : ""}`}
               >
                 {resume ? "Replace PDF" : "Upload PDF"}
               </label>

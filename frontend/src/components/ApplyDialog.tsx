@@ -46,10 +46,11 @@ export function ApplyDialog({
             <span className="mb-1 block text-sm font-medium">Date applied</span>
             <input
               type="date"
+              data-autofocus
               value={date}
               max={todayInput()}
               onChange={(e) => setDate(e.target.value)}
-              className="h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-[15px] focus:border-accent focus:outline-none"
+              className="h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-[15px]"
             />
           </label>
           {error && <ErrorNote>{error}</ErrorNote>}

@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { formatSalary, postedAge } from "@/lib/format";
 import { kindLabel } from "@/lib/labels";
@@ -12,12 +13,24 @@ export function PostingCard({
   onToggleSave,
   onApply,
   saving = false,
+  focusApplication = false,
 }: {
   posting: Posting;
   onToggleSave: (p: Posting) => void;
   onApply: (p: Posting) => void;
   saving?: boolean;
+  /** Move keyboard focus to the timeline link (set right after applying). */
+  focusApplication?: boolean;
 }) {
+  const applicationLink = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    if (!focusApplication) return;
+    // After the dialog has closed: closing it hands focus back to the button
+    // that opened it, which no longer exists.
+    const frame = requestAnimationFrame(() => applicationLink.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [focusApplication]);
+
   const p = posting;
   const salary = formatSalary(p.salary);
   const age = postedAge(p.date_posted);
@@ -34,11 +47,11 @@ export function PostingCard({
       <div className="flex items-start gap-3">
         <ScoreBadge score={p.score} />
         <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-2 break-words text-[15px] font-semibold leading-snug sm:text-base">
+          <h2 className="line-clamp-2 break-words text-[15px] font-semibold leading-snug sm:text-base">
             <a href={p.url} target="_blank" rel="noreferrer" className="hover:underline">
               {p.title}
             </a>
-          </h3>
+          </h2>
           <p className="truncate text-sm text-muted">
             <span className="font-medium text-fg">{p.company.name}</span>
             {" · "}
@@ -48,8 +61,9 @@ export function PostingCard({
         </div>
         <button
           type="button"
-          onClick={() => onToggleSave(p)}
-          disabled={saving}
+          onClick={() => !saving && onToggleSave(p)}
+          // aria-disabled, not disabled, so keyboard focus stays on the star
+          aria-disabled={saving}
           aria-pressed={p.saved}
           aria-label={p.saved ? "Unsave" : "Save"}
           data-testid="save-toggle"
@@ -95,6 +109,7 @@ export function PostingCard({
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
           {p.application ? (
             <Link
+              ref={applicationLink}
               href={`/applications/${p.application.id}`}
               data-testid="application-link"
               className="inline-flex h-10 items-center gap-1.5 rounded-control bg-surface-2 px-3 text-sm font-medium hover:bg-line sm:h-9"

@@ -2,7 +2,7 @@
 // Saved postings: the same cards, filtered to saved. Un-starring is
 // optimistic; the card leaves the list once the API confirms, and comes back
 // starred if the call fails.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiError, getSaved } from "@/lib/api";
@@ -42,8 +42,11 @@ export default function SavedPage() {
     setData((d) => d && { ...d, items: d.items.map((p) => (p.id === id ? fn(p) : p)) });
   }, []);
 
+  const heading = useRef<HTMLHeadingElement>(null);
   const removed = useCallback((id: string) => {
     setData((d) => d && { ...d, items: d.items.filter((p) => p.id !== id), total: Math.max(0, d.total - 1) });
+    // The card that had focus is gone; put focus somewhere known.
+    heading.current?.focus();
   }, []);
 
   async function loadMore() {
@@ -69,7 +72,9 @@ export default function SavedPage() {
   return (
     <AppShell>
       <div className="mb-3">
-        <h1 className="text-xl font-semibold tracking-tight">Saved</h1>
+        <h1 ref={heading} tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none">
+          Saved
+        </h1>
         <p className="tnum text-sm text-muted">
           {data ? `${data.total} saved posting${data.total === 1 ? "" : "s"}` : error ? "" : "Loading…"}
         </p>
@@ -99,7 +104,7 @@ export default function SavedPage() {
           <PostingList items={data.items} onPatch={patch} onUnsaved={removed} />
           {data.has_more && (
             <div className="mt-5 flex justify-center">
-              <Button onClick={loadMore} disabled={loadingMore}>
+              <Button onClick={loadMore} busy={loadingMore}>
                 {loadingMore ? "Loading…" : "Load more"}
               </Button>
             </div>

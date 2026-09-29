@@ -2,7 +2,7 @@
 // Application detail: the timeline. The buttons under it are rendered from
 // the API's `next_transitions` — this page has no idea which state may
 // follow which.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ApiError, getApplication } from "@/lib/api";
@@ -24,6 +24,16 @@ export default function ApplicationDetailPage() {
   const [loaded, setLoaded] = useState<{ id: string; detail: ApplicationDetail } | null>(null);
   const [failure, setFailure] = useState<{ id: string; message: string; missing: boolean } | null>(null);
   const [dialogKind, setDialogKind] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState("");
+  const nextHeading = useRef<HTMLHeadingElement>(null);
+  // Counts recorded events. After each one, focus moves to the "What happened
+  // next?" heading: the button that opened the dialog may no longer exist.
+  const [recorded, setRecorded] = useState(0);
+  useEffect(() => {
+    if (!recorded) return;
+    const frame = requestAnimationFrame(() => nextHeading.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [recorded]);
 
   useEffect(() => {
     if (!authed || !id) return;
@@ -56,9 +66,17 @@ export default function ApplicationDetailPage() {
       </Link>
 
       {error ? (
-        <ErrorNote>{error.message}</ErrorNote>
+        <>
+          <h1 className="mb-3 text-xl font-semibold tracking-tight">
+            {error.missing ? "Application not found" : "Application"}
+          </h1>
+          <ErrorNote>{error.message}</ErrorNote>
+        </>
       ) : !app ? (
-        <Spinner label="Loading timeline" />
+        <>
+          <h1 className="mb-3 text-xl font-semibold tracking-tight">Application</h1>
+          <Spinner label="Loading timeline" />
+        </>
       ) : (
         <div className="space-y-4">
           <header className="rounded-card border border-line bg-surface p-4">
@@ -94,7 +112,9 @@ export default function ApplicationDetailPage() {
           </section>
 
           <section className="rounded-card border border-line bg-surface p-4" aria-label="Next steps">
-            <h2 className="text-base font-semibold">What happened next?</h2>
+            <h2 ref={nextHeading} tabIndex={-1} className="text-base font-semibold outline-none">
+              What happened next?
+            </h2>
             {app.next_transitions.length > 0 ? (
               <div className="mt-3 flex flex-wrap gap-2" data-testid="transitions">
                 {app.next_transitions.map((kind) => {
@@ -129,10 +149,17 @@ export default function ApplicationDetailPage() {
             kind={dialogKind}
             onClose={() => setDialogKind(null)}
             onSaved={(detail) => {
+              setAnnouncement(
+                dialogKind === "note" ? "Note added." : `Recorded. This application is now: ${kindLabel(detail.status)}.`
+              );
               setLoaded({ id, detail });
               setDialogKind(null);
+              setRecorded((n) => n + 1);
             }}
           />
+          <p className="sr-only" role="status" aria-live="polite" data-testid="timeline-announcement">
+            {announcement}
+          </p>
         </div>
       )}
     </AppShell>

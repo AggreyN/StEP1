@@ -185,7 +185,7 @@ function Dashboard() {
               <PostingList items={items} onPatch={patch} />
               {hasMore && (
                 <div className="mt-5 flex justify-center">
-                  <Button onClick={loadMore} disabled={loadingMore} data-testid="load-more">
+                  <Button onClick={loadMore} busy={loadingMore} data-testid="load-more">
                     {loadingMore ? "Loading…" : `Load more (${total - items.length} left)`}
                   </Button>
                 </div>

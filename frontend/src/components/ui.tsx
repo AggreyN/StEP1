@@ -14,12 +14,29 @@ export function Button({
   variant = "secondary",
   size = "md",
   className = "",
+  busy = false,
+  onClick,
+  type = "button",
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: "sm" | "md" }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: Variant;
+  size?: "sm" | "md";
+  /** Working on it: ignores presses but keeps keyboard focus, unlike `disabled`. */
+  busy?: boolean;
+}) {
   const sz = size === "sm" ? "h-9 px-3 text-sm" : "h-11 px-4 text-[15px]";
   return (
     <button
-      className={`inline-flex items-center justify-center gap-1.5 rounded-control font-medium transition-colors disabled:opacity-45 disabled:cursor-not-allowed ${sz} ${VARIANTS[variant]} ${className}`}
+      type={type}
+      aria-disabled={busy || undefined}
+      onClick={(e) => {
+        if (busy) {
+          e.preventDefault();
+          return;
+        }
+        onClick?.(e);
+      }}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-control font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 aria-disabled:cursor-progress aria-disabled:opacity-60 ${sz} ${VARIANTS[variant]} ${className}`}
       {...rest}
     />
   );

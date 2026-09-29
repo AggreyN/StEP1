@@ -1,6 +1,8 @@
 "use client";
-// Free-text chips (preferred locations). Enter or comma adds; × removes.
-import { useState } from "react";
+// Free-text chips (preferred locations). Enter or the Add button adds one;
+// the button on a chip removes it. A comma does not add, because places
+// have commas in them ("Washington, DC").
+import { useRef, useState } from "react";
 import { XIcon } from "./icons";
 
 export function ChipInput({
@@ -21,6 +23,7 @@ export function ChipInput({
   maxLength: number;
 }) {
   const [draft, setDraft] = useState("");
+  const field = useRef<HTMLInputElement>(null);
   const entry = draft.trim().replace(/,$/, "").trim();
   const full = value.length >= max;
   const problem = full
@@ -34,6 +37,7 @@ export function ChipInput({
     if (!entry || problem) return;
     if (!value.some((x) => x.toLowerCase() === entry.toLowerCase())) onChange([...value, entry]);
     setDraft("");
+    field.current?.focus(); // ready for the next one; the Add button is about to disable
   };
   return (
     <div>
@@ -44,7 +48,10 @@ export function ChipInput({
               {v}
               <button
                 type="button"
-                onClick={() => onChange(value.filter((x) => x !== v))}
+                onClick={() => {
+                  onChange(value.filter((x) => x !== v));
+                  field.current?.focus(); // the button that had focus is gone
+                }}
                 aria-label={`Remove ${v}`}
                 className="inline-flex h-7 w-7 items-center justify-center rounded-chip text-muted hover:bg-surface hover:text-fg"
               >
@@ -56,6 +63,7 @@ export function ChipInput({
       )}
       <div className="flex gap-2">
         <input
+          ref={field}
           aria-label={label}
           value={draft}
           placeholder={placeholder}
@@ -63,12 +71,12 @@ export function ChipInput({
           aria-invalid={problem && entry ? true : undefined}
           aria-describedby={problem ? hintId : undefined}
           onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === ",") {
+            if (e.key === "Enter") {
               e.preventDefault();
               add();
             }
           }}
-          className="h-11 min-w-0 flex-1 rounded-control border border-line-strong bg-surface px-3 text-[15px] placeholder:text-faint focus:border-accent focus:outline-none"
+          className="h-11 min-w-0 flex-1 rounded-control border border-line-strong bg-surface px-3 text-[15px] placeholder:text-faint"
         />
         <button
           type="button"

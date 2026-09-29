@@ -22,6 +22,9 @@ export function PostingList({
   const [pending, setPending] = useState<Set<string>>(new Set());
   const [applying, setApplying] = useState<Posting | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The "I applied" button that opened the dialog is replaced by a link to
+  // the timeline; focus goes there instead of nowhere.
+  const [justApplied, setJustApplied] = useState<string | null>(null);
 
   const patch = onPatch;
 
@@ -48,6 +51,7 @@ export function PostingList({
 
   function created(app: ApplicationDetail) {
     patch(app.posting.id, (x) => ({ ...x, application: { id: app.id, status: app.status } }));
+    setJustApplied(app.posting.id);
     setApplying(null);
   }
 
@@ -61,7 +65,13 @@ export function PostingList({
       <ul className="space-y-3">
         {items.map((p) => (
           <li key={p.id}>
-            <PostingCard posting={p} onToggleSave={toggleSave} onApply={setApplying} saving={pending.has(p.id)} />
+            <PostingCard
+              posting={p}
+              onToggleSave={toggleSave}
+              onApply={setApplying}
+              saving={pending.has(p.id)}
+              focusApplication={justApplied === p.id}
+            />
           </li>
         ))}
       </ul>

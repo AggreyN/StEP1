@@ -30,7 +30,7 @@ export default defineConfig({
         hasTouch: true,
         deviceScaleFactor: 2,
       },
-      testMatch: /(mobile|screens)\.spec\.ts/,
+      testMatch: /(mobile|screens|a11y)\.spec\.ts/,
     },
   ],
   webServer: {

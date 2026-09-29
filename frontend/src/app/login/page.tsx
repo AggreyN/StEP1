@@ -9,7 +9,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { Button, ErrorNote } from "@/components/ui";
 
 const input =
-  "h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-[15px] text-fg placeholder:text-faint focus:border-accent focus:outline-none";
+  "h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-[15px] text-fg placeholder:text-faint";
 
 function LoginForm() {
   const router = useRouter();
@@ -71,12 +71,29 @@ function LoginForm() {
           </p>
         )}
 
-        <div role="tablist" aria-label="Sign in or register" className="mb-5 grid grid-cols-2 rounded-control border border-line-strong bg-surface-2 p-0.5 text-sm">
+        <div
+          role="tablist"
+          aria-label="Sign in or register"
+          onKeyDown={(e) => {
+            // arrow keys switch tabs; Tab moves on to the form
+            if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+            e.preventDefault();
+            const next = mode === "login" ? "register" : "login";
+            setMode(next);
+            setError(null);
+            e.currentTarget.querySelector<HTMLElement>(`#tab-${next}`)?.focus();
+          }}
+          className="mb-5 grid grid-cols-2 rounded-control border border-line-strong bg-surface-2 p-0.5 text-sm"
+        >
           {(["login", "register"] as const).map((m) => (
             <button
               key={m}
+              id={`tab-${m}`}
+              type="button"
               role="tab"
               aria-selected={mode === m}
+              aria-controls="sign-in-form"
+              tabIndex={mode === m ? 0 : -1}
               onClick={() => {
                 setMode(m);
                 setError(null);
@@ -90,6 +107,7 @@ function LoginForm() {
           ))}
         </div>
 
+        <div id="sign-in-form" role="tabpanel" aria-labelledby={`tab-${mode}`}>
         <form onSubmit={submit} className="space-y-4" noValidate>
           {mode === "register" && (
             <label className="block">
@@ -138,6 +156,7 @@ function LoginForm() {
             {busy ? "One moment…" : mode === "login" ? "Sign in" : "Create account"}
           </Button>
         </form>
+        </div>
       </main>
       <SiteFooter />
     </div>

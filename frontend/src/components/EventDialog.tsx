@@ -11,7 +11,7 @@ import { Dialog } from "./Dialog";
 import { Button, ErrorNote } from "./ui";
 
 const field =
-  "w-full rounded-control border border-line-strong bg-surface px-3 text-[15px] placeholder:text-faint focus:border-accent focus:outline-none";
+  "w-full rounded-control border border-line-strong bg-surface px-3 text-[15px] placeholder:text-faint";
 
 function EventForm({
   applicationId,
@@ -68,6 +68,7 @@ function EventForm({
           Note {!isNote && <span className="font-normal text-faint">(optional)</span>}
         </span>
         <textarea
+          data-autofocus
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}

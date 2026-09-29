@@ -29,6 +29,12 @@ export function AppShell({ children, wide = false }: { children: ReactNode; wide
 
   return (
     <div className="flex min-h-screen flex-col pb-14 sm:pb-0">
+      <a
+        href="#content"
+        className="sr-only rounded-control bg-surface px-3 py-2 text-sm font-medium text-fg focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-30"
+      >
+        Skip to content
+      </a>
       <header className="sticky top-0 z-20 border-b border-line bg-surface/95 backdrop-blur">
         <div className={`mx-auto flex h-12 items-center gap-2 px-4 sm:h-14 ${width}`}>
           <Link href="/" className="mr-2 sm:mr-6">
@@ -61,7 +67,9 @@ export function AppShell({ children, wide = false }: { children: ReactNode; wide
         </div>
       </header>
 
-      <main className={`mx-auto w-full flex-1 px-4 py-4 sm:py-5 ${width}`}>{children}</main>
+      <main id="content" tabIndex={-1} className={`mx-auto w-full flex-1 px-4 py-4 outline-none sm:py-5 ${width}`}>
+        {children}
+      </main>
       <SiteFooter />
 
       <nav

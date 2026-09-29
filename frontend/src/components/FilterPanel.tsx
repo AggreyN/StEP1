@@ -11,7 +11,7 @@ import { CheckIcon } from "./icons";
 const SCORE_STEPS = [50, 60, 70, 80, 90];
 
 const field =
-  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-fg placeholder:text-faint focus:border-accent focus:outline-none";
+  "h-10 w-full rounded-control border border-line-strong bg-surface px-3 text-sm text-fg placeholder:text-faint";
 
 export function FilterPanel({
   value,
