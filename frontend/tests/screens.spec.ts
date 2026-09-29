@@ -18,6 +18,18 @@ for (const scheme of ["light", "dark"] as const) {
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
     await shot("login");
 
+    await page.getByRole("tab", { name: "Register" }).click();
+    await shot("register");
+
+    await page.goto("/about", { waitUntil: "networkidle" });
+    await expect(page.getByTestId("stat-active_postings")).toHaveText("4,769");
+    await shot("about-top");
+    await shot("about", true);
+
+    await page.goto("/privacy", { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await shot("privacy", true);
+
     await signInDemo(page);
     await expect(page.getByTestId("freshness")).toBeVisible();
     await shot("dashboard");
@@ -54,6 +66,16 @@ for (const scheme of ["light", "dark"] as const) {
     await expect(page.getByTestId("ranked-interest").first()).toBeVisible();
     await shot("onboarding-top");
     await shot("onboarding", true);
+    await page.getByTestId("open-delete").click();
+    await expect(page.getByTestId("confirm-delete")).toBeVisible();
+    await shot("delete-dialog");
+    await page.getByRole("button", { name: "Keep my account" }).click();
+
+    await page.evaluate(() => localStorage.setItem("step1.mock.stuck", "1"));
+    await page.goto("/onboarding/building?retry=1");
+    await expect(page.getByTestId("building-step")).toHaveText("Scanning 4,139 open internships");
+    await shot("building");
+    await page.evaluate(() => localStorage.removeItem("step1.mock.stuck"));
 
     await page.goto("/saved");
     await expect(page.getByTestId("posting-card").first()).toBeVisible();

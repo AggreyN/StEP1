@@ -1,7 +1,7 @@
 "use client";
 // Dashboard: the feed, newest first by default. Filters and sort order live in
 // the URL so a view is linkable and survives reload.
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ApiError, PAGE_SIZE, getFeed } from "@/lib/api";
@@ -74,17 +74,25 @@ function Dashboard() {
   const setFilters = useCallback((f: FeedFilters) => setQuery(f, shownSort), [setQuery, shownSort]);
   const setSort = useCallback((s: FeedSort) => setQuery(shown, s), [setQuery, shown]);
 
+  // Changes made on this screen (a save, an application), with when they were
+  // made. A feed response that was requested before a change can arrive
+  // after it; those changes are laid back over it so they are not undone.
+  const edits = useRef<{ id: string; at: number; fn: (p: Posting) => Posting }[]>([]);
+  const withEdits = (items: Posting[], since: number) =>
+    items.map((p) => edits.current.filter((e) => e.id === p.id && e.at >= since).reduce((acc, e) => e.fn(acc), p));
+
   // Fetch page 1 whenever the URL's filters or sort change.
   useEffect(() => {
     if (!authed) return;
     let cancelled = false;
+    const asked = performance.now();
     const q = new URLSearchParams(key.split("#")[0]);
     const f = filtersFromParams(q);
     const s = sortFromParams(q);
     getFeed(f, 1, PAGE_SIZE, s)
       .then(async (page) => {
         if (cancelled) return;
-        setData({ key, page });
+        setData({ key, page: { ...page, items: withEdits(page.items, asked) } });
         if (page.total === 0 && activeFilterKeys(f).length) {
           const list = await diagnoseEmpty(f, s);
           if (!cancelled) setRelaxed({ key, list });
@@ -112,18 +120,21 @@ function Dashboard() {
   const relaxations = relaxed?.key === key ? relaxed.list : null;
 
   const patch = useCallback((id: string, fn: (p: Posting) => Posting) => {
+    edits.current = [...edits.current.slice(-49), { id, at: performance.now(), fn }];
     setData((d) => d && { ...d, page: { ...d.page, items: d.page.items.map((p) => (p.id === id ? fn(p) : p)) } });
   }, []);
 
   async function loadMore() {
     if (!current) return;
     setLoadingMore(true);
+    const asked = performance.now();
     try {
       const res = await getFeed(filters, current.page + 1, PAGE_SIZE, sort);
       setData((d) => {
         if (!d || d.key !== key) return d;
         const seen = new Set(d.page.items.map((p) => p.id));
-        return { key, page: { ...res, items: [...d.page.items, ...res.items.filter((p) => !seen.has(p.id))] } };
+        const fresh = withEdits(res.items.filter((p) => !seen.has(p.id)), asked);
+        return { key, page: { ...res, items: [...d.page.items, ...fresh] } };
       });
     } catch (e) {
       setFailure({ key, message: e instanceof Error ? e.message : "Couldn't load more." });

@@ -269,6 +269,26 @@ test("save is optimistic and rolls back when the API fails", async ({ page }) =>
   await expect(page.locator(`[data-posting-id="${id}"]`).getByTestId("save-toggle")).toHaveAttribute("aria-pressed", "true");
 });
 
+test("a save made while the list is refreshing is not undone by the refresh", async ({ page }) => {
+  // To Best match and straight back: the newest-first list is on screen again
+  // while it is fetched again in the background.
+  await page.getByRole("radio", { name: "Best match" }).click();
+  await page.getByRole("radio", { name: "Newest first" }).click();
+  const toggle = page
+    .getByTestId("posting-card")
+    .filter({ has: page.getByRole("button", { name: "Save", exact: true }) })
+    .first()
+    .getByTestId("save-toggle");
+  const id = await toggle.locator("xpath=ancestor::article").getAttribute("data-posting-id");
+  const mine = page.locator(`[data-posting-id="${id}"]`).getByTestId("save-toggle");
+  await mine.click(); // lands before the background fetch comes back
+  await expect(mine).toHaveAttribute("aria-pressed", "true");
+  await page.waitForTimeout(1500); // the fetch has come back by now
+  await expect(mine).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await expect(page.locator(`[data-posting-id="${id}"]`).getByTestId("save-toggle")).toHaveAttribute("aria-pressed", "true");
+});
+
 test("a failed 'I applied' shows the API's error and can be retried", async ({ page }) => {
   const card = page.getByTestId("posting-card").filter({ has: page.getByTestId("apply-button") }).first();
   const id = await card.getAttribute("data-posting-id");
