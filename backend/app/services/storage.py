@@ -85,7 +85,12 @@ def _s3():
     # for S3, the content type and length are not part of what is signed, and
     # pinning them would be decoration.
     return boto3.client(
-        "s3", region_name=config.AWS_REGION, config=Config(signature_version="s3v4")
+        "s3",
+        region_name=config.AWS_REGION,
+        config=Config(signature_version="s3v4"),
+        # Unset in production. Set for a stand-in under test, or for another
+        # S3-compatible store.
+        endpoint_url=config.S3_ENDPOINT_URL or None,
     )
 
 

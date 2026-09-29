@@ -15,6 +15,10 @@ Per source, in one transaction:
      guarded so a truncated upstream file can't close the whole board
   5. one ingest_runs row: fetched / upserted / deactivated / error
 
+If the process is told to stop while a source is in progress, that source is
+abandoned at the next safe point, nothing it had written is kept, and its row
+is recorded as interrupted. The next ingest starts it again from the top.
+
 Nothing is filtered at ingest. Inactive and invisible rows are stored as-is
 and excluded on read.
 
@@ -41,6 +45,7 @@ from sqlalchemy.orm import Session
 
 from app import config
 from app.models import Company, IngestRun, Posting
+from app.sources import base
 from app.sources.base import NormalizedPosting, Source, normalize_company
 from app.sources.simplify import SimplifySource
 from app.sources.vanshb03 import Vanshb03Source
@@ -225,8 +230,11 @@ def ingest(
     db.commit()
 
     try:
+        base.check_cancelled()
         if postings is None:
             postings = list(source.fetch())
+        # Nothing has been written yet. The cheapest place to stop.
+        base.check_cancelled()
         # Upstream occasionally repeats an id; the last occurrence wins, and
         # the bulk INSERT can't tolerate the same key twice in one statement.
         postings = list({p.source_id: p for p in postings}.values())
@@ -259,6 +267,9 @@ def ingest(
         result.unchanged = len(unchanged_ids)
 
         for i in range(0, len(to_write), _BATCH):
+            # Between batches. Everything so far is in one open transaction,
+            # so stopping here leaves the table exactly as it was.
+            base.check_cancelled()
             stmt = pg_insert(Posting).values(to_write[i : i + _BATCH])
             excluded = stmt.excluded
             stmt = stmt.on_conflict_do_update(
@@ -281,6 +292,7 @@ def ingest(
                 .values(last_seen_at=now)
             )
 
+        base.check_cancelled()
         # Deactivate what fell out of the feed. If the fetch came back much
         # smaller than what we believe is live, assume upstream is broken —
         # not that thousands of roles closed overnight — and leave them alone.
@@ -313,7 +325,11 @@ def ingest(
                     .values(active=False, content_hash=None, date_updated=now)
                 )
                 result.deactivated += res.rowcount
-    except Exception as exc:  # noqa: BLE001 — recorded in the ledger, re-raised below
+    except base.Cancelled:
+        db.rollback()
+        result = RunResult(source=source.name, error=INTERRUPTED)
+        log.warning("ingest interrupted: the process is stopping", extra={"source": source.name})
+    except Exception as exc:  # noqa: BLE001 — recorded in the ledger
         db.rollback()
         result.error = f"{type(exc).__name__}: {exc}"[:2000]
         log.error("ingest failed", extra={"source": source.name, "error": result.error})
@@ -340,7 +356,31 @@ def run_all(db: Session, only: str = "all") -> list[RunResult]:
     names = list(SOURCES) if only == "all" else [only]
     with ingest_lock(wait=True):
         close_interrupted_runs(db)
-        return [ingest(db, SOURCES[name]()) for name in names]
+        return ingest_each(db, names, SOURCES)
+
+
+def ingest_each(db: Session, names: list[str], registry: dict[str, type[Source]]):
+    """Ingest the named sources in turn, stopping before the next one if the
+    process has been told to stop."""
+    results = []
+    for name in names:
+        if base.cancel.is_set():
+            break
+        results.append(ingest(db, registry[name]()))
+    return results
+
+
+def stop_on_signal() -> None:
+    """Treat SIGTERM and Ctrl-C as a request to stop cleanly: the source in
+    progress is abandoned and recorded as interrupted, and the lock is
+    released on the way out."""
+    import signal
+
+    def requested(signum, frame):
+        base.cancel.set()
+
+    signal.signal(signal.SIGTERM, requested)
+    signal.signal(signal.SIGINT, requested)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -348,6 +388,7 @@ def main(argv: list[str] | None = None) -> int:
     from app.logging_config import setup as setup_logging
 
     setup_logging()
+    stop_on_signal()
     parser = argparse.ArgumentParser(description="Backfill postings from every source.")
     parser.add_argument("--source", default="all", choices=["all", *SOURCES])
     args = parser.parse_args(argv)

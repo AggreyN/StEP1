@@ -18,12 +18,21 @@ The ingest runs in a worker thread so requests keep being served, and under a
 Postgres advisory lock so two processes (several workers, or a restart
 overlapping the process it replaces) never ingest at once. A process that
 finds the lock taken skips this round and looks again at the next check.
+
+When the process is told to stop, a refresh in progress is told too. It stops
+at its next safe point, keeps nothing it had written, records itself as
+interrupted and releases the lock, and the process waits for that for up to
+INGEST_SHUTDOWN_GRACE_S. If it has not finished by then the process exits
+anyway: the thread is a daemon, the database rolls the transaction back when
+the connection drops, and the next ingest anywhere marks the run interrupted.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import threading
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -33,7 +42,7 @@ from sqlalchemy.orm import Session
 from app import config
 from app.database import SessionLocal
 from app.models import IngestRun
-from app.sources import backfill
+from app.sources import backfill, base
 from app.sources.backfill import RunResult
 from app.sources.base import Source
 
@@ -42,6 +51,9 @@ log = logging.getLogger(__name__)
 # A check interval of zero would spin the loop; nothing needs to look at the
 # clock more than every few seconds, even in a demo.
 _MIN_CHECK_SECONDS = 2.0
+
+# Set for as long as a check is running in this process.
+_in_flight = threading.Event()
 
 
 @dataclass
@@ -128,28 +140,69 @@ def run_due(
     """
     registry = backfill.SOURCES if registry is None else registry
     names = list(registry)
+    if base.cancel.is_set():
+        return []
 
-    # Looked at before the lock: the common case is "nothing is due", and
-    # that should cost one query, not a lock round-trip every half hour.
-    with SessionLocal() as db:
-        if not due_sources(db, names, now):
-            return []
-
-    with backfill.ingest_lock(wait=False) as held:
-        if not held:
-            log.info("ingest skipped: another process is running one")
-            return None
+    _in_flight.set()
+    try:
+        # Looked at before the lock: the common case is "nothing is due", and
+        # that should cost one query, not a lock round-trip every half hour.
         with SessionLocal() as db:
-            backfill.close_interrupted_runs(db)
-            # Looked at again under the lock: whoever held it a moment ago
-            # may have just done this work.
-            due = due_sources(db, names, now)
-            return [backfill.ingest(db, registry[name]()) for name in due]
+            if not due_sources(db, names, now):
+                return []
+
+        with backfill.ingest_lock(wait=False) as held:
+            if not held:
+                log.info("ingest skipped: another process is running one")
+                return None
+            with SessionLocal() as db:
+                backfill.close_interrupted_runs(db)
+                # Looked at again under the lock: whoever held it a moment
+                # ago may have just done this work.
+                due = due_sources(db, names, now)
+                return backfill.ingest_each(db, due, registry)
+    finally:
+        _in_flight.clear()
 
 
 # --------------------------------------------------------------------------- #
 # The background task
 # --------------------------------------------------------------------------- #
+
+
+async def _in_a_thread_of_its_own(work) -> None:
+    """Run blocking work off the event loop, in a daemon thread.
+
+    Not asyncio.to_thread: its threads belong to a pool that the interpreter
+    waits for on exit. A refresh stuck on something that ignores the request
+    to stop would then hold the process open until it was killed. A daemon
+    thread cannot: when the grace period is over, the process goes.
+    """
+    loop = asyncio.get_running_loop()
+    done = loop.create_future()
+
+    def finish(error: BaseException | None) -> None:
+        if done.cancelled():
+            return
+        if error is None:
+            done.set_result(None)
+        else:
+            done.set_exception(error)
+
+    def run() -> None:
+        try:
+            work()
+        except BaseException as exc:  # noqa: BLE001 — handed to whoever is waiting
+            error = exc
+        else:
+            error = None
+        try:
+            loop.call_soon_threadsafe(finish, error)
+        except RuntimeError:
+            pass  # the loop has closed; nobody is waiting
+
+    threading.Thread(target=run, name="ingest", daemon=True).start()
+    await done
 
 
 async def _loop() -> None:
@@ -158,7 +211,7 @@ async def _loop() -> None:
         try:
             # A thread, because the ingest is seconds of blocking network,
             # parsing and SQL; on the event loop it would stall every request.
-            await asyncio.to_thread(run_due)
+            await _in_a_thread_of_its_own(run_due)
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -170,6 +223,7 @@ async def _loop() -> None:
 
 def start() -> asyncio.Task | None:
     """Start the task if AUTO_INGEST is on. Call from a running event loop."""
+    base.cancel.clear()
     if not config.AUTO_INGEST:
         log.info("automatic refresh is off (AUTO_INGEST=false)")
         return None
@@ -183,11 +237,41 @@ def start() -> asyncio.Task | None:
     return asyncio.create_task(_loop(), name="ingest-scheduler")
 
 
+def _wait_until_idle(seconds: float) -> bool:
+    deadline = time.monotonic() + seconds
+    while _in_flight.is_set():
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.05)
+    return True
+
+
 async def stop(task: asyncio.Task | None) -> None:
-    if task is None:
-        return
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
+    """Stop checking, and give a refresh in progress the chance to stop
+    cleanly. Returns within INGEST_SHUTDOWN_GRACE_S whatever it is doing."""
+    # Told first, so that it is already winding down while the loop is
+    # being cancelled.
+    base.cancel.set()
+    if task is not None:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+    if _in_flight.is_set():
+        log.info("waiting for the refresh in progress to stop")
+        started = time.monotonic()
+        stopped = await asyncio.to_thread(_wait_until_idle, config.INGEST_SHUTDOWN_GRACE_S)
+        waited = round(time.monotonic() - started, 1)
+        if not stopped:
+            # Left set: whenever the straggler next looks, it still stops.
+            log.error(
+                "refresh did not stop in time; exiting with it unfinished",
+                extra={"waited_s": waited},
+            )
+            return
+        log.info("refresh stopped cleanly", extra={"waited_s": waited})
+    # Honoured, so withdrawn. The process is normally about to exit, but a
+    # server that is reloaded in place keeps this module, and a manual
+    # backfill in the same process must not find itself already cancelled.
+    base.cancel.clear()

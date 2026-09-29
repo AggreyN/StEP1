@@ -1,37 +1,43 @@
-"""Authentication — Amazon Cognito (prod) with a local bcrypt fallback (dev).
+"""Authentication: Amazon Cognito in production, local passwords in development.
 
 Two modes, selected by AUTH_MODE:
 
 - **local** (default): /auth/register and /auth/login hash passwords with
   bcrypt into users.password_hash and hand back an HS256 JWT we sign. No AWS.
 
-- **cognito**: the frontend logs in against a Cognito User Pool and sends the
-  pool-issued RS256 JWT. We validate it against the pool's public JWKS
-  (signature, issuer, audience, expiry) and upsert a users row keyed by `sub`.
-  Passwords never touch this service. Built now, untested and unconfigured
-  until step 8 of the build order.
+- **cognito**: the frontend signs in against a Cognito user pool and sends
+  the pool's ID token. services/cognito.py checks it. Passwords never touch
+  this service.
 
 `current_user` is the one dependency routes use; it does the right thing for
 whichever mode is active.
+
+In cognito mode a user is known by the token's `sub`, the pool's own
+identifier for them, and by nothing else. The first token with a new `sub`
+creates a row; every later one finds it by `sub`. An email address is kept to
+show and is never used to find anyone: it is an attribute a user can change,
+and one that two different sign-ins can both claim.
 """
 
 from __future__ import annotations
 
-import threading
-import time
+import logging
 from datetime import UTC, datetime, timedelta
 
 import jwt
-import requests
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import config
+from app import config, limits
 from app.database import get_db
 from app.models import User
+from app.services import cognito
+
+log = logging.getLogger(__name__)
 
 _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=config.BCRYPT_ROUNDS)
 # auto_error=False so we raise our own 401 with the {"detail": str} shape.
@@ -81,86 +87,84 @@ def _user_from_local_token(token: str, db: Session) -> User:
 
 
 # --------------------------------------------------------------------------- #
-# Cognito mode — validate the pool's JWT against its JWKS (untested in v1)
+# Cognito mode
 # --------------------------------------------------------------------------- #
-_jwks_cache: dict = {"keys": None, "fetched_at": 0.0, "miss_refetch_at": None}
-_jwks_miss_lock = threading.Lock()
-# An unknown kid triggers a JWKS refetch — but anyone can mint tokens with
-# bogus kids, so unthrottled that is an unauthenticated make-us-hammer-Cognito
-# vector. One miss-refetch per window; a real rotation lands on the first miss.
-_JWKS_MISS_COOLDOWN_S = 60.0
-
-
-def _get_jwks(*, force_refresh: bool = False) -> list[dict]:
-    if not config.COGNITO_JWKS_URL:
-        raise HTTPException(
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-            "AUTH_MODE=cognito but COGNITO_USER_POOL_ID is not configured.",
-        )
-    stale = _jwks_cache["keys"] is None or (time.monotonic() - _jwks_cache["fetched_at"]) > 3600
-    if force_refresh or stale:
-        resp = requests.get(config.COGNITO_JWKS_URL, timeout=5)
-        resp.raise_for_status()
-        _jwks_cache["keys"] = resp.json()["keys"]
-        _jwks_cache["fetched_at"] = time.monotonic()
-    return _jwks_cache["keys"]
-
-
-def _key_for(kid: str | None) -> dict | None:
-    key = next((k for k in _get_jwks() if k.get("kid") == kid), None)
-    if key is not None:
-        return key
-    with _jwks_miss_lock:
-        key = next((k for k in _get_jwks() if k.get("kid") == kid), None)
-        if key is not None:
-            return key
-        last = _jwks_cache["miss_refetch_at"]
-        now = time.monotonic()
-        if last is not None and now - last < _JWKS_MISS_COOLDOWN_S:
-            return None
-        keys = _get_jwks(force_refresh=True)
-        _jwks_cache["miss_refetch_at"] = now
-        return next((k for k in keys if k.get("kid") == kid), None)
-
-
-def _verify_cognito_token(token: str) -> dict:
+def _claims(token: str) -> dict:
     try:
-        header = jwt.get_unverified_header(token)
-    except jwt.InvalidTokenError:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Malformed token header.") from None
-    key = _key_for(header.get("kid"))
-    if key is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Signing key not found in JWKS.")
-    try:
-        return jwt.decode(
-            token,
-            jwt.PyJWK(key).key,
-            algorithms=["RS256"],
-            audience=config.COGNITO_APP_CLIENT_ID,
-            issuer=config.COGNITO_ISSUER,
-            options={"require": ["exp", "sub"]},
-        )
-    except (jwt.InvalidTokenError, jwt.PyJWKError):
-        # Not the library's message: it can describe the key, and the reason
-        # a token failed is of no use to whoever is forging one.
+        return cognito.verify(token)
+    except cognito.InvalidToken as exc:
+        # Why, for whoever reads the log. Not for whoever sent the token: to
+        # someone forging one, the reason is the next thing to fix.
+        log.info("cognito: token refused: %s", exc)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token.") from None
+    except cognito.KeysUnavailable:
+        # Not 401: the token may be perfectly good. Not 500: nothing is
+        # broken here. And never a pass.
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Sign-in can't be checked right now. Try again in a minute.",
+            headers={"Retry-After": "60"},
+        ) from None
 
 
-def _upsert_cognito_user(claims: dict, db: Session) -> User:
+def _email_from(claims: dict) -> str:
+    email = claims.get("email")
+    if isinstance(email, str) and 3 <= len(email) <= limits.EMAIL_MAX and "@" in email:
+        return email.strip().lower()
+    # A pool can be set up without email. The column is required and unique,
+    # and the sub is both.
+    return f"{claims['sub']}@users.cognito.invalid"
+
+
+def _name_from(claims: dict) -> str | None:
+    name = claims.get("name")
+    if not isinstance(name, str):
+        return None
+    return " ".join(name.split())[: limits.DISPLAY_NAME_MAX] or None
+
+
+_TAKEN = (
+    "An account with that email address already exists and is not linked to this "
+    "sign-in. Ask for the two to be linked."
+)
+
+
+def _user_for(claims: dict, db: Session) -> User:
+    """The user this token belongs to, created if this is their first."""
     sub = claims["sub"]
-    email = (claims.get("email") or f"{sub}@cognito.local").lower()
+    email, name = _email_from(claims), _name_from(claims)
+
     user = db.scalar(select(User).where(User.cognito_sub == sub))
     if user is None:
-        user = db.scalar(select(User).where(User.email == email))
-        if user is None:
-            user = User(email=email, cognito_sub=sub)
-            db.add(user)
-        else:
-            user.cognito_sub = sub
-        db.commit()
-    claimed_name = (claims.get("name") or "").strip() or None
-    if claimed_name and claimed_name != user.display_name:
-        user.display_name = claimed_name
+        # Never looked up by email. A row with this address and a different
+        # sub, or none, is a different account: someone who registered with
+        # a password, or another identity claiming the same address. Handing
+        # it to whoever arrives with a matching email would be handing over
+        # the account.
+        if db.scalar(select(User.id).where(User.email == email)) is not None:
+            raise HTTPException(status.HTTP_409_CONFLICT, _TAKEN)
+        user = User(email=email, cognito_sub=sub, display_name=name)
+        db.add(user)
+        try:
+            db.commit()
+        except IntegrityError:
+            # Two first requests at once, as a page fires several. One
+            # created the row; this one finds it.
+            db.rollback()
+            user = db.scalar(select(User).where(User.cognito_sub == sub))
+            if user is None:
+                raise HTTPException(status.HTTP_409_CONFLICT, _TAKEN) from None
+        return user
+
+    # Known. The pool owns the name and the address; mirror a change, unless
+    # the new address is already someone else's.
+    changed = False
+    if name and name != user.display_name:
+        user.display_name, changed = name, True
+    if email != user.email:
+        if db.scalar(select(User.id).where(User.email == email, User.id != user.id)) is None:
+            user.email, changed = email, True
+    if changed:
         db.commit()
     return user
 
@@ -179,5 +183,5 @@ def current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     if config.AUTH_MODE == "cognito":
-        return _upsert_cognito_user(_verify_cognito_token(creds.credentials), db)
+        return _user_for(_claims(creds.credentials), db)
     return _user_from_local_token(creds.credentials, db)

@@ -75,7 +75,11 @@ def _migrated():
 
 @pytest.fixture(autouse=True)
 def _clean_tables(_migrated):
+    from app.sources import base
+
+    base.cancel.clear()
     yield
+    base.cancel.clear()
     from sqlalchemy import text
 
     from app.database import engine

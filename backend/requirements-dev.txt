@@ -1,0 +1,16 @@
+# Everything requirements.txt has, plus what running the tests and lint
+# locally needs. Install:  pip install -r requirements-dev.txt
+#
+# Last verified together (Python 3.14, 2026-09-29):
+#   pytest 9.1.1, ruff 0.16.9, httpx 0.28.1, moto 5.2.3
+
+-r requirements.txt
+
+pytest>=8.0
+httpx>=0.27                  # required by fastapi.testclient
+ruff>=0.5
+
+# STORAGE_BACKEND=s3 is tested against this: a real S3 API server, in
+# memory, with no AWS account or network access. Not a runtime dependency;
+# nothing under app/ imports it.
+moto[s3,server]>=5.0

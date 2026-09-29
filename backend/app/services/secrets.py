@@ -1,20 +1,29 @@
-"""Secrets — AWS Secrets Manager in prod, plain environment in dev.
+"""Secrets: from the environment, or from AWS Secrets Manager.
 
     get_secret("JWT_SECRET", default="dev-only")
 
-One call-site pattern for both environments, so promoting a value to Secrets
-Manager is an infra change, not a code change:
+One call for every secret-bearing setting, so that where a value lives is a
+deployment decision and not a code change. SECRETS_BACKEND chooses:
 
-  * APP_ENV=dev  (default): read os.environ — which load_dotenv() has already
-    populated from .env.
-  * APP_ENV=prod: try Secrets Manager first (cached per process), fall back to
-    the environment. The fallback matters on App Runner / ECS, which commonly
-    inject Secrets Manager values AS environment variables.
+  * env: read the environment, which in development load_dotenv() has
+    filled from .env. This is also the recommended production setting on
+    ECS, where the task definition injects each secret as an environment
+    variable (`secrets` with `valueFrom` an SSM parameter or a Secrets
+    Manager ARN). The container then needs no AWS call and no permission of
+    its own to learn its secrets; the task execution role fetches them
+    before the container starts.
+  * secretsmanager: ask Secrets Manager for <SECRETS_PREFIX>/<NAME>,
+    cached per process, and fall back to the environment. For platforms
+    that cannot inject secrets.
 
-This module reads APP_ENV / SECRETS_PREFIX straight from the environment
-rather than importing app.config: config.py calls get_secret() at import time,
-so importing the other way would be circular. It is the one sanctioned
-exception to "config.py is the only reader of the environment".
+Unset, it is `secretsmanager` when APP_ENV=prod and `env` otherwise, which is
+what this module did before the setting existed.
+
+This module reads APP_ENV, SECRETS_BACKEND and SECRETS_PREFIX straight from
+the environment rather than importing app.config: config.py calls
+get_secret() while it is being imported, so importing the other way would be
+circular. It is the one sanctioned exception to "config.py is the only reader
+of the environment".
 
 Secret NAMES may appear in logs; secret VALUES never do.
 """
@@ -51,9 +60,14 @@ def _from_secrets_manager(name: str) -> str | None:
     return value
 
 
+def backend() -> str:
+    chosen = os.getenv("SECRETS_BACKEND", "").strip().lower()
+    return chosen or ("secretsmanager" if _app_env() == "prod" else "env")
+
+
 def get_secret(name: str, default: str = "") -> str:
     """The one accessor. `name` is the plain env-var-style key, e.g. "JWT_SECRET"."""
-    if _app_env() == "prod":
+    if backend() == "secretsmanager":
         value = _from_secrets_manager(name)
         if value is not None:
             return value
