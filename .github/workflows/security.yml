@@ -1,0 +1,82 @@
+name: security
+
+# Two scans that do not depend on the code being correct, only on it being
+# safe to publish and safe to install:
+#
+#   secrets        nothing that looks like a credential is in the repository,
+#                  in any commit on any branch
+#   dependencies   nothing the backend installs has a known vulnerability
+#
+# Both run on every push and pull request. The dependency scan also runs
+# weekly, because a vulnerability is usually published long after the last
+# time anyone touched the code that depends on it.
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "23 7 * * 1"   # Mondays, 07:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets:
+    name: No secrets in the repository
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: "8.30.1"
+      # sha256 of gitleaks_8.30.1_linux_x64.tar.gz, from the release's own
+      # checksums file. The scanner that guards the repository is itself
+      # verified before it runs. Change both together.
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # Every commit, not just the newest: a secret that was committed
+          # and then removed is still in the history, and still a secret.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl --fail --silent --show-error --location --output gitleaks.tar.gz "$url"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf gitleaks.tar.gz -C "$RUNNER_TEMP/bin" gitleaks
+          rm gitleaks.tar.gz
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Scan the whole history
+        # --redact: a finding names the file, line and commit. It does not
+        # print the secret into a log that outlives the fix.
+        run: gitleaks git --redact --no-banner --verbose .
+
+  dependencies:
+    name: No known vulnerabilities in backend dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Install pip-audit
+        run: python -m pip install --upgrade pip pip-audit
+
+      - name: Audit backend/requirements.txt
+        # Resolves the requirements the way a fresh install would and checks
+        # every package that would be installed, including the ones pulled in
+        # by others. There is no ignore list. If one is ever needed, it goes
+        # here as --ignore-vuln <id> with the reason beside it.
+        run: pip-audit --requirement backend/requirements.txt --progress-spinner off

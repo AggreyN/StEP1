@@ -1,0 +1,245 @@
+[
+ {
+  "title": "Software Intern",
+  "category": "Hardware",
+  "roles": [
+   "software"
+  ]
+ },
+ {
+  "title": "Software Developer Intern",
+  "category": "Software",
+  "roles": [
+   "software"
+  ]
+ },
+ {
+  "title": "Component Engineering Intern",
+  "category": "Hardware",
+  "roles": [
+   "software"
+  ]
+ },
+ {
+  "title": "Simulation Software Engineering Intern",
+  "category": "Software",
+  "roles": [
+   "software"
+  ]
+ },
+ {
+  "title": "Software Engineer Intern",
+  "category": "Software",
+  "roles": [
+   "software"
+  ]
+ },
+ {
+  "title": "Systems Engineer Apprentice",
+  "category": "Software",
+  "roles": [
+   "software"
+  ]
+ },
+ {
+  "title": "Data Analyst Project Intern - TikTok Shop - Data Science",
+  "category": "AI/ML/Data",
+  "roles": [
+   "ai_ml_data",
+   "data_analytics"
+  ]
+ },
+ {
+  "title": "AI Engineer Intern - Enterprise Technology Services",
+  "category": "AI/ML/Data",
+  "roles": [
+   "ai_ml_data",
+   "software"
+  ]
+ },
+ {
+  "title": "Data Analytics and AI Intern - FIS University Program",
+  "category": "AI/ML/Data",
+  "roles": [
+   "ai_ml_data",
+   "data_analytics"
+  ]
+ },
+ {
+  "title": "AI Automation & Business Analytics Intern - Rotational Program",
+  "category": "AI/ML/Data",
+  "roles": [
+   "ai_ml_data",
+   "data_analytics"
+  ]
+ },
+ {
+  "title": "Machine Learning Research Engineer Intern",
+  "category": "AI/ML/Data",
+  "roles": [
+   "ai_ml_data",
+   "research",
+   "software"
+  ]
+ },
+ {
+  "title": "Hardware Engineering Intern",
+  "category": "Hardware",
+  "roles": [
+   "hardware",
+   "software"
+  ]
+ },
+ {
+  "title": "RTL Intern",
+  "category": "Hardware",
+  "roles": [
+   "hardware"
+  ]
+ },
+ {
+  "title": "Embedded Software Engineer Intern - Optimus",
+  "category": "Hardware",
+  "roles": [
+   "hardware",
+   "software"
+  ]
+ },
+ {
+  "title": "Reporting Analyst Co-op",
+  "category": "AI/ML/Data",
+  "roles": [
+   "data_analytics"
+  ]
+ },
+ {
+  "title": "Data Analytics Intern",
+  "category": "AI/ML/Data",
+  "roles": [
+   "data_analytics"
+  ]
+ },
+ {
+  "title": "Data Analytics Intern - Enterprise Technology Services",
+  "category": "AI/ML/Data",
+  "roles": [
+   "data_analytics"
+  ]
+ },
+ {
+  "title": "Quantitative Trading Analyst Intern",
+  "category": "Quant",
+  "roles": [
+   "quant"
+  ]
+ },
+ {
+  "title": "Quantitative Research Intern",
+  "category": "Quant",
+  "roles": [
+   "quant",
+   "research"
+  ]
+ },
+ {
+  "title": "Product Manager Project Intern - Business Integrity - MBA",
+  "category": "Product",
+  "roles": [
+   "product_management"
+  ]
+ },
+ {
+  "title": "Product Manager Intern - Business Integrity",
+  "category": "Product",
+  "roles": [
+   "product_management"
+  ]
+ },
+ {
+  "title": "Research Intern - Virtual Network",
+  "category": "Hardware",
+  "roles": [
+   "research"
+  ]
+ },
+ {
+  "title": "Multi-Cloud CDN Scheduling Platform Engineer Intern - CDN Platform",
+  "category": "Software",
+  "roles": [
+   "infra_devops",
+   "software"
+  ]
+ },
+ {
+  "title": "Business Intelligence and Infrastructure Analyst Intern",
+  "category": "AI/ML/Data",
+  "roles": [
+   "infra_devops",
+   "data_analytics"
+  ]
+ },
+ {
+  "title": "Forward Deployed Software Engineer Intern - Commercial",
+  "category": "Software",
+  "roles": [
+   "solutions_architecture",
+   "software"
+  ]
+ },
+ {
+  "title": "Forward Deployed Software Engineer Intern",
+  "category": "Software",
+  "roles": [
+   "solutions_architecture",
+   "software"
+  ]
+ },
+ {
+  "title": "Information Systems Quality Intern - Quality Systems Information Technology",
+  "category": "AI/ML/Data",
+  "roles": [
+   "it_support"
+  ]
+ },
+ {
+  "title": "Data Management and Analysis Placement - Safety & Security",
+  "category": "AI/ML/Data",
+  "roles": [
+   "security",
+   "data_analytics"
+  ]
+ },
+ {
+  "title": "Software Engineer Intern - Core, Infrastructure & Security",
+  "category": "Software",
+  "roles": [
+   "security",
+   "infra_devops",
+   "software"
+  ]
+ },
+ {
+  "title": "Software Engineering Intern - Technology Analyst",
+  "category": "Software",
+  "roles": [
+   "tech_consulting",
+   "software"
+  ]
+ },
+ {
+  "title": "Front-End UX Intern",
+  "category": "Software",
+  "roles": [
+   "design_ux",
+   "software"
+  ]
+ },
+ {
+  "title": "Quality Project Management and Data Analysis Tool Development Intern",
+  "category": "AI/ML/Data",
+  "roles": [
+   "program_management",
+   "data_analytics"
+  ]
+ }
+]

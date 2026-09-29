@@ -1,0 +1,19 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Environment / secrets — never commit these
+.env
+
+# Local resume uploads (STORAGE_BACKEND=local). Resumes are PII.
+backend/data/
+uploads/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
