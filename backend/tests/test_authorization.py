@@ -374,6 +374,7 @@ EXEMPT = {
     ("POST", "/auth/register"): "creates the caller's own account; names no existing object",
     ("POST", "/auth/login"): "authenticates by email and password; names no object",
     ("GET", "/ingest/status"): "the ingest ledger and a count of open postings; board-wide",
+    ("GET", "/stats"): "public counts of the shared board; takes no token, returns no user data",
 }
 
 
@@ -473,10 +474,31 @@ def test_a_missing_object_and_someone_elses_look_the_same(client, world):
         assert (commit.status_code, commit.json()) == (404, {"detail": "Unknown upload key."})
 
 
+def test_the_public_routes_are_exactly_these(client, world):
+    """Every route that answers without a token, by name. A new one has to
+    be added here on purpose."""
+    public = set()
+    fill = {"application_id": world.a_application, "posting_id": world.saved,
+            "key": world.a_resume_key}  # fmt: skip
+    for method, template in sorted(ROUTES):
+        path = template.replace("{key:path}", "{key}").format(**fill)
+        if client.request(method, path, json={}).status_code != 401:
+            public.add((method, template))
+    assert public == {
+        ("GET", "/health"),
+        ("POST", "/auth/register"),
+        ("POST", "/auth/login"),
+        ("GET", "/stats"),
+    }
+    assert public <= set(EXEMPT)
+
+
 def test_without_a_token_every_protected_route_is_401(client, world):
     fill = {"application_id": world.a_application, "posting_id": world.saved,
             "key": world.a_resume_key}  # fmt: skip
-    for method, template in sorted(set(ROUTES) - set(EXEMPT)):
+    # /ingest/status is exempt from the two-user cases because it shows
+    # nothing of any user's. It still needs a token.
+    for method, template in sorted(set(ROUTES) - set(EXEMPT) | {("GET", "/ingest/status")}):
         path = template.replace("{key:path}", "{key}").format(**fill)
         r = client.request(method, path, json={})
         assert r.status_code == 401, f"{method} {path} -> {r.status_code}"

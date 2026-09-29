@@ -177,6 +177,7 @@ def test_a_whole_session_leaks_nothing(client):
             f"/applications/{mine['id']}/events", json={"kind": "acknowledged"}, headers=me
         ),
         ("GET", "/ingest/status"): client.get("/ingest/status", headers=me),
+        ("GET", "/stats"): client.get("/stats"),
     }
     assert slot["key"]
     assert set(calls) == set(ROUTES), (

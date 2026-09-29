@@ -40,10 +40,7 @@ def ingest_status(_: User = Depends(current_user), db: Session = Depends(get_db)
             )
         )
 
-    # The oldest of the sources' last successes: every source has been
-    # refreshed at least this recently, so the board is at least this fresh.
-    successes = [s.last_success_at for s in states if s.last_success_at is not None]
-    last_success = min(successes) if successes else None
+    last_success = ingest_scheduler.board_updated_at(states)
     hours = config.INGEST_INTERVAL_HOURS
     return IngestStatusOut(
         last_success_at=last_success,

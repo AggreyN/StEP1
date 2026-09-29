@@ -100,6 +100,14 @@ def source_states(db: Session, names: list[str]) -> list[SourceState]:
     return [states[name] for name in names]
 
 
+def board_updated_at(states: list[SourceState]) -> datetime | None:
+    """When the board as a whole was last known to be current: the oldest of
+    the sources' last successes. Every source has been refreshed at least
+    this recently. None until some source has succeeded once."""
+    successes = [s.last_success_at for s in states if s.last_success_at is not None]
+    return min(successes) if successes else None
+
+
 def due_sources(db: Session, names: list[str], now: datetime | None = None) -> list[str]:
     """Sources with no successful ingest inside the interval."""
     now = now or datetime.now(UTC)

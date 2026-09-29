@@ -378,6 +378,15 @@ class IngestStatusOut(BaseModel):
     sources: list[IngestSourceOut]
 
 
+class StatsOut(BaseModel):
+    """Public. Counts of the shared board, and nothing about anyone."""
+
+    active_postings: int
+    companies: int
+    role_families: int
+    updated_at: UtcDateTime | None
+
+
 # --------------------------------------------------------------------------- #
 # Applications
 # --------------------------------------------------------------------------- #

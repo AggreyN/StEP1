@@ -34,6 +34,7 @@ from app.routes import (  # noqa: E402  (logging must be configured first)
     postings,
     profile,
     saved,
+    stats,
 )
 from app.services import ingest_scheduler  # noqa: E402
 
@@ -143,7 +144,7 @@ def create_app(*, prod: bool = config.APP_ENV == "prod") -> FastAPI:
     app.add_exception_handler(OperationalError, _db_unreachable)
     app.add_exception_handler(ProgrammingError, _db_schema_broken)
 
-    for module in (health, auth, profile, feed, postings, saved, applications, ingest):
+    for module in (health, auth, profile, feed, postings, saved, applications, ingest, stats):
         app.include_router(module.router)
     return app
 
