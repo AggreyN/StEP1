@@ -51,6 +51,11 @@ def _clear(user_id: int) -> None:
         _progress.pop(user_id, None)
 
 
+def forget(user_id: int) -> None:
+    """The account is gone. Nothing about it stays in this process."""
+    _clear(user_id)
+
+
 def begin(user_id: int) -> None:
     """Called by PUT /profile before it returns 202, so the very first poll
     already sees a build in flight."""

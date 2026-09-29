@@ -120,6 +120,17 @@ class LoginIn(RequestModel):
     _password_length = field_validator("password")(_check_password_length)
 
 
+class DeleteAccountIn(RequestModel):
+    # Asked for again, at the moment of deleting: a token left signed in on a
+    # shared machine should not be enough to destroy an account.
+    password: str | None = None
+
+    @field_validator("password")
+    @classmethod
+    def _length(cls, v: str | None) -> str | None:
+        return v if v is None else _check_password_length(v)
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

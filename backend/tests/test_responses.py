@@ -178,6 +178,10 @@ def test_a_whole_session_leaks_nothing(client):
         ),
         ("GET", "/ingest/status"): client.get("/ingest/status", headers=me),
         ("GET", "/stats"): client.get("/stats"),
+        # Last: after this there is no "me" to make the other calls as.
+        ("DELETE", "/me"): client.request(
+            "DELETE", "/me", json={"password": "my-own-password"}, headers=me
+        ),
     }
     assert slot["key"]
     assert set(calls) == set(ROUTES), (

@@ -1,21 +1,25 @@
-"""Local-mode auth: register, login, /me.
+"""Accounts: register, sign in, /me, and deleting an account.
 
-Only mounted when AUTH_MODE=local. In cognito mode the pool owns registration
-and login, and /me is served from the validated Cognito token instead.
+Register and sign-in are for AUTH_MODE=local. In cognito mode the pool owns
+both, and they answer 404 here.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
+import logging
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app import config
 from app.auth import create_local_token, hash_password, verify_password
 from app.deps import current_user, get_db
-from app.models import Profile, User
-from app.ratelimit import limiter, login_limit, register_limit
-from app.schemas import LoginIn, MeOut, RegisterIn, TokenOut, UserOut
+from app.models import Profile, ResumeUpload, User
+from app.ratelimit import delete_account_limit, limiter, login_limit, register_limit
+from app.schemas import DeleteAccountIn, LoginIn, MeOut, RegisterIn, TokenOut, UserOut
+from app.services import feed_state, storage
 
 router = APIRouter(tags=["auth"])
+log = logging.getLogger(__name__)
 
 
 def _token_response(user: User) -> TokenOut:
@@ -69,3 +73,55 @@ def me(user: User = Depends(current_user), db: Session = Depends(get_db)):
         display_name=user.display_name,
         onboarded=onboarded_at is not None,
     )
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+@limiter.limit(delete_account_limit, error_message="Too many attempts to delete an account.")
+def delete_me(
+    request: Request,
+    body: DeleteAccountIn | None = Body(default=None),
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete the caller's account and everything that belongs to it.
+
+    Everything: the profile and its ranked interests, the resume and its
+    extracted text, cached scores, saved postings, applications and their
+    whole history, contacts, drafted messages, connected integrations, and
+    any upload in progress. Nothing is kept, anonymised or soft-deleted.
+    """
+    if config.AUTH_MODE == "local":
+        if body is None or not body.password:
+            raise HTTPException(422, "password: Field required")
+        if not user.password_hash or not verify_password(body.password, user.password_hash):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Password is incorrect.")
+    # In cognito mode the pool holds the password and has already checked it
+    # to issue the token. Deleting here removes what this service holds; the
+    # pool's own record of the user is the pool's to delete.
+
+    user_id = user.id
+    # Found before the rows that say where they are have gone.
+    keys = set(db.scalars(select(ResumeUpload.key).where(ResumeUpload.user_id == user_id)))
+    resume = db.scalar(select(Profile.resume_s3_key).where(Profile.user_id == user_id))
+    if resume:
+        keys.add(resume)
+
+    # One statement, one transaction. Every table that holds a user's rows
+    # references users with ON DELETE CASCADE, directly or through a parent,
+    # so the database removes all of them or none. A test inserts a row into
+    # each and checks; a table added without the cascade fails it.
+    db.execute(delete(User).where(User.id == user_id))
+    db.commit()
+
+    # Files after rows. If the process dies in between, what is left is an
+    # object no row points to, under a key nobody holds, which is recoverable;
+    # the other order could leave an account pointing at a resume that is gone.
+    failed = [key for key in keys if not storage.delete(key)]
+    if failed:
+        log.error(
+            "account deleted but stored files could not be removed",
+            extra={"user_id": user_id, "objects": len(failed)},
+        )
+    feed_state.forget(user_id)
+    log.info("account deleted", extra={"user_id": user_id, "objects": len(keys)})
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

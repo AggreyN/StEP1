@@ -75,17 +75,24 @@ def _bodies(app_id: int) -> dict[tuple[str, str], tuple[str, dict]]:
             f"/applications/{app_id}/events",
             {"kind": "acknowledged"},
         ),
+        ("DELETE", "/me"): ("/me", {"password": "correct-horse"}),
     }
+
+
+def _body_model(route) -> type[BaseModel] | None:
+    """The model a route reads its JSON body into, looking through
+    `Model | None` for a body that may be omitted."""
+    if route.body_field is None:
+        return None
+    annotation = route.body_field.field_info.annotation
+    for candidate in (annotation, *getattr(annotation, "__args__", ())):
+        if isinstance(candidate, type) and issubclass(candidate, BaseModel):
+            return candidate
+    return None
 
 
 def _routes_with_a_json_body() -> set[tuple[str, str]]:
-    return {
-        key
-        for key, route in api_routes(app).items()
-        if route.body_field is not None
-        and isinstance(route.body_field.field_info.annotation, type)
-        and issubclass(route.body_field.field_info.annotation, BaseModel)
-    }
+    return {key for key, route in api_routes(app).items() if _body_model(route) is not None}
 
 
 def test_every_route_with_a_body_is_covered():
@@ -113,12 +120,12 @@ def _models_reachable(model: type[BaseModel], seen: set | None = None) -> set[ty
 def test_every_request_model_refuses_unknown_fields():
     checked = set()
     for key in _routes_with_a_json_body():
-        top = api_routes(app)[key].body_field.field_info.annotation
+        top = _body_model(api_routes(app)[key])
         for model in _models_reachable(top):
             assert issubclass(model, RequestModel), f"{model.__name__} (via {key})"
             assert model.model_config.get("extra") == "forbid", model.__name__
             checked.add(model.__name__)
-    assert {"ProfileIn", "InterestIn", "EventIn", "RegisterIn"} <= checked
+    assert {"ProfileIn", "InterestIn", "EventIn", "RegisterIn", "DeleteAccountIn"} <= checked
 
 
 @pytest.mark.parametrize("field", sorted(SERVER_OWNED))

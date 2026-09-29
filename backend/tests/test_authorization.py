@@ -55,6 +55,7 @@ A_RESUME_NAME = "alpha-private-resume.pdf"
 A_SKILL = "Haskell"
 A_EMAIL = "alpha@example.com"
 A_NAME = "Alpha Owner"
+A_PASSWORD = "alpha-own-password"
 
 PDF = {"Content-Type": "application/pdf"}
 
@@ -89,7 +90,7 @@ def world(client) -> World:
             make_row("p-other", "Data Analyst Intern", "Initech", category="AI/ML/Data"),
         ]
     )
-    a = register(client, email=A_EMAIL, name=A_NAME)
+    a = register(client, email=A_EMAIL, name=A_NAME, password=A_PASSWORD)
     b = register(client, email="bravo@example.com", name="Bravo")
     c = register(client, email="charlie@example.com", name="Charlie")
 
@@ -261,6 +262,12 @@ def _list_is_empty(r, w, client):
     assert r.json().get("items") == [] and r.json().get("total", 0) == 0
 
 
+def _only_b_is_gone(r, w, client):
+    assert client.get("/me", headers=w.b).status_code == 401
+    assert client.get("/me", headers=w.a).json()["email"] == A_EMAIL
+    assert client.get("/me", headers=w.c).status_code == 200
+
+
 def _b_saved_it_for_b(r, w, client):
     saved = client.get("/saved", headers=w.b).json()
     assert [i["id"] for i in saved["items"]] == [w.saved]
@@ -281,6 +288,16 @@ def cases(w: World) -> dict[tuple[str, str], list[Attempt]]:
     pdf = make_pdf()
     return {
         ("GET", "/me"): [Attempt("b", "reads /me", "GET", "/me", OWN, check=_is_b)],
+        ("DELETE", "/me"): [
+            # There is no way to name another account. What can be tried is
+            # another account's password, and that deletes nothing.
+            Attempt("b", "deletes an account with A's password", "DELETE", "/me", 403,
+                    json={"password": A_PASSWORD}),
+            Attempt("c", "deletes an account with a guess", "DELETE", "/me", 403,
+                    json={"password": "not-anyones-password"}),
+            Attempt("b", "deletes their own account", "DELETE", "/me", 204,
+                    json={"password": "correct-horse"}, check=_only_b_is_gone),
+        ],
         ("GET", "/profile"): [
             Attempt("b", "reads /profile", "GET", "/profile", OWN, check=_profile_is_bs),
             Attempt("c", "reads /profile with none of their own", "GET", "/profile", HIDDEN),
@@ -432,6 +449,10 @@ def test_nobody_else_can_reach_what_is_as(route, client, world):
             assert secret not in r.text, f"{label} leaked {secret!r}"
         if attempt.check is not None and r.status_code < 400:
             attempt.check(r, world, client)
+        if attempt.expect == 403:
+            assert r.json() == {"detail": "Password is incorrect."}
+            for who in (world.a, world.b, world.c):
+                assert client.get("/me", headers=who).status_code == 200
 
         assert snapshot(world, client) == before, f"{label} changed something of A's"
 
