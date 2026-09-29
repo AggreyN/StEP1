@@ -1,0 +1,85 @@
+name: Frontend tests
+
+# Lint, type check, build and the full Playwright suite for frontend/, plus a
+# dependency audit. Everything runs against the in-browser mock API, so no
+# backend or secrets are needed.
+
+on:
+  push:
+    branches: [main, frontend]
+    paths:
+      - "frontend/**"
+      - "amplify.yml"
+      - ".github/workflows/frontend-tests.yml"
+  pull_request:
+    paths:
+      - "frontend/**"
+      - "amplify.yml"
+      - ".github/workflows/frontend-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_PUBLIC_API_BASE: mock
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Audit dependencies (fails on high or critical)
+        run: npm audit --audit-level=high
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      # after the build, which writes the generated route types
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Colour contrast
+        run: npm run contrast
+
+      - name: amplify.yml headers match next.config
+        run: npm run headers:amplify -- --check
+
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Tests (mock API, dev server)
+        run: npm test
+
+      - name: Tests (production build, under the Content-Security-Policy)
+        run: npm run test:prod
+
+      - name: Keep the report when something fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          retention-days: 7

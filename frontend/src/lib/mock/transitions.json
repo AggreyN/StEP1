@@ -1,0 +1,18 @@
+{
+  "_comment": "TEST FIXTURE ONLY. Mirrors the backend's timeline graph so the mock can compute next_transitions. The app never reads this file — only src/lib/mock/index.ts does.",
+  "graph": {
+    "saved": ["applied", "withdrawn"],
+    "applied": ["acknowledged", "oa_sent", "interview_scheduled", "rejected", "withdrawn"],
+    "acknowledged": ["oa_sent", "interview_scheduled", "rejected", "withdrawn"],
+    "oa_sent": ["interview_scheduled", "rejected", "withdrawn"],
+    "interview_scheduled": ["interviewed", "rejected", "withdrawn"],
+    "interviewed": ["additional_round", "offer", "rejected", "withdrawn"],
+    "additional_round": ["interviewed", "offer", "rejected", "withdrawn"],
+    "offer": ["accepted", "rejected", "withdrawn"],
+    "accepted": [],
+    "rejected": [],
+    "withdrawn": [],
+    "ghosted": ["acknowledged", "oa_sent", "interview_scheduled", "rejected", "withdrawn"]
+  },
+  "non_status_kinds": ["note", "outreach_sent", "oa_completed"]
+}

@@ -1,0 +1,79 @@
+{
+  "_comment": "Mock-only fixture for GET /ingest/status. Times are written as `*_hours_ago` so the scenarios stay true whenever the app is run; the mock turns them into the contract's ISO timestamps (last_success_at, last_attempt_at, next_due_at) and removes these fields before responding. Pick a scenario with localStorage step1.mock.ingest.",
+  "default": "fresh",
+  "scenarios": {
+    "fresh": {
+      "last_success_hours_ago": 3,
+      "interval_hours": 24,
+      "auto": true,
+      "running": false,
+      "active_postings": 4781,
+      "sources": [
+        { "source": "simplify", "last_success_hours_ago": 3, "last_attempt_hours_ago": 3, "fetched": 16896, "upserted": 12, "deactivated": 3, "error": null },
+        { "source": "vanshb03", "last_success_hours_ago": 3, "last_attempt_hours_ago": 3, "fetched": 1204, "upserted": 4, "deactivated": 1, "error": null }
+      ]
+    },
+    "running": {
+      "last_success_hours_ago": 24,
+      "interval_hours": 24,
+      "auto": true,
+      "running": true,
+      "active_postings": 4781,
+      "sources": [
+        { "source": "simplify", "last_success_hours_ago": 24, "last_attempt_hours_ago": 0, "fetched": 16884, "upserted": 9, "deactivated": 2, "error": null },
+        { "source": "vanshb03", "last_success_hours_ago": 24, "last_attempt_hours_ago": 24, "fetched": 1200, "upserted": 2, "deactivated": 0, "error": null }
+      ]
+    },
+    "never": {
+      "last_success_hours_ago": null,
+      "interval_hours": 24,
+      "auto": true,
+      "running": false,
+      "active_postings": 0,
+      "sources": []
+    },
+    "stale": {
+      "last_success_hours_ago": 72,
+      "interval_hours": 24,
+      "auto": true,
+      "running": false,
+      "active_postings": 4702,
+      "sources": [
+        { "source": "simplify", "last_success_hours_ago": 72, "last_attempt_hours_ago": 72, "fetched": 16790, "upserted": 30, "deactivated": 11, "error": null },
+        { "source": "vanshb03", "last_success_hours_ago": 72, "last_attempt_hours_ago": 72, "fetched": 1190, "upserted": 3, "deactivated": 0, "error": null }
+      ]
+    },
+    "failed": {
+      "last_success_hours_ago": 72,
+      "interval_hours": 24,
+      "auto": true,
+      "running": false,
+      "active_postings": 4702,
+      "sources": [
+        { "source": "simplify", "last_success_hours_ago": 72, "last_attempt_hours_ago": 2, "fetched": 0, "upserted": 0, "deactivated": 0, "error": "HTTP 503 fetching listings.json" },
+        { "source": "vanshb03", "last_success_hours_ago": 72, "last_attempt_hours_ago": 2, "fetched": 0, "upserted": 0, "deactivated": 0, "error": "HTTP 503 fetching listings.json" }
+      ]
+    },
+    "partial": {
+      "last_success_hours_ago": 3,
+      "interval_hours": 24,
+      "auto": true,
+      "running": false,
+      "active_postings": 4781,
+      "sources": [
+        { "source": "simplify", "last_success_hours_ago": 3, "last_attempt_hours_ago": 3, "fetched": 16896, "upserted": 12, "deactivated": 3, "error": null },
+        { "source": "vanshb03", "last_success_hours_ago": 27, "last_attempt_hours_ago": 3, "fetched": 0, "upserted": 0, "deactivated": 0, "error": "Timed out after 30 s" }
+      ]
+    },
+    "manual": {
+      "last_success_hours_ago": 5,
+      "interval_hours": 24,
+      "auto": false,
+      "running": false,
+      "active_postings": 4781,
+      "sources": [
+        { "source": "simplify", "last_success_hours_ago": 5, "last_attempt_hours_ago": 5, "fetched": 16896, "upserted": 12, "deactivated": 3, "error": null }
+      ]
+    }
+  }
+}

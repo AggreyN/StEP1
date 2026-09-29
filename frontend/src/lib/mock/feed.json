@@ -1,0 +1,2775 @@
+{
+  "_comment": "Mock-only fixture for GET /feed. `anchor` is the day these postings were written against: the mock moves every date_posted forward by the whole days since then, so 'Posted 2 days ago' stays true whenever the app is run. It is not part of the API response.",
+  "anchor": "2026-09-28T00:00:00Z",
+  "items": [
+    {
+      "id": "simplify:fc365bf3-8b8b-f485-50ae-bd93822c8767",
+      "title": "Software Engineer Intern",
+      "company": {
+        "name": "Palantir",
+        "url": "https://www.palantir.com"
+      },
+      "roles": [
+        "software"
+      ],
+      "role_labels": [
+        "Software Engineering"
+      ],
+      "locations": [
+        "Washington, DC",
+        "New York, NY"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's",
+        "Master's"
+      ],
+      "url": "https://www.palantir.com/careers/jobs/a8d25e81",
+      "date_posted": "2026-09-25T00:00:00Z",
+      "salary": {
+        "min": 55,
+        "max": null,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 93,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "Python, Java"
+        },
+        {
+          "code": "location",
+          "label": "In a preferred location",
+          "detail": "Washington, DC"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 3 days ago",
+          "detail": null
+        }
+      ],
+      "saved": true,
+      "application": null
+    },
+    {
+      "id": "simplify:b87123b4-93ac-13cd-350e-1fb948bf4e63",
+      "title": "Forward Deployed Software Engineer Intern",
+      "company": {
+        "name": "Palantir",
+        "url": "https://www.palantir.com"
+      },
+      "roles": [
+        "solutions_architecture",
+        "software"
+      ],
+      "role_labels": [
+        "Solutions & Sales Engineering",
+        "Software Engineering"
+      ],
+      "locations": [
+        "Washington, DC"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.palantir.com/careers/jobs/567f9259",
+      "date_posted": "2026-09-26T00:00:00Z",
+      "salary": {
+        "min": 55,
+        "max": null,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 95,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "Python, SQL"
+        },
+        {
+          "code": "location",
+          "label": "In a preferred location",
+          "detail": "Washington, DC"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 2 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:1774a3c6-f506-a36f-0e3e-a1f0a09fd896",
+      "title": "Technology Internship Program – Software Engineering",
+      "company": {
+        "name": "Capital One",
+        "url": "https://www.capitalone.com"
+      },
+      "roles": [
+        "software"
+      ],
+      "role_labels": [
+        "Software Engineering"
+      ],
+      "locations": [
+        "McLean, VA",
+        "Richmond, VA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.capitalone.com/careers/jobs/76346b92",
+      "date_posted": "2026-09-23T00:00:00Z",
+      "salary": {
+        "min": 50,
+        "max": 50,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 90,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "3 of your skills",
+          "detail": "Java, AWS, React"
+        },
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "McLean, VA"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 5 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:7bc99d29-68c0-3c40-18e3-4772eceeb02e",
+      "title": "Software Engineering Intern",
+      "company": {
+        "name": "Stripe",
+        "url": "https://stripe.com"
+      },
+      "roles": [
+        "software"
+      ],
+      "role_labels": [
+        "Software Engineering"
+      ],
+      "locations": [
+        "Seattle, WA",
+        "San Francisco, CA",
+        "Remote in USA"
+      ],
+      "is_remote": true,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's",
+        "Master's"
+      ],
+      "url": "https://stripe.com/careers/jobs/6f8fae56",
+      "date_posted": "2026-09-19T00:00:00Z",
+      "salary": {
+        "min": 58,
+        "max": 62,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 88,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "Java, SQL"
+        },
+        {
+          "code": "location",
+          "label": "Remote, and remote works for you",
+          "detail": null
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 9 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": {
+        "id": 15,
+        "status": "applied"
+      }
+    },
+    {
+      "id": "simplify:1bafdb0e-db69-c5ef-2858-4fdd109cacc2",
+      "title": "Software Engineering Intern – Backend",
+      "company": {
+        "name": "Datadog",
+        "url": "https://www.datadoghq.com"
+      },
+      "roles": [
+        "software"
+      ],
+      "role_labels": [
+        "Software Engineering"
+      ],
+      "locations": [
+        "New York, NY",
+        "Boston, MA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's",
+        "Master's"
+      ],
+      "url": "https://www.datadoghq.com/careers/jobs/fbe4506f",
+      "date_posted": "2026-09-16T00:00:00Z",
+      "salary": null,
+      "source": "simplify",
+      "score": 81,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "Python, Git"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 12 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "vanshb03:aef7db1e-9a55-e124-3b8a-8b03773e20ca",
+      "title": "Systems Engineer Intern – Infrastructure",
+      "company": {
+        "name": "Cloudflare",
+        "url": "https://www.cloudflare.com"
+      },
+      "roles": [
+        "infra_devops",
+        "software"
+      ],
+      "role_labels": [
+        "Cloud, Infra & DevOps",
+        "Software Engineering"
+      ],
+      "locations": [
+        "Austin, TX"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's",
+        "Master's"
+      ],
+      "url": "https://www.cloudflare.com/careers/jobs/7a7b9d08",
+      "date_posted": "2026-09-10T00:00:00Z",
+      "salary": {
+        "min": 45,
+        "max": 55,
+        "unit": "hour"
+      },
+      "source": "vanshb03",
+      "score": 64,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "Linux"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:760e52c4-1557-0de3-a90c-b5aea74a6d07",
+      "title": "Software Engineer Intern – Mobile (iOS/Android)",
+      "company": {
+        "name": "Duolingo",
+        "url": "https://www.duolingo.com"
+      },
+      "roles": [
+        "software"
+      ],
+      "role_labels": [
+        "Software Engineering"
+      ],
+      "locations": [
+        "Pittsburgh, PA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.duolingo.com/careers/jobs/918557d4",
+      "date_posted": "2026-09-07T00:00:00Z",
+      "salary": {
+        "min": 50,
+        "max": null,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 74,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "Git"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "vanshb03:529bf8c3-f5b6-67f2-3c43-d97eaf251fd7",
+      "title": "Software Engineer Intern – Frontend",
+      "company": {
+        "name": "Ramp",
+        "url": "https://ramp.com"
+      },
+      "roles": [
+        "software"
+      ],
+      "role_labels": [
+        "Software Engineering"
+      ],
+      "locations": [
+        "New York, NY"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027",
+        "Fall 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://ramp.com/careers/jobs/01d6f0a5",
+      "date_posted": "2026-09-21T00:00:00Z",
+      "salary": {
+        "min": 60,
+        "max": 70,
+        "unit": "hour"
+      },
+      "source": "vanshb03",
+      "score": 79,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "React"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 7 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:ac02e327-c664-b81e-0b38-4584d1502064",
+      "title": "Software Engineer Intern",
+      "company": {
+        "name": "Notion",
+        "url": "https://www.notion.so"
+      },
+      "roles": [
+        "software"
+      ],
+      "role_labels": [
+        "Software Engineering"
+      ],
+      "locations": [
+        "San Francisco, CA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.notion.so/careers/jobs/a8d25e81",
+      "date_posted": "2026-08-26T00:00:00Z",
+      "salary": null,
+      "source": "simplify",
+      "score": 72,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "React, SQL"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:9a5e7e29-0251-947b-cc3b-3121ae79507c",
+      "title": "Software Development Intern",
+      "company": {
+        "name": "GEICO",
+        "url": "https://www.geico.com"
+      },
+      "roles": [
+        "software"
+      ],
+      "role_labels": [
+        "Software Engineering"
+      ],
+      "locations": [
+        "Chevy Chase, MD"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.geico.com/careers/jobs/6efcc403",
+      "date_posted": "2026-09-24T00:00:00Z",
+      "salary": {
+        "min": 30,
+        "max": 35,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 86,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "Java, SQL"
+        },
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "Chevy Chase, MD"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 4 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": {
+        "id": 12,
+        "status": "interview_scheduled"
+      }
+    },
+    {
+      "id": "simplify:f36adff1-6e47-a4f3-3b0e-a3dab89b3069",
+      "title": "Full Stack Developer Intern",
+      "company": {
+        "name": "Booz Allen Hamilton",
+        "url": "https://www.boozallen.com"
+      },
+      "roles": [
+        "software"
+      ],
+      "role_labels": [
+        "Software Engineering"
+      ],
+      "locations": [
+        "McLean, VA",
+        "Annapolis Junction, MD"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.boozallen.com/careers/jobs/d723ed37",
+      "date_posted": "2026-09-17T00:00:00Z",
+      "salary": {
+        "min": 26,
+        "max": 34,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 84,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "React, Python"
+        },
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "McLean, VA"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 11 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:3f6bc0f5-61f2-3915-e768-87ec8726d54c",
+      "title": "Deep Learning Software Intern",
+      "company": {
+        "name": "NVIDIA",
+        "url": "https://www.nvidia.com"
+      },
+      "roles": [
+        "ai_ml_data",
+        "software"
+      ],
+      "role_labels": [
+        "AI / ML / Data Science",
+        "Software Engineering"
+      ],
+      "locations": [
+        "Santa Clara, CA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027",
+        "Fall 2027"
+      ],
+      "degrees": [
+        "Master's",
+        "PhD"
+      ],
+      "url": "https://www.nvidia.com/careers/jobs/9265eb28",
+      "date_posted": "2026-09-22T00:00:00Z",
+      "salary": {
+        "min": 48,
+        "max": 74,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 70,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "Python"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 6 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "vanshb03:06d2ec6d-bac8-61ad-aed7-33320e5a6d2b",
+      "title": "Machine Learning Engineer Intern",
+      "company": {
+        "name": "Scale AI",
+        "url": "https://scale.com"
+      },
+      "roles": [
+        "ai_ml_data"
+      ],
+      "role_labels": [
+        "AI / ML / Data Science"
+      ],
+      "locations": [
+        "San Francisco, CA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's",
+        "Master's"
+      ],
+      "url": "https://scale.com/careers/jobs/ab61e4d9",
+      "date_posted": "2026-09-14T00:00:00Z",
+      "salary": null,
+      "source": "vanshb03",
+      "score": 76,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #2 field",
+          "detail": "AI / ML / Data Science"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "Python, SQL"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 14 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:56eddc95-bf04-4061-5751-05b79459517c",
+      "title": "Data Engineer Intern",
+      "company": {
+        "name": "Databricks",
+        "url": "https://www.databricks.com"
+      },
+      "roles": [
+        "ai_ml_data"
+      ],
+      "role_labels": [
+        "AI / ML / Data Science"
+      ],
+      "locations": [
+        "Remote in USA"
+      ],
+      "is_remote": true,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's",
+        "Master's"
+      ],
+      "url": "https://www.databricks.com/careers/jobs/bac558b9",
+      "date_posted": "2026-09-20T00:00:00Z",
+      "salary": {
+        "min": 52,
+        "max": 60,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 82,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #2 field",
+          "detail": "AI / ML / Data Science"
+        },
+        {
+          "code": "skills",
+          "label": "3 of your skills",
+          "detail": "Python, SQL, AWS"
+        },
+        {
+          "code": "location",
+          "label": "Remote, and remote works for you",
+          "detail": null
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 8 days ago",
+          "detail": null
+        }
+      ],
+      "saved": true,
+      "application": null
+    },
+    {
+      "id": "simplify:9fb7c36d-1863-7c62-49c8-42e79e5b317b",
+      "title": "Research Scientist Intern – Applied AI",
+      "company": {
+        "name": "Meta",
+        "url": "https://www.metacareers.com"
+      },
+      "roles": [
+        "ai_ml_data"
+      ],
+      "role_labels": [
+        "AI / ML / Data Science"
+      ],
+      "locations": [
+        "Menlo Park, CA",
+        "Seattle, WA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "PhD"
+      ],
+      "url": "https://www.metacareers.com/careers/jobs/52873889",
+      "date_posted": "2026-09-01T00:00:00Z",
+      "salary": {
+        "min": 60,
+        "max": null,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 41,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #2 field",
+          "detail": "AI / ML / Data Science"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:f5bdb088-2ef1-4007-3fa5-b2a30b4cdeed",
+      "title": "Artificial Intelligence Intern",
+      "company": {
+        "name": "Johns Hopkins APL",
+        "url": "https://www.jhuapl.edu"
+      },
+      "roles": [
+        "ai_ml_data"
+      ],
+      "role_labels": [
+        "AI / ML / Data Science"
+      ],
+      "locations": [
+        "Laurel, MD"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's",
+        "Master's"
+      ],
+      "url": "https://www.jhuapl.edu/careers/jobs/1c159908",
+      "date_posted": "2026-09-18T00:00:00Z",
+      "salary": {
+        "min": 24,
+        "max": 32,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 85,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #2 field",
+          "detail": "AI / ML / Data Science"
+        },
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "Python"
+        },
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "Laurel, MD"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 10 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:da8f20b3-5580-3be8-e7e3-1a14f436d639",
+      "title": "Business Analyst Intern",
+      "company": {
+        "name": "Capital One",
+        "url": "https://www.capitalone.com"
+      },
+      "roles": [
+        "data_analytics"
+      ],
+      "role_labels": [
+        "Data & Business Analytics"
+      ],
+      "locations": [
+        "McLean, VA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.capitalone.com/careers/jobs/61f9c0f8",
+      "date_posted": "2026-09-12T00:00:00Z",
+      "salary": {
+        "min": 45,
+        "max": 45,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 68,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #5 field",
+          "detail": "Data & Business Analytics"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "SQL, Tableau"
+        },
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "McLean, VA"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "vanshb03:e1aa4242-0379-9de7-1383-7f79e6e1ec0a",
+      "title": "Data Analytics Intern",
+      "company": {
+        "name": "Marriott International",
+        "url": "https://careers.marriott.com"
+      },
+      "roles": [
+        "data_analytics"
+      ],
+      "role_labels": [
+        "Data & Business Analytics"
+      ],
+      "locations": [
+        "Bethesda, MD"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://careers.marriott.com/careers/jobs/6df52586",
+      "date_posted": "2026-09-09T00:00:00Z",
+      "salary": null,
+      "source": "vanshb03",
+      "score": 71,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #5 field",
+          "detail": "Data & Business Analytics"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "SQL, Tableau"
+        },
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "Bethesda, MD"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:48b7cf41-d84d-22ec-b9cf-cede6824f578",
+      "title": "Analytics & Cognitive Intern",
+      "company": {
+        "name": "Deloitte",
+        "url": "https://www2.deloitte.com"
+      },
+      "roles": [
+        "data_analytics",
+        "tech_consulting"
+      ],
+      "role_labels": [
+        "Data & Business Analytics",
+        "Technology Consulting"
+      ],
+      "locations": [
+        "Arlington, VA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www2.deloitte.com/careers/jobs/f9e5a12f",
+      "date_posted": "2026-09-03T00:00:00Z",
+      "salary": null,
+      "source": "simplify",
+      "score": 58,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #5 field",
+          "detail": "Data & Business Analytics"
+        },
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "Tableau"
+        },
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "Arlington, VA"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:93742b7a-d60a-fa52-a0fd-f84432376e05",
+      "title": "Embedded Software Engineer Intern",
+      "company": {
+        "name": "Northrop Grumman",
+        "url": "https://www.northropgrumman.com"
+      },
+      "roles": [
+        "hardware",
+        "software"
+      ],
+      "role_labels": [
+        "Hardware & Embedded",
+        "Software Engineering"
+      ],
+      "locations": [
+        "Linthicum, MD"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.northropgrumman.com/careers/jobs/c6cab8dc",
+      "date_posted": "2026-09-15T00:00:00Z",
+      "salary": {
+        "min": 27,
+        "max": 35,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 62,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "Linux"
+        },
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "Linthicum, MD"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 13 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:db2c3539-4c25-7957-d1a6-c56a5eb1e5d0",
+      "title": "Firmware Engineering Intern",
+      "company": {
+        "name": "Lockheed Martin",
+        "url": "https://www.lockheedmartinjobs.com"
+      },
+      "roles": [
+        "hardware"
+      ],
+      "role_labels": [
+        "Hardware & Embedded"
+      ],
+      "locations": [
+        "Bethesda, MD",
+        "Orlando, FL"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.lockheedmartinjobs.com/careers/jobs/7a3e11d5",
+      "date_posted": "2026-08-29T00:00:00Z",
+      "salary": null,
+      "source": "simplify",
+      "score": 45,
+      "reasons": [
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "Bethesda, MD"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "vanshb03:981c6155-e098-cf70-d04a-6b4c0474bd4c",
+      "title": "Hardware Engineering Intern – Silicon Validation",
+      "company": {
+        "name": "Apple",
+        "url": "https://www.apple.com/careers"
+      },
+      "roles": [
+        "hardware"
+      ],
+      "role_labels": [
+        "Hardware & Embedded"
+      ],
+      "locations": [
+        "Cupertino, CA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027",
+        "Fall 2027"
+      ],
+      "degrees": [
+        "Bachelor's",
+        "Master's"
+      ],
+      "url": "https://www.apple.com/careers/careers/jobs/ead503eb",
+      "date_posted": "2026-08-19T00:00:00Z",
+      "salary": null,
+      "source": "vanshb03",
+      "score": 33,
+      "reasons": [
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:aba0099c-ef5e-2188-11d6-b91d66811104",
+      "title": "FPGA Design Intern",
+      "company": {
+        "name": "Qualcomm",
+        "url": "https://www.qualcomm.com"
+      },
+      "roles": [
+        "hardware"
+      ],
+      "role_labels": [
+        "Hardware & Embedded"
+      ],
+      "locations": [
+        "San Diego, CA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Master's"
+      ],
+      "url": "https://www.qualcomm.com/careers/jobs/4614cbad",
+      "date_posted": null,
+      "salary": {
+        "min": 38,
+        "max": 46,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 26,
+      "reasons": [
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:53f1f755-82f8-5f4f-823b-9dc2c1b3f35c",
+      "title": "Quantitative Trader Intern",
+      "company": {
+        "name": "Jane Street",
+        "url": "https://www.janestreet.com"
+      },
+      "roles": [
+        "quant"
+      ],
+      "role_labels": [
+        "Quantitative Finance"
+      ],
+      "locations": [
+        "New York, NY"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.janestreet.com/careers/jobs/dae42620",
+      "date_posted": "2026-09-13T00:00:00Z",
+      "salary": {
+        "min": 115,
+        "max": null,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 38,
+      "reasons": [
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:40660ea5-054a-6a54-ce25-8b160e64b032",
+      "title": "Software Engineer Intern – Trading Systems",
+      "company": {
+        "name": "Citadel",
+        "url": "https://www.citadel.com"
+      },
+      "roles": [
+        "quant",
+        "software"
+      ],
+      "role_labels": [
+        "Quantitative Finance",
+        "Software Engineering"
+      ],
+      "locations": [
+        "Chicago, IL",
+        "New York, NY"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's",
+        "Master's"
+      ],
+      "url": "https://www.citadel.com/careers/jobs/2d4f2d1b",
+      "date_posted": "2026-09-08T00:00:00Z",
+      "salary": {
+        "min": 120,
+        "max": null,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 66,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "Python, Linux"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "vanshb03:3a763baf-a746-8f37-f56b-06dd575f9bd6",
+      "title": "Algorithm Developer Intern",
+      "company": {
+        "name": "Hudson River Trading",
+        "url": "https://www.hudsonrivertrading.com"
+      },
+      "roles": [
+        "quant"
+      ],
+      "role_labels": [
+        "Quantitative Finance"
+      ],
+      "locations": [
+        "New York, NY"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's",
+        "Master's",
+        "PhD"
+      ],
+      "url": "https://www.hudsonrivertrading.com/careers/jobs/073d3d23",
+      "date_posted": "2026-09-05T00:00:00Z",
+      "salary": null,
+      "source": "vanshb03",
+      "score": 35,
+      "reasons": [
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:afb727ab-b374-d698-a5be-4a26dcf67caf",
+      "title": "Quantitative Research Intern",
+      "company": {
+        "name": "Two Sigma",
+        "url": "https://www.twosigma.com"
+      },
+      "roles": [
+        "quant",
+        "research"
+      ],
+      "role_labels": [
+        "Quantitative Finance",
+        "Research"
+      ],
+      "locations": [
+        "New York, NY"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "PhD"
+      ],
+      "url": "https://www.twosigma.com/careers/jobs/3dc86040",
+      "date_posted": null,
+      "salary": null,
+      "source": "simplify",
+      "score": 22,
+      "reasons": [
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:a8aaaa05-f63a-fdd1-a253-4efb8c919a28",
+      "title": "Associate Product Manager Intern",
+      "company": {
+        "name": "Salesforce",
+        "url": "https://careers.salesforce.com"
+      },
+      "roles": [
+        "product_management"
+      ],
+      "role_labels": [
+        "Product Management"
+      ],
+      "locations": [
+        "San Francisco, CA",
+        "Seattle, WA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://careers.salesforce.com/careers/jobs/35782198",
+      "date_posted": "2026-09-11T00:00:00Z",
+      "salary": {
+        "min": 50,
+        "max": 58,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 47,
+      "reasons": [
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "vanshb03:f3a2a70b-ad63-33f4-8b04-af0d29ba6b28",
+      "title": "Product Manager Intern",
+      "company": {
+        "name": "Uber",
+        "url": "https://www.uber.com/careers"
+      },
+      "roles": [
+        "product_management"
+      ],
+      "role_labels": [
+        "Product Management"
+      ],
+      "locations": [
+        "San Francisco, CA",
+        "New York, NY"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's",
+        "Master's"
+      ],
+      "url": "https://www.uber.com/careers/careers/jobs/868ac614",
+      "date_posted": "2026-08-30T00:00:00Z",
+      "salary": null,
+      "source": "vanshb03",
+      "score": 44,
+      "reasons": [
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "SQL"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:0d9f0793-fe37-5443-63f3-ad0b83fdcb77",
+      "title": "Product Manager Intern",
+      "company": {
+        "name": "Microsoft",
+        "url": "https://careers.microsoft.com"
+      },
+      "roles": [
+        "product_management"
+      ],
+      "role_labels": [
+        "Product Management"
+      ],
+      "locations": [
+        "Redmond, WA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://careers.microsoft.com/careers/jobs/868ac614",
+      "date_posted": "2026-09-20T00:00:00Z",
+      "salary": {
+        "min": 45,
+        "max": 55,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 49,
+      "reasons": [
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 8 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:d2a01b33-8b64-4110-5b3c-1f1e6c74967e",
+      "title": "Technical Program Manager Intern",
+      "company": {
+        "name": "Amazon",
+        "url": "https://www.amazon.jobs"
+      },
+      "roles": [
+        "program_management"
+      ],
+      "role_labels": [
+        "Technical Program Management"
+      ],
+      "locations": [
+        "Seattle, WA",
+        "Arlington, VA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's",
+        "Master's"
+      ],
+      "url": "https://www.amazon.jobs/careers/jobs/ebaa72ed",
+      "date_posted": "2026-09-17T00:00:00Z",
+      "salary": {
+        "min": 48,
+        "max": 58,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 52,
+      "reasons": [
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "AWS"
+        },
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "Arlington, VA"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 11 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "vanshb03:367ceb23-88c5-d4aa-fdc0-5d067e4c964e",
+      "title": "Program Management Intern",
+      "company": {
+        "name": "Leidos",
+        "url": "https://www.leidos.com"
+      },
+      "roles": [
+        "program_management"
+      ],
+      "role_labels": [
+        "Technical Program Management"
+      ],
+      "locations": [
+        "Reston, VA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.leidos.com/careers/jobs/7e60e53f",
+      "date_posted": "2026-08-23T00:00:00Z",
+      "salary": null,
+      "source": "vanshb03",
+      "score": 46,
+      "reasons": [
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": {
+        "id": 7,
+        "status": "rejected"
+      }
+    },
+    {
+      "id": "simplify:0410502f-a8c8-e6d9-129b-e66518f42643",
+      "title": "Solutions Architect Intern",
+      "company": {
+        "name": "Amazon Web Services",
+        "url": "https://www.amazon.jobs"
+      },
+      "roles": [
+        "solutions_architecture",
+        "infra_devops"
+      ],
+      "role_labels": [
+        "Solutions & Sales Engineering",
+        "Cloud, Infra & DevOps"
+      ],
+      "locations": [
+        "Herndon, VA",
+        "Seattle, WA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.amazon.jobs/careers/jobs/a6e36879",
+      "date_posted": "2026-09-22T00:00:00Z",
+      "salary": {
+        "min": 46,
+        "max": 52,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 87,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #4 field",
+          "detail": "Solutions & Sales Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "AWS, Linux"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 6 days ago",
+          "detail": null
+        }
+      ],
+      "saved": true,
+      "application": null
+    },
+    {
+      "id": "simplify:ab5e0a0b-2329-fce0-128e-57c37b445bc7",
+      "title": "Sales Engineer Intern",
+      "company": {
+        "name": "Snowflake",
+        "url": "https://careers.snowflake.com"
+      },
+      "roles": [
+        "solutions_architecture"
+      ],
+      "role_labels": [
+        "Solutions & Sales Engineering"
+      ],
+      "locations": [
+        "San Mateo, CA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://careers.snowflake.com/careers/jobs/ebe99abc",
+      "date_posted": "2026-09-06T00:00:00Z",
+      "salary": null,
+      "source": "simplify",
+      "score": 61,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #4 field",
+          "detail": "Solutions & Sales Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "SQL"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "vanshb03:5097a6b0-2f0b-5261-4f39-9014db1aef1e",
+      "title": "Solutions Architect Intern",
+      "company": {
+        "name": "MongoDB",
+        "url": "https://www.mongodb.com/careers"
+      },
+      "roles": [
+        "solutions_architecture"
+      ],
+      "role_labels": [
+        "Solutions & Sales Engineering"
+      ],
+      "locations": [
+        "New York, NY",
+        "Remote in USA"
+      ],
+      "is_remote": true,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.mongodb.com/careers/careers/jobs/a6e36879",
+      "date_posted": "2026-09-19T00:00:00Z",
+      "salary": {
+        "min": 42,
+        "max": null,
+        "unit": "hour"
+      },
+      "source": "vanshb03",
+      "score": 73,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #4 field",
+          "detail": "Solutions & Sales Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "Python"
+        },
+        {
+          "code": "location",
+          "label": "Remote, and remote works for you",
+          "detail": null
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 9 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:169199da-8215-2a0b-0967-e4bbe70618a7",
+      "title": "Cybersecurity Engineer Intern",
+      "company": {
+        "name": "CrowdStrike",
+        "url": "https://www.crowdstrike.com"
+      },
+      "roles": [
+        "security"
+      ],
+      "role_labels": [
+        "Security"
+      ],
+      "locations": [
+        "Remote in USA"
+      ],
+      "is_remote": true,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.crowdstrike.com/careers/jobs/4f63dc08",
+      "date_posted": "2026-09-24T00:00:00Z",
+      "salary": {
+        "min": 30,
+        "max": 40,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 83,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #3 field",
+          "detail": "Security"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "Python, Linux"
+        },
+        {
+          "code": "location",
+          "label": "Remote, and remote works for you",
+          "detail": null
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 4 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:a3e10e16-b286-d2b9-2394-301f0ad2f8f8",
+      "title": "Cyber Operations Intern",
+      "company": {
+        "name": "MITRE",
+        "url": "https://www.mitre.org"
+      },
+      "roles": [
+        "security"
+      ],
+      "role_labels": [
+        "Security"
+      ],
+      "locations": [
+        "McLean, VA",
+        "Annapolis Junction, MD"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's",
+        "Master's"
+      ],
+      "url": "https://www.mitre.org/careers/jobs/6677f949",
+      "date_posted": "2026-09-14T00:00:00Z",
+      "salary": {
+        "min": 26,
+        "max": 34,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 80,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #3 field",
+          "detail": "Security"
+        },
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "Linux"
+        },
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "McLean, VA"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 14 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:718c8375-0580-cdf0-3036-36a1f52dc44c",
+      "title": "Security Software Engineer Intern",
+      "company": {
+        "name": "Booz Allen Hamilton",
+        "url": "https://www.boozallen.com"
+      },
+      "roles": [
+        "security",
+        "software"
+      ],
+      "role_labels": [
+        "Security",
+        "Software Engineering"
+      ],
+      "locations": [
+        "Columbia, MD"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.boozallen.com/careers/jobs/482b4d32",
+      "date_posted": "2026-09-25T00:00:00Z",
+      "salary": {
+        "min": 28,
+        "max": 36,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 89,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "Python, Java"
+        },
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "Columbia, MD"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 3 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "vanshb03:36572015-ed36-193e-09d7-9f9817a4a9f1",
+      "title": "Cyber Threat Analyst Intern",
+      "company": {
+        "name": "Leidos",
+        "url": "https://www.leidos.com"
+      },
+      "roles": [
+        "security"
+      ],
+      "role_labels": [
+        "Security"
+      ],
+      "locations": [
+        "Chantilly, VA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Spring 2027",
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.leidos.com/careers/jobs/94e67b75",
+      "date_posted": "2026-08-28T00:00:00Z",
+      "salary": null,
+      "source": "vanshb03",
+      "score": 63,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #3 field",
+          "detail": "Security"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": {
+        "id": 9,
+        "status": "ghosted"
+      }
+    },
+    {
+      "id": "simplify:026a2268-1002-b9e2-75d5-a7346f10954b",
+      "title": "Site Reliability Engineer Intern",
+      "company": {
+        "name": "Datadog",
+        "url": "https://www.datadoghq.com"
+      },
+      "roles": [
+        "infra_devops"
+      ],
+      "role_labels": [
+        "Cloud, Infra & DevOps"
+      ],
+      "locations": [
+        "New York, NY"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.datadoghq.com/careers/jobs/57d3bc25",
+      "date_posted": "2026-09-04T00:00:00Z",
+      "salary": null,
+      "source": "simplify",
+      "score": 60,
+      "reasons": [
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "Linux, AWS"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "vanshb03:d9969eee-12b6-d286-b31e-a13ac9501fcf",
+      "title": "Platform Engineer Intern",
+      "company": {
+        "name": "HashiCorp",
+        "url": "https://www.hashicorp.com"
+      },
+      "roles": [
+        "infra_devops",
+        "software"
+      ],
+      "role_labels": [
+        "Cloud, Infra & DevOps",
+        "Software Engineering"
+      ],
+      "locations": [
+        "Remote in USA"
+      ],
+      "is_remote": true,
+      "terms": [
+        "Summer 2027",
+        "Fall 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.hashicorp.com/careers/jobs/b6e07665",
+      "date_posted": "2026-09-16T00:00:00Z",
+      "salary": {
+        "min": 40,
+        "max": 48,
+        "unit": "hour"
+      },
+      "source": "vanshb03",
+      "score": 69,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "AWS, Git"
+        },
+        {
+          "code": "location",
+          "label": "Remote, and remote works for you",
+          "detail": null
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 12 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:c52e96b8-a22d-4a00-424d-79ed135f7765",
+      "title": "Product Design Intern",
+      "company": {
+        "name": "Figma",
+        "url": "https://www.figma.com/careers"
+      },
+      "roles": [
+        "design_ux"
+      ],
+      "role_labels": [
+        "Design & UX"
+      ],
+      "locations": [
+        "San Francisco, CA",
+        "New York, NY"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.figma.com/careers/careers/jobs/447039a1",
+      "date_posted": "2026-09-09T00:00:00Z",
+      "salary": {
+        "min": 45,
+        "max": null,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 34,
+      "reasons": [
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "vanshb03:3792af9d-7084-e8b5-ffa8-8f0a9b7980a7",
+      "title": "UX Design Intern",
+      "company": {
+        "name": "Adobe",
+        "url": "https://careers.adobe.com"
+      },
+      "roles": [
+        "design_ux"
+      ],
+      "role_labels": [
+        "Design & UX"
+      ],
+      "locations": [
+        "San Jose, CA",
+        "Remote in USA"
+      ],
+      "is_remote": true,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's",
+        "Master's"
+      ],
+      "url": "https://careers.adobe.com/careers/jobs/c8e74153",
+      "date_posted": "2026-08-18T00:00:00Z",
+      "salary": null,
+      "source": "vanshb03",
+      "score": 29,
+      "reasons": [
+        {
+          "code": "location",
+          "label": "Remote, and remote works for you",
+          "detail": null
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:70c15b32-3f7a-063a-81cc-dbe2ea14ea79",
+      "title": "IT Operations Intern",
+      "company": {
+        "name": "GEICO",
+        "url": "https://www.geico.com"
+      },
+      "roles": [
+        "it_support"
+      ],
+      "role_labels": [
+        "IT & Systems"
+      ],
+      "locations": [
+        "Chevy Chase, MD"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.geico.com/careers/jobs/b54f8a96",
+      "date_posted": "2026-09-13T00:00:00Z",
+      "salary": {
+        "min": 24,
+        "max": 28,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 55,
+      "reasons": [
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "Linux"
+        },
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "Chevy Chase, MD"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:f4e93f6e-8e87-f07f-0c9e-95888a8f790e",
+      "title": "Information Technology Intern",
+      "company": {
+        "name": "T. Rowe Price",
+        "url": "https://www.troweprice.com"
+      },
+      "roles": [
+        "it_support"
+      ],
+      "role_labels": [
+        "IT & Systems"
+      ],
+      "locations": [
+        "Baltimore, MD"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.troweprice.com/careers/jobs/cc601621",
+      "date_posted": "2026-09-02T00:00:00Z",
+      "salary": null,
+      "source": "simplify",
+      "score": 59,
+      "reasons": [
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "Baltimore, MD"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:a857adbe-705d-832d-5bdf-0c716d07403e",
+      "title": "Technology Consulting Analyst Intern",
+      "company": {
+        "name": "Accenture",
+        "url": "https://www.accenture.com"
+      },
+      "roles": [
+        "tech_consulting"
+      ],
+      "role_labels": [
+        "Technology Consulting"
+      ],
+      "locations": [
+        "Arlington, VA",
+        "New York, NY"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.accenture.com/careers/jobs/cd990fec",
+      "date_posted": "2026-09-18T00:00:00Z",
+      "salary": {
+        "min": 30,
+        "max": null,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 50,
+      "reasons": [
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "Arlington, VA"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 10 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "vanshb03:a3909155-e904-bfb0-4c12-7a14a4255a87",
+      "title": "Digital Transformation Intern",
+      "company": {
+        "name": "PwC",
+        "url": "https://www.pwc.com"
+      },
+      "roles": [
+        "tech_consulting"
+      ],
+      "role_labels": [
+        "Technology Consulting"
+      ],
+      "locations": [
+        "Washington, DC"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.pwc.com/careers/jobs/f825b65c",
+      "date_posted": "2026-09-10T00:00:00Z",
+      "salary": null,
+      "source": "vanshb03",
+      "score": 56,
+      "reasons": [
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "SQL"
+        },
+        {
+          "code": "location",
+          "label": "In a preferred location",
+          "detail": "Washington, DC"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:e3208b58-55e6-8d75-fc07-3779313674ec",
+      "title": "Research Intern – Hybrid Cloud",
+      "company": {
+        "name": "IBM",
+        "url": "https://www.ibm.com/careers"
+      },
+      "roles": [
+        "research",
+        "infra_devops"
+      ],
+      "role_labels": [
+        "Research",
+        "Cloud, Infra & DevOps"
+      ],
+      "locations": [
+        "Yorktown Heights, NY"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Master's",
+        "PhD"
+      ],
+      "url": "https://www.ibm.com/careers/careers/jobs/39cc075c",
+      "date_posted": "2026-08-22T00:00:00Z",
+      "salary": null,
+      "source": "simplify",
+      "score": 30,
+      "reasons": [
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:d6483aa4-a057-3cf9-ed9a-5fb3363c9e39",
+      "title": "Software Engineer Intern – Space Exploration",
+      "company": {
+        "name": "Johns Hopkins APL",
+        "url": "https://www.jhuapl.edu"
+      },
+      "roles": [
+        "software"
+      ],
+      "role_labels": [
+        "Software Engineering"
+      ],
+      "locations": [
+        "Laurel, MD"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.jhuapl.edu/careers/jobs/a865f9d4",
+      "date_posted": "2026-09-27T00:00:00Z",
+      "salary": {
+        "min": 24,
+        "max": 32,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 91,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "3 of your skills",
+          "detail": "Python, Git, Linux"
+        },
+        {
+          "code": "location",
+          "label": "Near Washington, DC",
+          "detail": "Laurel, MD"
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted yesterday",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "vanshb03:c12d8105-afbf-b939-0c96-b1b055291fdb",
+      "title": "Software Engineer Intern – Backend",
+      "company": {
+        "name": "Robinhood",
+        "url": "https://robinhood.com/careers"
+      },
+      "roles": [
+        "software"
+      ],
+      "role_labels": [
+        "Software Engineering"
+      ],
+      "locations": [
+        "Menlo Park, CA",
+        "New York, NY"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Summer 2028"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://robinhood.com/careers/careers/jobs/8fef4706",
+      "date_posted": "2026-09-22T00:00:00Z",
+      "salary": {
+        "min": 57,
+        "max": null,
+        "unit": "hour"
+      },
+      "source": "vanshb03",
+      "score": 48,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "Python"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 6 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:89f7c9e2-4e4e-bbcb-0834-6dcb1c2e9016",
+      "title": "Software Engineer Intern",
+      "company": {
+        "name": "Coinbase",
+        "url": "https://www.coinbase.com/careers"
+      },
+      "roles": [
+        "software"
+      ],
+      "role_labels": [
+        "Software Engineering"
+      ],
+      "locations": [
+        "Remote in USA"
+      ],
+      "is_remote": true,
+      "terms": [
+        "Summer 2027"
+      ],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.coinbase.com/careers/careers/jobs/a8d25e81",
+      "date_posted": "2026-08-31T00:00:00Z",
+      "salary": {
+        "min": 53,
+        "max": null,
+        "unit": "hour"
+      },
+      "source": "simplify",
+      "score": 77,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "skills",
+          "label": "2 of your skills",
+          "detail": "Python, React"
+        },
+        {
+          "code": "location",
+          "label": "Remote, and remote works for you",
+          "detail": null
+        },
+        {
+          "code": "term",
+          "label": "Your target term",
+          "detail": "Summer 2027"
+        }
+      ],
+      "saved": false,
+      "application": null
+    },
+    {
+      "id": "simplify:96cdd534-6697-3901-1ab9-1a54faa01a77",
+      "title": "Data Science Intern",
+      "company": {
+        "name": "Visa",
+        "url": "https://corporate.visa.com/careers"
+      },
+      "roles": [
+        "ai_ml_data"
+      ],
+      "role_labels": [
+        "AI / ML / Data Science"
+      ],
+      "locations": [
+        "Austin, TX",
+        "Foster City, CA"
+      ],
+      "is_remote": false,
+      "terms": [
+        "Fall 2027"
+      ],
+      "degrees": [
+        "Master's"
+      ],
+      "url": "https://corporate.visa.com/careers/careers/jobs/dc4bc07a",
+      "date_posted": "2026-08-25T00:00:00Z",
+      "salary": null,
+      "source": "simplify",
+      "score": 39,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #2 field",
+          "detail": "AI / ML / Data Science"
+        },
+        {
+          "code": "skills",
+          "label": "1 of your skills",
+          "detail": "Python"
+        }
+      ],
+      "saved": false,
+      "application": null
+    }
+  ]
+}

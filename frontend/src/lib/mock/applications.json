@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "id": 12,
+      "posting_id": "simplify:9a5e7e29-0251-947b-cc3b-3121ae79507c",
+      "applied_at": "2026-09-08T15:00:00Z",
+      "events": [
+        { "id": 40, "kind": "applied", "occurred_at": "2026-09-08T15:00:00Z", "note": null, "source": "manual" },
+        { "id": 41, "kind": "acknowledged", "occurred_at": "2026-09-10T13:20:00Z", "note": "Confirmation email from Workday", "source": "manual" },
+        { "id": 44, "kind": "interview_scheduled", "occurred_at": "2026-09-22T18:00:00Z", "note": "Virtual, Oct 3 with the platform team", "source": "manual" }
+      ]
+    },
+    {
+      "id": 15,
+      "posting_id": "simplify:7bc99d29-68c0-3c40-18e3-4772eceeb02e",
+      "applied_at": "2026-09-20T16:30:00Z",
+      "events": [
+        { "id": 52, "kind": "applied", "occurred_at": "2026-09-20T16:30:00Z", "note": "Referred by a TA", "source": "manual" }
+      ]
+    },
+    {
+      "id": 9,
+      "posting_id": "vanshb03:36572015-ed36-193e-09d7-9f9817a4a9f1",
+      "applied_at": "2026-08-19T12:00:00Z",
+      "events": [
+        { "id": 30, "kind": "applied", "occurred_at": "2026-08-19T12:00:00Z", "note": null, "source": "manual" },
+        { "id": 38, "kind": "ghosted", "occurred_at": "2026-09-18T06:00:00Z", "note": null, "source": "system" }
+      ]
+    },
+    {
+      "id": 7,
+      "posting_id": "vanshb03:367ceb23-88c5-d4aa-fdc0-5d067e4c964e",
+      "applied_at": "2026-08-25T12:00:00Z",
+      "events": [
+        { "id": 25, "kind": "applied", "occurred_at": "2026-08-25T12:00:00Z", "note": null, "source": "manual" },
+        { "id": 33, "kind": "rejected", "occurred_at": "2026-09-15T20:10:00Z", "note": null, "source": "manual" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  {
+    rules: {
+      // React escapes everything it renders. This is the one way round that,
+      // and with the sign-in token in localStorage an injected script would
+      // be an account takeover. It is never needed here, so it is an error.
+      "react/no-danger": "error",
+    },
+  },
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+    // build dir of the Playwright dev server, and Playwright's own output
+    ".next-*/**",
+    "playwright-report/**",
+    "test-results/**",
+  ]),
+]);
+
+export default eslintConfig;
