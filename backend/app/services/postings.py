@@ -11,6 +11,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
+from app import limits
 from app.models import Application, MatchScore, Posting, SavedPosting
 from app.schemas import ApplicationRef, CompanyOut, PostingOut, SalaryOut
 from app.sources.roles import ROLE_LABELS
@@ -21,7 +22,8 @@ def get_by_public_id(db: Session, public_id: str) -> Posting:
     too: a saved or applied-to posting must stay reachable after it closes."""
     source, sep, source_id = (public_id or "").partition(":")
     posting = None
-    if sep and source and source_id:
+    # Nothing longer than the columns can exist, so it is not looked up.
+    if sep and source and source_id and len(public_id) <= limits.POSTING_ID_MAX:
         posting = db.scalar(
             select(Posting)
             .options(joinedload(Posting.company))

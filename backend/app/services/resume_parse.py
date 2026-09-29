@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import re
 
-from app import config
+from app import config, limits
 
 # --------------------------------------------------------------------------- #
 # The vocabulary. canonical name -> aliases. Keep it curated: every entry is
@@ -351,7 +351,7 @@ def canonicalize(skills: list[str]) -> list[str]:
     out: list[str] = []
     seen: set[str] = set()
     for raw in skills:
-        name = " ".join((raw or "").split())[:60]
+        name = " ".join((raw or "").split())[: limits.SKILL_CHARS_MAX]
         if not name:
             continue
         known = _INDEX.get(tuple(t.lower() for t in tokenize(name)))
@@ -359,7 +359,7 @@ def canonicalize(skills: list[str]) -> list[str]:
         if name.lower() not in seen:
             seen.add(name.lower())
             out.append(name)
-    return out[:100]
+    return out[: limits.SKILLS_MAX]
 
 
 # --------------------------------------------------------------------------- #

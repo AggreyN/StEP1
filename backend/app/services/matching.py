@@ -42,6 +42,7 @@ from sqlalchemy.orm import Session
 from app import config
 from app.models import MatchScore, Profile
 from app.services import locations, resume_parse
+from app.services.terms import term_ordinal
 from app.sources.roles import ROLE_LABELS
 
 W_ROLE, W_SKILLS, W_LOCATION, W_TERM, W_FRESH, W_COMPANY = 30, 20, 15, 15, 10, 10
@@ -60,10 +61,6 @@ FRESH_DECAY_DAYS = 30
 # Past this a "Posted N days ago" chip stops being a reason to apply. The
 # points are still counted; only the chip is dropped.
 FRESH_REASON_MAX_DAYS = 30
-
-# Seasons in calendar order. "Winter 2026" is the December 2026 start, which
-# is how the source lists label it, so it follows Fall of the same year.
-_SEASONS = {"spring": 0, "summer": 1, "fall": 2, "autumn": 2, "winter": 3}
 
 _DEGREE_SYNONYMS = {
     "bachelors": {"bachelors", "bachelor", "undergraduate", "undergrad", "bs", "ba", "bsc", "be"},
@@ -117,14 +114,6 @@ class StudentView:
 # --------------------------------------------------------------------------- #
 # Small pure helpers
 # --------------------------------------------------------------------------- #
-
-
-def term_ordinal(term: str) -> int | None:
-    """ "Summer 2027" -> a number where adjacent terms differ by 1."""
-    parts = (term or "").strip().lower().split()
-    if len(parts) != 2 or parts[0] not in _SEASONS or not parts[1].isdigit():
-        return None
-    return int(parts[1]) * 4 + _SEASONS[parts[0]]
 
 
 def normalize_degree(value: str | None) -> str | None:

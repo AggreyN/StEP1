@@ -155,7 +155,10 @@ def test_hostile_input_is_data_everywhere(client, board, db, payload):
     before = db.scalar(select(func.count()).select_from(Posting))
 
     for params in ({"location": payload}, {"term": payload}):
-        assert _ids(client.get("/feed", params=params, headers=board)) == []
+        r = client.get("/feed", params=params, headers=board)
+        # Refused for its length, or searched for and not found. Never run.
+        assert r.status_code in (200, 422), r.text
+        assert r.status_code == 422 or r.json()["items"] == []
     assert client.get("/feed", params={"roles": payload}, headers=board).status_code == 422
     assert client.get(f"/postings/simplify:{payload}", headers=board).status_code in (404, 405)
     assert client.post("/saved/" + payload, headers=board).status_code in (404, 405)

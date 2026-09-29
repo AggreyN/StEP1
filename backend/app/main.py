@@ -15,6 +15,7 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from app import config
 from app.logging_config import AccessLogMiddleware
 from app.logging_config import setup as setup_logging
+from app.middleware import BodyLimitMiddleware
 
 setup_logging()
 
@@ -50,6 +51,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Middleware wraps in reverse order of registration: the last one added is
+# the first to see a request. So the body limit sits inside CORS (its refusals
+# still carry CORS headers) and the access log sits outside everything.
+app.add_middleware(BodyLimitMiddleware, exempt=("/profile/resume/local/",))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.ALLOWED_ORIGINS,
