@@ -67,6 +67,22 @@ ALLOWED_ORIGINS = [
     o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if o.strip()
 ]
 
+# --- Behind a proxy ---
+# Whether to believe X-Forwarded-For and X-Forwarded-Proto. They are ordinary
+# request headers: anyone can send them. Behind a proxy that overwrites or
+# appends to them (App Runner, an ALB, CloudFront) they are the only way to
+# learn the real client address and scheme. With no proxy, believing them lets
+# a client choose its own address, and with it a fresh rate limit for every
+# request. So: false on a laptop, true on App Runner.
+TRUST_PROXY = os.getenv("TRUST_PROXY", "false").lower() == "true"
+# How many proxies stand between the internet and this process. Each appends
+# the address it saw to X-Forwarded-For, so the client's is this many from
+# the right; everything further left was supplied by the client and means
+# nothing. App Runner alone is 1. CloudFront in front of App Runner is 2.
+# Too low and everyone shares the proxy's address and one rate limit; too
+# high and the client is choosing its own address again.
+TRUSTED_PROXY_HOPS = int(os.getenv("TRUSTED_PROXY_HOPS", "1"))
+
 # Absolute base URL of this API as the BROWSER sees it. Local-mode presigned
 # upload URLs are built from it, so behind a proxy or in compose it must be the
 # externally reachable address, not the container's bind address.

@@ -15,7 +15,11 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from app import config
 from app.logging_config import AccessLogMiddleware
 from app.logging_config import setup as setup_logging
-from app.middleware import BodyLimitMiddleware
+from app.middleware import (
+    BodyLimitMiddleware,
+    ErrorBoundaryMiddleware,
+    SecurityHeadersMiddleware,
+)
 
 setup_logging()
 
@@ -31,6 +35,8 @@ from app.routes import (  # noqa: E402  (logging must be configured first)
 )
 from app.services import ingest_scheduler  # noqa: E402
 
+_log = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -44,34 +50,6 @@ async def lifespan(app: FastAPI):
         await ingest_scheduler.stop(task)
 
 
-app = FastAPI(
-    title="StEP1 API",
-    description="Internship discovery and application tracking.",
-    version="0.1.0",
-    lifespan=lifespan,
-)
-
-# Middleware wraps in reverse order of registration: the last one added is
-# the first to see a request. So the body limit sits inside CORS (its refusals
-# still carry CORS headers) and the access log sits outside everything.
-app.add_middleware(BodyLimitMiddleware, exempt=("/profile/resume/local/",))
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=config.ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["Authorization", "Content-Type"],
-    # Retry-After is not CORS-safelisted. Without this the browser cannot read
-    # the header on PUT /profile's 202 and the "building" poll loop silently
-    # falls back to guessing (the Rackner bug, again).
-    expose_headers=["Retry-After"],
-)
-# Outermost: every request gets an id + one JSON access line.
-app.add_middleware(AccessLogMiddleware)
-
-_log = logging.getLogger(__name__)
-
-
 def _loc(loc: tuple) -> str:
     # ("body", "interests", 0, "rank") -> "interests[0].rank"
     out = ""
@@ -82,7 +60,6 @@ def _loc(loc: tuple) -> str:
     return out
 
 
-@app.exception_handler(RequestValidationError)
 async def _validation_error(request: Request, exc: RequestValidationError):
     """Flatten FastAPI's list-of-errors into one readable string, so every
     error body in the API is {"detail": str} and the frontend can show it."""
@@ -101,7 +78,6 @@ async def _validation_error(request: Request, exc: RequestValidationError):
 # A DB failure is a clean, NAMED 503 — never a bare 500. The two messages make
 # the two deployment failure modes (unreachable vs migrations-never-ran)
 # diagnosable from outside without CloudWatch access.
-@app.exception_handler(OperationalError)
 async def _db_unreachable(request: Request, exc: OperationalError):
     _log.error("database unreachable: %s", type(exc.orig).__name__)
     return JSONResponse(
@@ -110,31 +86,62 @@ async def _db_unreachable(request: Request, exc: OperationalError):
     )
 
 
-@app.exception_handler(ProgrammingError)
 async def _db_schema_broken(request: Request, exc: ProgrammingError):
-    _log.error("database schema error: %s", exc.orig)
+    _log.error("database schema error: %s", type(exc.orig).__name__)
     return JSONResponse(
         status_code=503,
         content={"detail": "The database schema is not ready. Has `alembic upgrade head` run?"},
     )
 
 
-@app.exception_handler(Exception)
-async def _unhandled(request: Request, exc: Exception):
-    """Even a bug answers in the contract's error shape. The traceback goes
-    to the log (joined by X-Request-Id), never to the client."""
-    _log.exception("unhandled error", exc_info=exc)
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Something went wrong on our side. Please try again."},
+def create_app(*, prod: bool = config.APP_ENV == "prod") -> FastAPI:
+    """Build the application. `prod` is a parameter so that what production
+    serves can be tested from anywhere, without pretending to be there."""
+    app = FastAPI(
+        title="StEP1 API",
+        description="Internship discovery and application tracking.",
+        version="0.1.0",
+        lifespan=lifespan,
+        # The interactive docs and the schema describe every route and every
+        # field. Useful on a laptop; in production, a map for whoever is
+        # looking for a way in. ReDoc is off everywhere: one is enough.
+        docs_url=None if prod else "/docs",
+        openapi_url=None if prod else "/openapi.json",
+        redoc_url=None,
     )
 
+    # Middleware wraps in reverse order of registration: the last one added
+    # is the first to see a request and the last to see its response.
+    #
+    #   access log         outermost, so it times and records everything
+    #   security headers   on every response, including refusals and errors
+    #   CORS               so that refusals and errors below are readable
+    #   body limit         before a byte of the body is read
+    #   error boundary     innermost: a crash becomes a response down here,
+    #                      and so passes back up through all of the above
+    app.add_middleware(ErrorBoundaryMiddleware)
+    app.add_middleware(BodyLimitMiddleware, exempt=("/profile/resume/local/",))
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["Authorization", "Content-Type"],
+        # Retry-After is not CORS-safelisted. Without this the browser cannot
+        # read the header on PUT /profile's 202 and the "building" poll loop
+        # silently falls back to guessing (the Rackner bug, again).
+        expose_headers=["Retry-After"],
+    )
+    app.add_middleware(SecurityHeadersMiddleware, prod=prod)
+    app.add_middleware(AccessLogMiddleware)
 
-app.include_router(health.router)
-app.include_router(auth.router)
-app.include_router(profile.router)
-app.include_router(feed.router)
-app.include_router(postings.router)
-app.include_router(saved.router)
-app.include_router(applications.router)
-app.include_router(ingest.router)
+    app.add_exception_handler(RequestValidationError, _validation_error)
+    app.add_exception_handler(OperationalError, _db_unreachable)
+    app.add_exception_handler(ProgrammingError, _db_schema_broken)
+
+    for module in (health, auth, profile, feed, postings, saved, applications, ingest):
+        app.include_router(module.router)
+    return app
+
+
+app = create_app()
