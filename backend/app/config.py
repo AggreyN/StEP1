@@ -92,6 +92,21 @@ SOURCE_FETCH_TIMEOUT_S = float(os.getenv("SOURCE_FETCH_TIMEOUT_S", "60"))
 # would otherwise mark the whole board closed in one run. 0 disables the guard.
 DEACTIVATE_GUARD_RATIO = float(os.getenv("DEACTIVATE_GUARD_RATIO", "0.5"))
 
+# --- Automatic refresh ---
+# The API refreshes the listings itself: a background task checks each source
+# and re-runs the backfill for any whose last successful run is older than
+# INGEST_INTERVAL_HOURS. On by default in dev, where nothing else would do it.
+# Off by default in prod, where the nightly ingest is a scheduled Lambda (§1)
+# and the API should not also be pulling; set AUTO_INGEST=true to override.
+AUTO_INGEST = os.getenv("AUTO_INGEST", "true" if APP_ENV == "dev" else "false").lower() == "true"
+# The upstream lists change through the day but a student checks daily. Much
+# under 24 and every laptop running this re-downloads 12 MB for nothing; much
+# over and "Posted today" has already been open for two days.
+INGEST_INTERVAL_HOURS = float(os.getenv("INGEST_INTERVAL_HOURS", "24"))
+# How often the task looks at the clock, and so how late a refresh can be and
+# how soon a failed one is retried. The check itself is one small query.
+INGEST_CHECK_MINUTES = float(os.getenv("INGEST_CHECK_MINUTES", "30"))
+
 # --- Matching ---
 # Postings older than this are hard-filtered out of the feed. Most intern reqs
 # close within ~3 months; past 120 days the "active" flag upstream is usually

@@ -4,6 +4,7 @@ Run:  uvicorn app.main:app --reload --port 8000   ->  http://localhost:8000/docs
 """
 
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -26,11 +27,26 @@ from app.routes import (  # noqa: E402  (logging must be configured first)
     profile,
     saved,
 )
+from app.services import ingest_scheduler  # noqa: E402
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Runs the automatic refresh for as long as the API is up. Its first
+    check is at startup, which is what lets a laptop that was off overnight
+    catch up the moment the server starts."""
+    task = ingest_scheduler.start()
+    try:
+        yield
+    finally:
+        await ingest_scheduler.stop(task)
+
 
 app = FastAPI(
     title="StEP1 API",
     description="Internship discovery and application tracking.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(

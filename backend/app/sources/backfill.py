@@ -17,6 +17,10 @@ Per source, in one transaction:
 
 Nothing is filtered at ingest. Inactive and invisible rows are stored as-is
 and excluded on read.
+
+Only one ingest runs at a time, across processes: the command line here and
+the API's automatic refresh (services/ingest_scheduler.py) take the same
+Postgres advisory lock. The command line waits its turn; the scheduler skips.
 """
 
 from __future__ import annotations
@@ -25,10 +29,13 @@ import argparse
 import json
 import logging
 import sys
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -45,6 +52,13 @@ SOURCES: dict[str, type[Source]] = {
     Vanshb03Source.name: Vanshb03Source,
 }
 
+# The advisory lock every ingest holds. Two-integer form; the first integer is
+# a namespace so the pair can't collide with another feature's locks (the
+# scorer uses 5171 with a user id).
+LOCK_KEY = (5172, 1)
+
+INTERRUPTED = "Interrupted before it finished."
+
 # Rows per INSERT statement. psycopg's parameter limit is 65,535; postings
 # have ~22 columns, so 1,000 rows is a comfortable ~22k parameters.
 _BATCH = 1000
@@ -59,10 +73,82 @@ class RunResult:
     unchanged: int = 0
     deactivated: int = 0
     error: str | None = None
+    duration_ms: int = 0
 
     @property
     def upserted(self) -> int:
         return self.inserted + self.updated
+
+
+# --------------------------------------------------------------------------- #
+# One ingest at a time
+# --------------------------------------------------------------------------- #
+
+
+@contextmanager
+def ingest_lock(*, wait: bool) -> Iterator[bool]:
+    """Hold the ingest lock for the duration of the block. Yields whether it
+    was acquired; with wait=False that can be False, and the caller must not
+    ingest.
+
+    Session-level, so it has its own connection for as long as it is held:
+    the lock belongs to the connection, and a pooled connection handed to
+    someone else mid-ingest would take the lock with it. If the process dies,
+    Postgres drops the connection and the lock goes with it — there is no
+    stale lock to clean up after a crash or a `--reload` restart.
+    """
+    from app.database import engine
+
+    # AUTOCOMMIT: an ingest takes seconds, and this connection must not sit
+    # idle inside a transaction for all of them.
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        fn = "pg_advisory_lock" if wait else "pg_try_advisory_lock"
+        got = conn.execute(
+            text(f"SELECT {fn}(:a, :b)"), {"a": LOCK_KEY[0], "b": LOCK_KEY[1]}
+        ).scalar()
+        # pg_advisory_lock returns void once it has the lock.
+        held = True if wait else bool(got)
+        try:
+            yield held
+        finally:
+            if held:
+                conn.execute(
+                    text("SELECT pg_advisory_unlock(:a, :b)"),
+                    {"a": LOCK_KEY[0], "b": LOCK_KEY[1]},
+                )
+
+
+def is_running(db: Session) -> bool:
+    """Whether any process holds the ingest lock right now."""
+    return bool(
+        db.execute(
+            text(
+                """
+                SELECT EXISTS (
+                    SELECT 1 FROM pg_locks l
+                     WHERE l.locktype = 'advisory' AND l.granted
+                       AND l.classid = :a AND l.objid = :b AND l.objsubid = 2
+                       AND l.database = (SELECT oid FROM pg_database
+                                          WHERE datname = current_database())
+                )
+                """
+            ),
+            {"a": LOCK_KEY[0], "b": LOCK_KEY[1]},
+        ).scalar()
+    )
+
+
+def close_interrupted_runs(db: Session) -> int:
+    """Mark runs that never finished as failed. Call only while holding the
+    ingest lock: holding it proves nothing else is mid-run, so any unfinished
+    row belongs to a process that died (or was restarted by --reload)."""
+    res = db.execute(
+        update(IngestRun)
+        .where(IngestRun.finished_at.is_(None))
+        .values(finished_at=func.now(), error=INTERRUPTED)
+    )
+    db.commit()
+    return res.rowcount
 
 
 def _upsert_companies(db: Session, postings: list[NormalizedPosting]) -> dict[str, int]:
@@ -129,6 +215,7 @@ def ingest(
     """Run one source end to end and commit. `postings` lets tests (and a
     future Lambda) hand in already-fetched rows."""
     result = RunResult(source=source.name)
+    started = time.perf_counter()
     run = IngestRun(source=source.name)
     db.add(run)
     db.commit()
@@ -234,6 +321,8 @@ def ingest(
     run.error = result.error
     db.add(run)
     db.commit()
+    result.duration_ms = round((time.perf_counter() - started) * 1000)
+    # One line per run, whoever started it: the command line or the scheduler.
     log.info("ingest finished", extra=asdict(result) | {"upserted": result.upserted})
     return result
 
@@ -242,8 +331,12 @@ _MISSING = object()
 
 
 def run_all(db: Session, only: str = "all") -> list[RunResult]:
+    """Ingest the named sources now, whether or not they are due. Waits for
+    any ingest already in progress rather than running alongside it."""
     names = list(SOURCES) if only == "all" else [only]
-    return [ingest(db, SOURCES[name]()) for name in names]
+    with ingest_lock(wait=True):
+        close_interrupted_runs(db)
+        return [ingest(db, SOURCES[name]()) for name in names]
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -36,6 +36,11 @@ os.environ["UPLOAD_DIR"] = str(_TMP / "uploads")
 os.environ["PUBLIC_API_BASE"] = "http://testserver"
 os.environ["JWT_SECRET"] = "test-only-secret-not-a-real-key"
 os.environ["ALLOWED_ORIGINS"] = "http://localhost:3000"
+# The suite must never reach the network. The scheduler is off here; the
+# tests that exercise it call it directly with a fake source.
+os.environ["AUTO_INGEST"] = "false"
+os.environ["INGEST_INTERVAL_HOURS"] = "24"
+os.environ["INGEST_CHECK_MINUTES"] = "30"
 
 
 _TABLES = (
@@ -167,15 +172,19 @@ def make_row(
     locations=("Washington, DC",),
     terms=("Summer 2027",),
     degrees=("Bachelor's",),
-    days_ago: float = 3,
+    days_ago: float | None = 3,
     category: str = "Software",
     active: bool = True,
     is_visible: bool = True,
+    posted: int | None = None,
 ) -> dict:
-    """One posting in the Simplify list's own JSON shape."""
+    """One posting in the Simplify list's own JSON shape. `days_ago=None`
+    makes an undated posting; `posted` pins the exact epoch second, for tests
+    that need several postings with an identical date."""
     import time
 
-    posted = int(time.time() - days_ago * 86_400)
+    if posted is None and days_ago is not None:
+        posted = int(time.time() - days_ago * 86_400)
     return {
         "source": "Simplify",
         "id": source_id,
@@ -222,3 +231,47 @@ def onboard(client, headers: dict, **overrides) -> dict:
     r = client.put("/profile", json=body, headers=headers)
     assert r.status_code == 202, r.text
     return body
+
+
+INGEST_ROWS = [
+    make_row("a", "Software Engineer Intern", "Acme"),
+    make_row("b", "Data Analyst Intern", "Globex", category="AI/ML/Data"),
+    make_row("c", "Hardware Engineering Intern", "Initech", category="Hardware"),
+]
+
+
+def fake_source(name: str, rows=None, fail: bool = False):
+    """A source class the scheduler can instantiate in place of a real one.
+    It never touches the network, and counts how often it was asked to fetch."""
+    from dataclasses import replace
+
+    from app.sources import simplify
+    from app.sources.base import Source
+
+    rows = INGEST_ROWS if rows is None else rows
+
+    class Fake(Source):
+        fetches = 0
+
+        def fetch(self):
+            type(self).fetches += 1
+            if fail:
+                raise ConnectionError("github is down")
+            return [replace(simplify.normalize_row(r), source=name) for r in rows]
+
+    Fake.name = name
+    return Fake
+
+
+def age_runs(db, hours: float) -> None:
+    """Pretend every recorded ingest run happened `hours` ago."""
+    from sqlalchemy import text
+
+    db.execute(
+        text(
+            "UPDATE ingest_runs SET started_at = started_at - make_interval(secs => :s), "
+            "finished_at = finished_at - make_interval(secs => :s)"
+        ),
+        {"s": hours * 3600},
+    )
+    db.commit()
