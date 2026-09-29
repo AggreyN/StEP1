@@ -17,3 +17,12 @@ uploads/
 .DS_Store
 .vscode/
 .idea/
+
+# Skill scratch files that sometimes land in the repo root instead of a
+# scratchpad when a skill runs with this directory as its working directory.
+# .claude/architecture-rules.txt is real project config and stays tracked.
+.claude/skills/
+graphify-out/
+*.skill
+resume-tailor.zip
+resume-tailor/
