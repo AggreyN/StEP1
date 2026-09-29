@@ -248,13 +248,23 @@ All have defaults. The ones you are likely to touch:
 | `DATABASE_URL` | `postgresql+psycopg://localhost:5432/step1` | Postgres connection |
 | `TEST_DATABASE_URL` | `postgresql+psycopg://localhost:5432/step1_test` | Database the tests rebuild |
 | `AUTH_MODE` | `local` | `local` (bcrypt + HS256) or `cognito` |
-| `JWT_SECRET` | dev placeholder | Signs local tokens. **Change it outside development.** |
+| `JWT_SECRET` | dev placeholder | Signs local tokens. With `APP_ENV=prod` the app will not start on the placeholder, or on anything under 32 characters |
+| `BCRYPT_ROUNDS` | `12` | Cost of hashing a password |
+| `RATE_LIMIT_ENABLED` | `true` | Rate limits on sign-in, registration, account deletion and `/stats` |
+| `LOGIN_RATE_LIMIT` | `10/minute` | Per client address |
+| `REGISTER_RATE_LIMIT` | `5/hour` | Per client address |
+| `DELETE_ACCOUNT_RATE_LIMIT` | `5/hour` | Per client address |
+| `STATS_RATE_LIMIT` | `60/minute` | Per client address |
+| `TRUST_PROXY` | `false` | Believe `X-Forwarded-For` and `X-Forwarded-Proto`. **Set `true` on App Runner, and only behind a proxy** |
+| `TRUSTED_PROXY_HOPS` | `1` | Proxies between the internet and the API. App Runner alone is 1 |
 | `JWT_EXPIRY_MINUTES` | `720` | Token lifetime |
 | `ALLOWED_ORIGINS` | `http://localhost:3000` | CORS origins, comma-separated |
 | `PUBLIC_API_BASE` | `http://localhost:8000` | This API's URL as the browser sees it; used to build local upload URLs |
 | `STORAGE_BACKEND` | `local` | `local` (files under `UPLOAD_DIR`) or `s3` |
 | `UPLOAD_DIR` | `data/uploads` | Where local resumes are written |
 | `RESUME_MAX_BYTES` | `5242880` | Resume size cap (5 MB) |
+| `RESUME_PARSE_TIMEOUT_S` | `10` | Seconds a resume may take to parse before the attempt is abandoned |
+| `PRESIGN_EXPIRY_SECONDS` | `300` | How long an upload link is valid |
 | `SIMPLIFY_REPO` | `SimplifyJobs/Summer2027-Internships` | Rolls forward each cycle |
 | `VANSHB03_REPO` | `vanshb03/Summer2027-Internships` | Secondary list |
 | `AUTO_INGEST` | `true` in dev | Refresh the listings automatically |
@@ -274,17 +284,21 @@ run against AWS. Treat them as untested.
 
 ## API
 
-Interactive documentation is at `/docs`. Errors are always
-`{"detail": "a readable sentence"}`, including validation errors.
+Interactive documentation is at `/docs` in development. It and
+`/openapi.json` do not exist when `APP_ENV=prod`. Errors are always
+`{"detail": "a readable sentence"}`, including validation errors, rate limits
+and crashes. Every timestamp is UTC to the second: `2026-09-29T02:42:53Z`.
 
 ```
-GET    /health
+GET    /health                                               public
+GET    /stats                    -> the board in numbers     public
 
-POST   /auth/register            POST /auth/login            GET /me
+POST   /auth/register            POST /auth/login            public, rate limited
+GET    /me                       DELETE /me                  -> delete the account
 
 GET    /profile                  PUT  /profile               -> 202 + Retry-After
-POST   /profile/resume/presign   -> where to upload
-PUT    /profile/resume/local/{key}   (local storage only)
+POST   /profile/resume/presign   -> an upload slot
+PUT    /profile/resume/local/{key}   (local storage only)    -> 204
 POST   /profile/resume/commit    -> extracted skills
 
 GET    /feed?page=&page_size=&sort=&roles=&location=&term=&min_score=&remote=
@@ -301,6 +315,97 @@ GET    /applications/{id}        POST /applications/{id}/events
 A posting's id is `"{source}:{source_id}"`, for example
 `simplify:2909b23b-d049-4f31-9d5e-a71faacba4af`. URL-encode the colon or not;
 both work.
+
+### `GET /stats`
+
+Public: no token. For the About page.
+
+```jsonc
+{ "active_postings": 4769,     // open and visible
+  "companies": 1241,           // distinct companies with at least one of those
+  "role_families": 15,         // roles the classifier knows, "other" included
+  "updated_at": "2026-09-29T02:42:53Z" }   // same value as /ingest/status last_success_at; null before the first refresh
+```
+
+Counts of the shared board and nothing about any user, so the response is the
+same for everyone and is sent with `Cache-Control: public, max-age=300`.
+Limited to 60 requests a minute per address.
+
+### `DELETE /me`
+
+Deletes the caller's account and everything stored about them.
+
+```bash
+curl -X DELETE http://localhost:8000/me \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"password": "the-account-password"}'
+```
+
+| Response | When |
+|---|---|
+| `204` | Deleted |
+| `403` `Password is incorrect.` | The password did not match. Nothing was deleted |
+| `422` `password: Field required` | No password was sent |
+| `429` | More than 5 attempts in an hour from this address |
+
+What goes: the user, the profile and ranked interests, the stored resume and
+its extracted text, any upload in progress, cached scores, saved postings,
+applications and their whole event history, contacts, drafted messages, and
+connected integrations. The rows go in one transaction; then the files are
+removed from storage. Nothing is kept, anonymised or soft-deleted.
+
+Afterwards the token answers `401`, and the email address can register again
+as a new, empty account.
+
+The password is asked for again so that a token left signed in on a shared
+machine is not enough to destroy an account. With `AUTH_MODE=cognito` no
+password is sent: the pool checked it to issue the token. Deleting here
+removes what this service holds. The user's record in the Cognito pool is
+separate and has to be deleted there.
+
+### Uploading a resume
+
+Three calls. The browser sends the file itself to `upload_url`; in production
+that is S3 and the API never handles the bytes.
+
+```jsonc
+// 1. POST /profile/resume/presign
+{ "filename": "My Resume.pdf", "content_type": "application/pdf", "size": 71973 }
+// -> 200
+{ "upload_url": "http://localhost:8000/profile/resume/local/resumes/3/4a13...b3.pdf",
+  "key": "resumes/3/4a136b2ffae14776a24a71b87d3734b3.pdf",
+  "method": "PUT",
+  "headers": { "Content-Type": "application/pdf", "Content-Length": "71973" } }
+
+// 2. PUT <upload_url>, body = the file, with those headers.
+//    Local storage also wants the bearer token. S3 must not be sent one.
+// -> 204 (local) or 200 (S3)
+
+// 3. POST /profile/resume/commit
+{ "key": "resumes/3/4a136b2ffae14776a24a71b87d3734b3.pdf", "filename": "My Resume.pdf" }
+// -> 200
+{ "filename": "My Resume.pdf", "uploaded_at": "2026-09-29T04:30:03Z",
+  "skills": ["Python", "SQL"], "needs_ocr": false }
+```
+
+`size` is the file's length in bytes (`file.size` in a browser). The upload is
+then held to exactly that many bytes. A browser sets `Content-Length` itself
+and ignores a script's attempt to; the header is listed for clients that are
+not browsers.
+
+| Refused with | When |
+|---|---|
+| `422` at presign | Not `application/pdf`, filename not `.pdf`, or `size` outside 1 KB to 5 MB |
+| `404` `Unknown upload key.` | The key was never issued, was issued to someone else, or is not a key |
+| `409` at PUT | The link has already been used |
+| `410` at PUT | The link has expired (5 minutes) |
+| `400` or `413` at PUT | The body is not exactly the declared size, or is over 5 MB |
+| `400` `That file isn't a PDF.` at commit | The file's first bytes are not a PDF's, whatever it is called |
+| `400` at commit | The PDF is password-protected, cannot be read, or took too long to read |
+
+A file refused at commit is deleted from storage. Asking for a new upload link
+discards the previous unfinished one. A scanned PDF with no text is accepted
+with `needs_ocr: true` and no skills.
 
 ### Feed order
 
@@ -354,6 +459,165 @@ when a refresh (automatic or manual) changes the board, or after 24 hours. Scori
 for one student is one SQL query and one Python pass, about 70 ms for 4,500
 postings.
 
+## Security
+
+What each item on the hardening checklist comes to in this codebase, where it
+is enforced, and the test that fails if it stops being true. Items the
+checklist marks as not applying to this app (3, 4, 9, 12) are not listed.
+
+| # | Item | Enforced in | Held by |
+|---|---|---|---|
+| 1 | Keys stay on the server | `config.py`, `services/secrets.py` | Nothing secret is sent to a browser; `test_responses.py` |
+| 2 | No secrets in Git | `.github/workflows/security.yml` (gitleaks, whole history) | CI, every push |
+| 5 | Encryption at rest | S3: every upload requests SSE (`storage.py`). RDS: **see below** | `test_resume.py` (S3 signed headers) |
+| 6 | Auth on the server | `auth.py: current_user`, on every route but four | `test_authorization.py` lists the public routes by name |
+| 7 | Records locked to their owner | Every query on a user's table filters by the caller; another user's object is a 404 | `test_authorization.py`, over every route |
+| 8 | No field tampering | `schemas.py: RequestModel` refuses unknown fields; no route unpacks a body into a model | `test_field_tampering.py` |
+| 10 | Passwords hashed | `auth.py`, bcrypt, cost 12 | `test_auth.py`, `test_production_config.py` |
+| 11 | Sign-in rate limited | `ratelimit.py`, `middleware.py: client_ip` | `test_rate_limits.py`, `test_real_server.py` |
+| 13 | Queries parameterized | No SQL is built from strings; `LIKE` patterns are escaped | `test_sql_safety.py` reads the source and attacks the API |
+| 14 | Input bounded | `limits.py`, `schemas.py`, `middleware.py: BodyLimitMiddleware` | `test_bounds.py` |
+| 15 | User content escaped | Rendering is the frontend's job (React escapes). The API stores text exactly as typed and returns it only as JSON, with `nosniff` and a policy under which nothing renders | `test_sql_safety.py`, `test_security_headers.py` |
+| 16 | Uploads restricted | `routes/profile.py`, `services/storage.py`, `services/pdf_worker.py` | `test_resume.py` |
+| 17 | Responses trimmed | `response_model=` on every route | `test_responses.py` |
+| 18 | Security headers | `middleware.py: SecurityHeadersMiddleware` | `test_security_headers.py` |
+| 19 | HTTPS | App Runner and Amplify serve nothing else; HSTS is sent | `test_security_headers.py` |
+| 20 | Dependencies scanned | `security.yml` (pip-audit), `.github/dependabot.yml` | CI, every push and weekly |
+
+Most of those tests are written to be exhaustive rather than thorough. They
+walk the application's routes, tables or source and fail when something exists
+that they do not cover. A new route has to be given an authorization case, a
+response model and, if it takes a body, a tampering case before the suite will
+pass.
+
+### Before deploying
+
+Three things cannot be done in code, or cannot be done later.
+
+**Turn on RDS storage encryption when the instance is created.** It is a
+checkbox at creation (`--storage-encrypted` in the CLI) and cannot be switched
+on afterwards: encrypting an existing instance means snapshotting it, copying
+the snapshot with encryption, and restoring to a new instance. This database
+holds resumes' text and application histories. Do it first.
+
+**Set a real `JWT_SECRET`.** The default is in this repository, so anyone can
+sign a token for any user with it. With `APP_ENV=prod` and local auth the app
+refuses to start on the default, or on a secret shorter than 32 characters,
+and says so:
+
+```bash
+python -c 'import secrets; print(secrets.token_urlsafe(48))'
+```
+
+It also refuses `BCRYPT_ROUNDS` below 10 and `*` in `ALLOWED_ORIGINS`.
+
+**Set `TRUST_PROXY=true` on App Runner.** App Runner's load balancer connects
+to the container, so without it every request appears to come from one
+address and all clients share a single rate limit: ten sign-ins a minute for
+everyone together. With it, the client's address is read from
+`X-Forwarded-For`, counting `TRUSTED_PROXY_HOPS` entries from the right. App
+Runner alone is 1. If CloudFront is put in front, it is 2. Entries further
+left were sent by the client and are never used.
+
+Leave it `false` anywhere there is no proxy. There the header is whatever the
+client chose to send.
+
+### Rate limits
+
+| Route | Limit | Refusal |
+|---|---|---|
+| `POST /auth/login` | 10 a minute | `Too many sign-in attempts. Try again in a minute.` |
+| `POST /auth/register` | 5 an hour | `Too many accounts created from here. Try again in about an hour.` |
+| `DELETE /me` | 5 an hour | `Too many attempts to delete an account. Try again in about an hour.` |
+| `GET /stats` | 60 a minute | `Too many requests. Try again in a minute.` |
+
+Per client address, on a sliding window. A refusal is a `429` with a
+`Retry-After` header in seconds. Once the limit is reached the right password
+is refused like any other.
+
+**The counters are in the process's memory.** That is correct for one
+instance. It means:
+
+- A restart clears them. Under `uvicorn --reload`, saving a file resets every
+  limit.
+- With more than one instance, each keeps its own count, so the effective
+  limit is the configured one multiplied by the number of instances. Before
+  scaling past one, give the limiter a shared store: add `limits[redis]` to
+  `requirements.txt` and change `storage_uri` in `app/ratelimit.py` to
+  `redis://...`. Nothing else changes.
+
+**Run uvicorn with `--no-proxy-headers`** where you control the command; the
+container does. By default uvicorn replaces the client's address with the one
+in `X-Forwarded-For` for any connection from the local machine, before the app
+sees the request. The app detects an address that could have come from the
+header and does not use it, so the limit cannot be reset by sending one. But
+such requests share a second allowance, so the ceiling from a trusted host is
+twice the configured limit. With the flag it is exactly the limit.
+
+### Uploads
+
+The resume upload is the one place a stranger hands the API a file. What it
+says about that file is either pinned in advance or ignored.
+
+- **The storage key is generated on the server**, from the user's id and a
+  random UUID: `resumes/3/4a13...b3.pdf`. Nothing the client sent is in it.
+  The file's name is kept in the database, to show back, with paths and
+  control characters removed.
+- **The upload link is for one file.** S3 URLs are signed (SigV4) with
+  `content-type`, `content-length` and the encryption header among the signed
+  headers, and expire after 5 minutes. A different type or length fails the
+  signature. The local route enforces the same, counting bytes as they arrive
+  rather than trusting `Content-Length`, and takes one upload per link.
+- **Commit looks at the file, not the claim.** The stored object's real size
+  is compared with what was declared, then its first five bytes are read. Only
+  if they are `%PDF-` is the rest fetched and a parser started.
+- **Parsing is isolated.** It runs in a child process with an empty
+  environment, a 10-page cap, a 100,000-character cap and a 10-second
+  deadline. A PDF built to hang is killed; one that crashes the parser takes
+  the child with it and nothing else. Either is a `400`.
+- **Nothing serves a resume back.** There is no download route. If one is
+  added it must be a short-lived presigned `GET` with
+  `ResponseContentDisposition=attachment`, after checking the caller owns the
+  key; never the file's bytes through this API. A test fails if a route under
+  `/profile/resume` answers `GET`.
+- **Replacing a resume deletes the previous file**, and deleting an account
+  deletes all of them.
+
+PDF only. The checklist would allow `.docx`; one format means one parser to
+trust. The size floor is 1 KB rather than the suggested 25 KB, which would
+refuse plain one-page resumes exported as text.
+
+### Headers
+
+On every response, including errors, refusals and routes that do not exist:
+
+```
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Content-Security-Policy: default-src 'none'; frame-ancestors 'none'
+Cache-Control: no-store                 (unless the route sets its own; /stats does)
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+                                        (over HTTPS, and always when APP_ENV=prod)
+```
+
+The policy is the strictest there is because this is a JSON API: nothing it
+returns should be rendered or framed. The frontend's own policy is set
+separately, where the pages are served. In development `/docs` alone gets a
+looser policy, enough for Swagger UI.
+
+### Scanning
+
+```bash
+# What CI runs, locally
+gitleaks git --redact .
+pip-audit -r backend/requirements.txt
+```
+
+Dependabot opens pull requests weekly for `backend/requirements.txt`,
+`frontend/package.json` and the GitHub Actions. `bcrypt` is held below 4.1
+until passlib can use it.
+
 ## Where this differs from the architecture document
 
 The document is the specification. These are the places it was silent,
@@ -375,6 +639,11 @@ contradicted itself, or could not be implemented as written.
 | §5 `GET /feed?category=` | `?roles=` (comma-separated), plus `page_size`, `remote` and `sort` | Follows from roles replacing category; `sort` defaults to newest first |
 | §1 ingest is a nightly Lambda | In development the API refreshes the listings itself every 24 hours | A laptop has no EventBridge; off by default outside development |
 | §5 has no freshness endpoint | `GET /ingest/status` | So a student can see the data is current |
+| §5 `presign` → `{ upload_url, key }` | Request also takes `size`; response also has `method` and `headers` | The upload is pinned to one type and one exact length |
+| §5 has no way to delete an account | `DELETE /me` | The privacy page promises one |
+| §5 has no public route | `GET /stats` | The About page states real numbers |
+| Checklist 16: allow `.pdf` and `.docx`, 25 KB to 10 MB | PDF only, 1 KB to 5 MB | Stricter on type: one parser, one format to reason about. Lower on size: a plain one-page PDF is often under 25 KB |
+| Checklist 18: CSP `default-src 'self'; ...` | `default-src 'none'; frame-ancestors 'none'` on the API | That policy is for pages. This is a JSON API and loads nothing |
 | §6 diagram | `applied` may skip to `oa_sent` or `interview_scheduled`; `oa_completed` sits after `oa_sent`; `ghosted` can still move on a late reply | The diagram omits an event kind it lists, and companies skip steps |
 | §2.2 vanshb03 has `season` instead of `terms` | The year is inferred from the posting date | A bare "Summer" cannot be compared with "Summer 2027" |
 
@@ -396,12 +665,13 @@ change what a posting id means.
 app/
   main.py  config.py  database.py  models.py  schemas.py
   auth.py  deps.py  logging_config.py
-  routes/    health auth profile feed postings saved applications ingest
-  services/  secrets storage resume_parse locations matching
+  limits.py  middleware.py  ratelimit.py
+  routes/    health auth profile feed postings saved applications ingest stats
+  services/  secrets storage resume_parse pdf_worker locations terms matching
              feed_state postings timeline ingest_scheduler
   sources/   base roles github_list simplify vanshb03 backfill
   jobs/      ghost
-alembic/versions/0001_initial_schema.py
+alembic/versions/0001_initial_schema.py  0002_resume_uploads.py
 tests/
 ```
 
