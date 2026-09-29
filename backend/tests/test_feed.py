@@ -98,8 +98,8 @@ def test_feed_shape_and_hard_filters(client, board):
         assert len(item["roles"]) == len(item["role_labels"])
 
 
-def test_feed_is_sorted_by_score_then_date(client, board):
-    items = client.get("/feed", headers=board).json()["items"]
+def test_sort_score_is_best_match_first_then_newest(client, board):
+    items = client.get("/feed?sort=score", headers=board).json()["items"]
     keys = [(-i["score"], i["date_posted"]) for i in items]
     assert [k[0] for k in keys] == sorted(k[0] for k in keys)
     for a, b in zip(items, items[1:], strict=False):
@@ -117,7 +117,7 @@ def test_feed_is_sorted_by_score_then_date(client, board):
 def test_top_posting_has_skill_reason_when_resume_has_the_skill(client, board, profile_body):
     profile_body["skills"] = ["Python", "SQL"]
     client.put("/profile", json=profile_body, headers=board)
-    top = client.get("/feed", headers=board).json()["items"][0]
+    top = client.get("/feed?sort=score", headers=board).json()["items"][0]
     assert top["id"] == "simplify:dc-py"
     assert {"code": "skills", "label": "1 of your skills", "detail": "Python"} in top["reasons"]
 
@@ -174,8 +174,118 @@ def test_bad_query_params_are_422_with_flat_detail(client, board, query):
     assert isinstance(r.json()["detail"], str)
 
 
+# --------------------------------------------------------------------------- #
+# Ordering
+# --------------------------------------------------------------------------- #
+
+# By age in days: remote-data 1, dc-swe 2, tx-hw 4, dc-py 5, fall-swe 6, nyc-ml 10.
+NEWEST_FIRST = ["remote-data", "dc-swe", "tx-hw", "dc-py", "fall-swe", "nyc-ml"]
+
+
+def test_default_order_is_newest_first(client, board):
+    default = client.get("/feed", headers=board).json()
+    assert ids(default) == NEWEST_FIRST
+    dates = [i["date_posted"] for i in default["items"]]
+    assert dates == sorted(dates, reverse=True)
+    assert client.get("/feed?sort=recent", headers=board).json() == default
+    # Still scored: the order changed, not what each card carries.
+    assert all(isinstance(i["score"], int) and i["reasons"] for i in default["items"])
+
+
+def test_the_two_orders_differ_only_in_order(client, board):
+    recent = client.get("/feed?sort=recent", headers=board).json()
+    score = client.get("/feed?sort=score", headers=board).json()
+    assert ids(recent) != ids(score)
+    assert sorted(ids(recent)) == sorted(ids(score))
+    assert (recent["total"], recent["has_more"]) == (score["total"], score["has_more"])
+    by_id = {i["id"]: i for i in score["items"]}
+    assert all(by_id[i["id"]] == i for i in recent["items"])
+
+
+@pytest.mark.parametrize(
+    "query",
+    ["roles=software", "location=washington", "remote=true", "term=Fall 2027", "min_score=60",
+     "roles=software,hardware&min_score=50", "page_size=2", "page=2&page_size=4"],
+)  # fmt: skip
+def test_filters_and_paging_agree_under_both_orders(client, board, query):
+    recent = client.get(f"/feed?{query}&sort=recent", headers=board).json()
+    score = client.get(f"/feed?{query}&sort=score", headers=board).json()
+    for key in ("page", "total", "has_more"):
+        assert recent[key] == score[key], key
+    assert len(recent["items"]) == len(score["items"])
+    if "page" not in query:  # a filter alone selects the same set either way
+        assert sorted(ids(recent)) == sorted(ids(score))
+    dates = [i["date_posted"] for i in recent["items"]]
+    assert dates == sorted(dates, reverse=True)
+    scores = [i["score"] for i in score["items"]]
+    assert scores == sorted(scores, reverse=True)
+
+
+@pytest.mark.parametrize("bad", ["newest", "SCORE", "date_posted", "", "recent,score"])
+def test_unknown_sort_is_422(client, board, bad):
+    r = client.get(f"/feed?sort={bad}", headers=board)
+    assert r.status_code == 422
+    detail = r.json()["detail"]
+    assert isinstance(detail, str)
+    assert detail.startswith("sort:") and "'recent'" in detail and "'score'" in detail
+
+
+def test_undated_postings_sort_last_when_newest_first(client):
+    seed(
+        [
+            make_row("old", days_ago=40),
+            make_row("undated-a", days_ago=None),
+            make_row("new", days_ago=1),
+            make_row("undated-b", days_ago=None),
+        ]
+    )
+    headers = register(client)
+    onboard(client, headers)
+    body = client.get("/feed", headers=headers).json()
+    assert ids(body)[:2] == ["new", "old"]
+    assert sorted(ids(body)[2:]) == ["undated-a", "undated-b"]
+    assert [i["date_posted"] for i in body["items"]] == [
+        body["items"][0]["date_posted"], body["items"][1]["date_posted"], None, None,
+    ]  # fmt: skip
+
+    # Best match first: an undated posting is not charged for freshness, so it
+    # can outrank a dated one. Among equal scores the dated ones come first.
+    by_score = client.get("/feed?sort=score", headers=headers).json()["items"]
+    keys = [(-i["score"], i["date_posted"] is None) for i in by_score]
+    assert keys == sorted(keys)
+
+
+@pytest.mark.parametrize("sort", ["recent", "score"])
+def test_paging_is_stable_when_everything_ties(client, sort):
+    """23 postings with the same second of posting and the same score. Only
+    the final id key separates them; without it Postgres is free to order ties
+    differently on each page, repeating some postings and dropping others."""
+    import time
+
+    same_second = int(time.time()) - 3 * 86_400
+    seed([make_row(f"tie-{n:02d}", posted=same_second) for n in range(23)])
+    headers = register(client)
+    onboard(client, headers)
+
+    whole = client.get(f"/feed?sort={sort}&page_size=100", headers=headers).json()
+    assert whole["total"] == 23
+    assert len({i["score"] for i in whole["items"]}) == 1
+    assert len({i["date_posted"] for i in whole["items"]}) == 1
+
+    paged = []
+    for page in range(1, 6):
+        body = client.get(f"/feed?sort={sort}&page={page}&page_size=5", headers=headers).json()
+        assert (body["page"], body["total"], body["has_more"]) == (page, 23, page < 5)
+        paged += ids(body)
+    assert len(paged) == len(set(paged)) == 23
+    assert paged == ids(whole)
+    # And the same again on a second pass.
+    again = client.get(f"/feed?sort={sort}&page=3&page_size=5", headers=headers).json()
+    assert ids(again) == paged[10:15]
+
+
 def test_profile_change_rescores(client, board, profile_body):
-    before = client.get("/feed", headers=board).json()
+    before = client.get("/feed?sort=score", headers=board).json()
     profile_body["interests"] = [
         {"role": "hardware", "rank": 1},
         {"role": "data_analytics", "rank": 2},
@@ -183,7 +293,7 @@ def test_profile_change_rescores(client, board, profile_body):
     ]
     profile_body["preferred_locations"] = ["Austin, TX"]
     client.put("/profile", json=profile_body, headers=board)
-    after = client.get("/feed", headers=board).json()
+    after = client.get("/feed?sort=score", headers=board).json()
     assert before["items"][0]["id"] != after["items"][0]["id"]
     assert after["items"][0]["id"] == "simplify:tx-hw"
 

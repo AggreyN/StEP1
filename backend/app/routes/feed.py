@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
@@ -24,6 +26,17 @@ def onboarded_profile(user: User = Depends(current_user), db: Session = Depends(
     return profile
 
 
+_NEWEST = Posting.date_posted.desc().nulls_last()
+_BEST = MatchScore.score.desc()
+# Posting.id last in both: many postings share a date or a score, and without
+# a final unique key Postgres may order ties differently from one page to the
+# next, so a posting could appear twice or not at all while paging.
+_ORDER = {
+    "recent": (_NEWEST, _BEST, Posting.id),
+    "score": (_BEST, _NEWEST, Posting.id),
+}
+
+
 def _escape_like(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
@@ -37,6 +50,9 @@ def feed(
     term: str | None = Query(None, description='Exact term, e.g. "Summer 2027".'),
     min_score: int | None = Query(None, ge=0, le=100),
     remote: bool | None = Query(None, description="true -> remote postings only."),
+    sort: Literal["recent", "score"] = Query(
+        "recent", description="recent: newest first (default). score: best match first."
+    ),
     profile: Profile = Depends(onboarded_profile),
     db: Session = Depends(get_db),
 ):
@@ -80,8 +96,7 @@ def feed(
     rows = db.execute(
         joined.options(joinedload(Posting.company))
         .where(*conditions)
-        # id last so pages are stable when score and date tie.
-        .order_by(MatchScore.score.desc(), Posting.date_posted.desc().nulls_last(), Posting.id)
+        .order_by(*_ORDER[sort])
         .limit(page_size)
         .offset((page - 1) * page_size)
     ).all()
