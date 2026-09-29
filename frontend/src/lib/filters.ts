@@ -1,10 +1,10 @@
-// Dashboard filters <-> URL query params, plus the "which filter emptied the
-// feed?" diagnosis used by the empty state. The diagnosis only re-calls
+// Dashboard filters and sort order <-> URL query params, plus the "which
+// filter emptied the feed?" diagnosis used by the empty state. The diagnosis only re-calls
 // GET /feed with one filter removed at a time, so it needs no special API.
 
 import { getFeed } from "./api";
 import { roleLabel } from "./roles";
-import type { FeedFilters } from "./types";
+import type { FeedFilters, FeedSort } from "./types";
 
 export const EMPTY_FILTERS: FeedFilters = {
   roles: [],
@@ -34,6 +34,26 @@ export function filtersToParams(f: FeedFilters): URLSearchParams {
   if (f.term) p.set("term", f.term);
   if (f.min_score) p.set("min_score", String(f.min_score));
   if (f.remote) p.set("remote", "true");
+  return p;
+}
+
+export const DEFAULT_SORT: FeedSort = "recent";
+
+export const SORT_OPTIONS: { value: FeedSort; label: string; phrase: string }[] = [
+  { value: "recent", label: "Newest first", phrase: "newest first" },
+  { value: "score", label: "Best match", phrase: "best match first" },
+];
+
+/** Anything other than a known non-default value means the default. */
+export function sortFromParams(p: URLSearchParams): FeedSort {
+  return p.get("sort") === "score" ? "score" : DEFAULT_SORT;
+}
+
+/** The dashboard's whole query string. `sort` appears only when it isn't the
+ *  default, so the plain URL stays the plain view. */
+export function queryToParams(f: FeedFilters, sort: FeedSort): URLSearchParams {
+  const p = filtersToParams(f);
+  if (sort !== DEFAULT_SORT) p.set("sort", sort);
   return p;
 }
 
@@ -93,12 +113,12 @@ export interface Relaxation {
 /** For a filtered query that returned 0, try dropping each active filter once
  *  (page_size=1, we only need `total`). Returns the removals that help,
  *  largest first. */
-export async function diagnoseEmpty(f: FeedFilters): Promise<Relaxation[]> {
+export async function diagnoseEmpty(f: FeedFilters, sort: FeedSort = DEFAULT_SORT): Promise<Relaxation[]> {
   const keys = activeFilterKeys(f);
   const results = await Promise.all(
     keys.map(async (key) => {
       try {
-        const page = await getFeed(withoutFilter(f, key), 1, 1);
+        const page = await getFeed(withoutFilter(f, key), 1, 1, sort);
         return { key, total: page.total };
       } catch {
         return { key, total: 0 };

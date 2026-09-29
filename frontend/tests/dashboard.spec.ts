@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { errorNote, signInDemo } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
@@ -16,7 +16,7 @@ test("filters write to the URL and a reload restores them", async ({ page }) => 
   await expect(page).toHaveURL(/remote=true/);
 
   const cards = page.getByTestId("posting-card");
-  await expect(page.getByTestId("feed-total")).toHaveText("1 posting matches your filters");
+  await expect(page.getByTestId("feed-total")).toHaveText("1 posting matches your filters, newest first");
   await expect(cards).toHaveCount(1);
   await expect(cards.first()).toContainText("CrowdStrike");
   const url = page.url();
@@ -40,20 +40,163 @@ test("typed location filter lands in the URL and survives a reload", async ({ pa
   await expect(page.getByTestId("posting-card").first()).toContainText("New York");
 });
 
-test("results are sorted by score and load-more pages through has_more", async ({ page }) => {
+type Row = { date: string; score: number };
+
+async function rows(page: Page): Promise<Row[]> {
+  return page.getByTestId("posting-card").evaluateAll((els) =>
+    els.map((e) => ({
+      date: e.getAttribute("data-date-posted") ?? "",
+      score: Number(e.getAttribute("data-score")),
+    }))
+  );
+}
+
+/** Newest first, undated last; ties broken by higher score. */
+function expectNewestFirst(list: Row[]) {
+  for (let i = 1; i < list.length; i++) {
+    const prev = list[i - 1];
+    const cur = list[i];
+    const where = `row ${i}: ${JSON.stringify(prev)} then ${JSON.stringify(cur)}`;
+    if (!prev.date) expect(cur.date, `a dated posting after an undated one — ${where}`).toBe("");
+    if (prev.date && cur.date) expect(prev.date >= cur.date, where).toBe(true);
+    if (prev.date === cur.date) expect(prev.score, where).toBeGreaterThanOrEqual(cur.score);
+  }
+}
+
+/** Highest score first; ties broken by newer date, undated last. */
+function expectBestMatchFirst(list: Row[]) {
+  for (let i = 1; i < list.length; i++) {
+    const prev = list[i - 1];
+    const cur = list[i];
+    const where = `row ${i}: ${JSON.stringify(prev)} then ${JSON.stringify(cur)}`;
+    expect(prev.score, where).toBeGreaterThanOrEqual(cur.score);
+    if (prev.score === cur.score) expect(prev.date >= cur.date, where).toBe(true);
+  }
+}
+
+test("default order is newest first, undated postings last, and load-more keeps it", async ({ page }) => {
+  await expect(page).toHaveURL(/\/$/); // no sort param for the default
+  await expect(page.getByRole("radio", { name: "Newest first" })).toBeChecked();
+  await expect(page.getByTestId("feed-total")).toHaveText("52 postings, newest first");
+
+  const cards = page.getByTestId("posting-card");
+  await expect(cards).toHaveCount(20);
+  expectNewestFirst(await rows(page));
+
+  await page.getByTestId("load-more").click();
+  await expect(cards).toHaveCount(40);
+  expectNewestFirst(await rows(page));
+  await page.getByTestId("load-more").click();
+  await expect(cards).toHaveCount(52);
+  await expect(page.getByTestId("load-more")).toHaveCount(0);
+
+  const all = await rows(page);
+  expectNewestFirst(all);
+  // the fixture has two undated postings; they are the last two rows
+  expect(all.filter((r) => !r.date)).toHaveLength(2);
+  expect(all.slice(-2).every((r) => !r.date)).toBe(true);
+  // and this is not just score order in disguise
+  expect(all.map((r) => r.score)).not.toEqual([...all.map((r) => r.score)].sort((x, y) => y - x));
+  // every card still carries its score badge and reasons
+  await expect(cards.first().getByLabel(/^Match score \d+ out of 100$/)).toBeVisible();
+  await expect(cards.first().getByRole("list", { name: "Why this matches" })).toBeVisible();
+});
+
+test("Best match sorts by score, lives in the URL, survives reload, and switching back removes it", async ({ page }) => {
   const cards = page.getByTestId("posting-card");
   await expect(cards).toHaveCount(20);
   await page.getByTestId("load-more").click();
   await expect(cards).toHaveCount(40);
+
+  await page.getByRole("radio", { name: "Best match" }).click();
+  await expect(page).toHaveURL(/\/\?sort=score$/);
+  await expect(page.getByTestId("feed-total")).toHaveText("52 postings, best match first");
+  await expect(cards).toHaveCount(20); // back to page 1
+  let list = await rows(page);
+  expectBestMatchFirst(list);
+  expect(list[0].score).toBeGreaterThanOrEqual(90);
+
+  await page.getByTestId("load-more").click();
+  await expect(cards).toHaveCount(40);
   await page.getByTestId("load-more").click();
   await expect(cards).toHaveCount(52);
-  await expect(page.getByTestId("load-more")).toHaveCount(0);
-  const scores = await cards.evaluateAll((els) =>
-    els.map((e) => Number(e.querySelector("[aria-label^='Match score']")?.textContent))
-  );
-  expect(scores).toEqual([...scores].sort((a, b) => b - a));
-  expect(Math.max(...scores)).toBeGreaterThanOrEqual(90);
-  expect(Math.min(...scores)).toBeLessThanOrEqual(30);
+  list = await rows(page);
+  expectBestMatchFirst(list);
+  expect(list[list.length - 1].score).toBeLessThanOrEqual(30);
+
+  await page.reload();
+  await expect(page).toHaveURL(/\/\?sort=score$/);
+  await expect(page.getByRole("radio", { name: "Best match" })).toBeChecked();
+  await expect(cards).toHaveCount(20);
+  expectBestMatchFirst(await rows(page));
+
+  await page.getByRole("radio", { name: "Newest first" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  expect(page.url()).not.toContain("sort");
+  await expect(page.getByTestId("feed-total")).toHaveText("52 postings, newest first");
+  await expect(cards).toHaveCount(20);
+  expectNewestFirst(await rows(page));
+});
+
+test("sort and filters combine in the URL, and clearing filters keeps the sort", async ({ page }) => {
+  await page.getByRole("radio", { name: "Best match" }).click();
+  await page.getByRole("checkbox", { name: "Software Engineering" }).check();
+  await expect(page).toHaveURL(/\/\?roles=software&sort=score$/);
+  await expect(page.getByTestId("feed-total")).toHaveText("19 postings match your filters, best match first");
+  const cards = page.getByTestId("posting-card");
+  await expect(cards).toHaveCount(19);
+  expectBestMatchFirst(await rows(page));
+
+  await page.reload();
+  await expect(page.getByRole("checkbox", { name: "Software Engineering" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "Best match" })).toBeChecked();
+  await expect(cards).toHaveCount(19);
+
+  await page.getByRole("button", { name: "Clear all" }).click();
+  await expect(page).toHaveURL(/\/\?sort=score$/);
+  await expect(page.getByTestId("feed-total")).toHaveText("52 postings, best match first");
+});
+
+test("every feed request names its sort, including empty-state probes", async ({ page }) => {
+  const feedRequests = () =>
+    page.evaluate(() =>
+      ((window as unknown as { __step1Requests?: string[] }).__step1Requests ?? []).filter((r) =>
+        r.startsWith("GET /feed?")
+      )
+    );
+  await page.getByRole("radio", { name: "Best match" }).click();
+  await expect(page.getByTestId("feed-total")).toContainText("best match first");
+  await page.getByTestId("load-more").click();
+  await expect(page.getByTestId("posting-card")).toHaveCount(40);
+  await page.getByRole("radio", { name: "Newest first" }).click();
+  await expect(page.getByTestId("feed-total")).toContainText("newest first");
+  await page.getByLabel("Location").fill("Anchorage");
+  await expect(page.getByTestId("relax-location")).toBeVisible();
+
+  const seen = await feedRequests();
+  expect(seen.length).toBeGreaterThanOrEqual(5);
+  for (const r of seen) expect(r).toMatch(/[?&]sort=(recent|score)(&|$)/);
+  expect(seen.filter((r) => r.includes("sort=score")).map((r) => new URLSearchParams(r.split("?")[1]).get("page"))).toEqual(["1", "2"]);
+  // the probe for the empty state asks for one row and still says how to sort
+  expect(seen.some((r) => r.includes("page_size=1") && r.includes("sort=recent"))).toBe(true);
+});
+
+test("an unknown sort value in the URL falls back to newest first", async ({ page }) => {
+  await page.goto("/?sort=alphabetical");
+  await expect(page.getByRole("radio", { name: "Newest first" })).toBeChecked();
+  await expect(page.getByTestId("posting-card")).toHaveCount(20);
+  expectNewestFirst(await rows(page));
+});
+
+test("empty-state probing works under Best match and relaxing keeps the sort", async ({ page }) => {
+  await page.goto("/?roles=security&location=Seattle&sort=score");
+  const empty = page.getByTestId("empty-state");
+  await expect(empty).toContainText("No Security postings in Seattle.");
+  await expect(empty).toContainText("4 Security postings elsewhere");
+  await page.getByTestId("relax-location").click();
+  await expect(page).toHaveURL(/\/\?roles=security&sort=score$/);
+  await expect(page.getByTestId("posting-card")).toHaveCount(4);
+  expectBestMatchFirst(await rows(page));
 });
 
 test("empty state names the responsible filter and removing it brings results back", async ({ page }) => {

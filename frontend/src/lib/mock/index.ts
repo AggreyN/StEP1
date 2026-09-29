@@ -5,6 +5,9 @@
 // kept in memory, and mirrored to localStorage so a page reload (e.g. a
 // filtered dashboard URL) sees the same saves/applications.
 //
+// For tests, every request is also appended to window.__step1Requests
+// ("METHOD /path?query"), so a spec can check what the client asked for.
+//
 // Test knobs (localStorage):
 //   step1.mock.instant = "1"            GET /feed/status reports `ready` on
 //                                       the very first poll
@@ -155,13 +158,16 @@ function appDetail(app: MockApp): ApplicationDetail {
   };
 }
 
-function sortPostings(list: Posting[]): Posting[] {
-  return [...list].sort(
-    (a, b) =>
-      (b.score ?? -1) - (a.score ?? -1) ||
-      (b.date_posted ?? "").localeCompare(a.date_posted ?? "") ||
-      a.id.localeCompare(b.id)
-  );
+// Newest first with undated postings last (an empty string sorts below any
+// ISO date), and highest score first.
+const byDate = (a: Posting, b: Posting) => (b.date_posted ?? "").localeCompare(a.date_posted ?? "");
+const byScore = (a: Posting, b: Posting) => (b.score ?? -1) - (a.score ?? -1);
+const byId = (a: Posting, b: Posting) => a.id.localeCompare(b.id);
+
+/** recent: date, then score, then id.  score: score, then date, then id. */
+function sortPostings(list: Posting[], sort: "recent" | "score" = "score"): Posting[] {
+  const [first, second] = sort === "recent" ? [byDate, byScore] : [byScore, byDate];
+  return [...list].sort((a, b) => first(a, b) || second(a, b) || byId(a, b));
 }
 
 function paginate(list: Posting[], q: URLSearchParams) {
@@ -316,7 +322,9 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
   if (path === "/feed/status" && method === "GET") return feedStatus();
   if (path === "/feed" && method === "GET") {
     if (!s.profiles[email]) return err(409, "Complete onboarding first");
-    return ok(paginate(sortPostings(filterFeed(q)).map(decorate), q));
+    const sort = q.get("sort") ?? "recent"; // the API's default
+    if (sort !== "recent" && sort !== "score") return err(422, "sort: must be 'recent' or 'score'");
+    return ok(paginate(sortPostings(filterFeed(q), sort).map(decorate), q));
   }
 
   let m = path.match(/^\/postings\/(.+)$/);
@@ -406,6 +414,11 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
   return err(404, "Not found");
 }
 
+function record(line: string) {
+  const w = window as unknown as { __step1Requests?: string[] };
+  w.__step1Requests = [...(w.__step1Requests ?? []).slice(-199), line];
+}
+
 function shouldFail(method: string, path: string): boolean {
   try {
     const rule = window.localStorage.getItem("step1.mock.fail");
@@ -427,6 +440,7 @@ export async function handle(
 ): Promise<MockResponse> {
   await sleep(DELAY_MS);
   const url = new URL(pathAndQuery, "http://mock.local");
+  record(`${method} ${url.pathname}${url.search}`);
   if (shouldFail(method, url.pathname)) {
     return err(500, "The server had a problem. Nothing was changed — try again.");
   }

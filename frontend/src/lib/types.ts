@@ -165,6 +165,9 @@ export interface ApplicationDetail {
   next_transitions: string[];
 }
 
+/** GET /feed `sort`. `recent` is the default: newest first, then score. */
+export type FeedSort = "recent" | "score";
+
 /** Dashboard filters — mirrors the GET /feed query params. */
 export interface FeedFilters {
   roles: string[];

@@ -26,6 +26,23 @@ test("login and onboarding fit at 375px", async ({ page }) => {
 
 test("dashboard, filter sheet, saved and applications fit at 375px", async ({ page }) => {
   await signInDemo(page);
+
+  // the sort control sits beside the Filters button and fits
+  const sort = page.getByTestId("sort-control");
+  await expect(sort).toBeVisible();
+  const box = await sort.boundingBox();
+  const filtersBox = await page.getByTestId("open-filters").boundingBox();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(filtersBox!.x);
+  expect(filtersBox!.x + filtersBox!.width).toBeLessThanOrEqual(375);
+  expect(Math.abs(box!.y + box!.height / 2 - (filtersBox!.y + filtersBox!.height / 2))).toBeLessThan(4);
+  await page.getByRole("radio", { name: "Best match" }).click();
+  await expect(page).toHaveURL(/sort=score/);
+  await expect(page.getByTestId("feed-total")).toHaveText("52 postings, best match first");
+  await expectNoHorizontalScroll(page);
+  await page.getByRole("radio", { name: "Newest first" }).click();
+  await expect(page).not.toHaveURL(/sort=/);
+
   await page.getByTestId("load-more").click();
   await expect(page.getByTestId("posting-card")).toHaveCount(40);
   await expectNoHorizontalScroll(page);

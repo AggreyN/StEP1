@@ -15,6 +15,7 @@ import type {
   ApplicationSummary,
   AuthResponse,
   FeedFilters,
+  FeedSort,
   FeedStatus,
   Me,
   Page,
@@ -250,10 +251,12 @@ async function putUpload(p: Presign, file: File): Promise<void> {
 
 export const PAGE_SIZE = 20;
 
-function feedQuery(f: Partial<FeedFilters>, page: number, page_size: number): Query {
+function feedQuery(f: Partial<FeedFilters>, page: number, page_size: number, sort: FeedSort): Query {
   return {
     page,
     page_size,
+    // Always sent, so the order on screen never depends on the server default.
+    sort,
     roles: f.roles?.length ? f.roles.join(",") : undefined,
     location: f.location || undefined,
     term: f.term || undefined,
@@ -262,8 +265,13 @@ function feedQuery(f: Partial<FeedFilters>, page: number, page_size: number): Qu
   };
 }
 
-export function getFeed(f: Partial<FeedFilters>, page = 1, page_size = PAGE_SIZE) {
-  return json<Page<Posting>>("GET", "/feed", { query: feedQuery(f, page, page_size) });
+export function getFeed(
+  f: Partial<FeedFilters>,
+  page = 1,
+  page_size = PAGE_SIZE,
+  sort: FeedSort = "recent"
+) {
+  return json<Page<Posting>>("GET", "/feed", { query: feedQuery(f, page, page_size, sort) });
 }
 
 export async function getFeedStatus(): Promise<FeedStatus & { retryAfter: number | null }> {

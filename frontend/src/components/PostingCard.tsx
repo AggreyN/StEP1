@@ -27,6 +27,8 @@ export function PostingCard({
     <article
       data-testid="posting-card"
       data-posting-id={p.id}
+      data-score={p.score ?? ""}
+      data-date-posted={p.date_posted ?? ""}
       className="rounded-xl border border-line bg-surface p-3.5 sm:p-4"
     >
       <div className="flex items-start gap-3">

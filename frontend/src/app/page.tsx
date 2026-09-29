@@ -1,27 +1,30 @@
 "use client";
-// Dashboard: the scored, sorted feed. Filters live in the URL so a filtered
-// view is linkable and survives reload.
+// Dashboard: the feed, newest first by default. Filters and sort order live in
+// the URL so a view is linkable and survives reload.
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ApiError, getFeed } from "@/lib/api";
+import { ApiError, PAGE_SIZE, getFeed } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import {
   EMPTY_FILTERS,
   FILTER_NAMES,
+  SORT_OPTIONS,
   activeFilterKeys,
   describe,
   diagnoseEmpty,
   filtersFromParams,
-  filtersToParams,
+  queryToParams,
+  sortFromParams,
   withoutFilter,
   type Relaxation,
 } from "@/lib/filters";
-import type { FeedFilters, Page, Posting } from "@/lib/types";
+import type { FeedFilters, FeedSort, Page, Posting } from "@/lib/types";
 import { AppShell } from "@/components/AppShell";
 import { Dialog } from "@/components/Dialog";
 import { FilterPanel } from "@/components/FilterPanel";
 import { PostingList } from "@/components/PostingList";
+import { SortControl } from "@/components/SortControl";
 import { FilterIcon } from "@/components/icons";
 import { Button, CardSkeletons, ErrorNote, Spinner } from "@/components/ui";
 
@@ -31,48 +34,58 @@ function Dashboard() {
   const pathname = usePathname();
   const params = useSearchParams();
   const filters = filtersFromParams(params);
-  const filterKey = filtersToParams(filters).toString();
+  const sort = sortFromParams(params);
+  const queryKey = queryToParams(filters, sort).toString();
 
   // Results are stored with the query they answer, so "loading" is derived
   // (the stored key doesn't match the current one) rather than set by hand.
+  // The key covers filters and sort, so changing either starts again at page 1.
   const [reload, setReload] = useState(0);
-  const key = `${filterKey}#${reload}`;
+  const key = `${queryKey}#${reload}`;
   const [data, setData] = useState<{ key: string; page: Page<Posting> } | null>(null);
   const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
   const [relaxed, setRelaxed] = useState<{ key: string; list: Relaxation[] } | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  // A filter change shows in the controls immediately and is written to the
-  // URL (replaceState: no server round trip, and Next keeps useSearchParams in
+  // A change shows in the controls immediately and is written to the URL
+  // (replaceState: no server round trip, and Next keeps useSearchParams in
   // sync). `pending` only bridges the moment before the URL catches up.
-  const [pending, setPending] = useState<{ from: string; to: FeedFilters } | null>(null);
-  if (pending && (pending.from !== filterKey || filtersToParams(pending.to).toString() === filterKey)) {
+  const [pending, setPending] = useState<{ from: string; filters: FeedFilters; sort: FeedSort } | null>(null);
+  if (
+    pending &&
+    (pending.from !== queryKey || queryToParams(pending.filters, pending.sort).toString() === queryKey)
+  ) {
     setPending(null);
   }
-  const shown = pending ? pending.to : filters;
+  const shown = pending ? pending.filters : filters;
+  const shownSort = pending ? pending.sort : sort;
 
-  const setFilters = useCallback(
-    (f: FeedFilters) => {
-      const qs = filtersToParams(f).toString();
-      if (qs === filterKey) return;
-      setPending({ from: filterKey, to: f });
+  const setQuery = useCallback(
+    (f: FeedFilters, s: FeedSort) => {
+      const qs = queryToParams(f, s).toString();
+      if (qs === queryKey) return;
+      setPending({ from: queryKey, filters: f, sort: s });
       window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
     },
-    [filterKey, pathname]
+    [queryKey, pathname]
   );
+  const setFilters = useCallback((f: FeedFilters) => setQuery(f, shownSort), [setQuery, shownSort]);
+  const setSort = useCallback((s: FeedSort) => setQuery(shown, s), [setQuery, shown]);
 
-  // Fetch page 1 whenever the URL filters change.
+  // Fetch page 1 whenever the URL's filters or sort change.
   useEffect(() => {
     if (!authed) return;
     let cancelled = false;
-    const f = filtersFromParams(new URLSearchParams(key.split("#")[0]));
-    getFeed(f, 1)
+    const q = new URLSearchParams(key.split("#")[0]);
+    const f = filtersFromParams(q);
+    const s = sortFromParams(q);
+    getFeed(f, 1, PAGE_SIZE, s)
       .then(async (page) => {
         if (cancelled) return;
         setData({ key, page });
         if (page.total === 0 && activeFilterKeys(f).length) {
-          const list = await diagnoseEmpty(f);
+          const list = await diagnoseEmpty(f, s);
           if (!cancelled) setRelaxed({ key, list });
         }
       })
@@ -105,7 +118,7 @@ function Dashboard() {
     if (!current) return;
     setLoadingMore(true);
     try {
-      const res = await getFeed(filters, current.page + 1);
+      const res = await getFeed(filters, current.page + 1, PAGE_SIZE, sort);
       setData((d) => {
         if (!d || d.key !== key) return d;
         const seen = new Set(d.page.items.map((p) => p.id));
@@ -122,6 +135,10 @@ function Dashboard() {
 
   const activeCount = activeFilterKeys(shown).length;
   const countLabel = `${total} posting${total === 1 ? "" : "s"}`;
+  const order = SORT_OPTIONS.find((o) => o.value === sort)?.phrase ?? "";
+  const summary = activeCount
+    ? `${countLabel} match${total === 1 ? "es" : ""} your filters, ${order}`
+    : `${countLabel}, ${order}`;
 
   return (
     <AppShell wide>
@@ -133,17 +150,22 @@ function Dashboard() {
         </aside>
 
         <section className="min-w-0">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
+          {/* Heading on the left; sort (and, below lg, the Filters button) on
+              the right. On a phone the controls wrap onto their own row. */}
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-2.5">
+            <div className="min-w-0">
               <h1 className="text-xl font-semibold tracking-tight">Your matches</h1>
               <p className="tnum text-sm text-muted" data-testid="feed-total">
-                {loading ? "Ranking…" : `${countLabel}${activeCount ? ` match${total === 1 ? "es" : ""} your filters` : ", best match first"}`}
+                {loading ? "Loading…" : summary}
               </p>
             </div>
-            <Button size="sm" className="lg:hidden" onClick={() => setSheetOpen(true)} data-testid="open-filters">
-              <FilterIcon />
-              Filters{activeCount ? ` · ${activeCount}` : ""}
-            </Button>
+            <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+              <SortControl value={shownSort} onChange={setSort} />
+              <Button size="sm" className="lg:hidden" onClick={() => setSheetOpen(true)} data-testid="open-filters">
+                <FilterIcon />
+                Filters{activeCount ? ` · ${activeCount}` : ""}
+              </Button>
+            </div>
           </div>
 
           {error && (
