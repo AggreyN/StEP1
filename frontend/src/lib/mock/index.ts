@@ -12,6 +12,11 @@
 //   step1.mock.instant = "1"            GET /feed/status reports `ready` on
 //                                       the very first poll
 //   step1.mock.stuck = "1"              GET /feed/status never leaves `building`
+//   step1.mock.ingest = "stale"         which ingest.json scenario GET
+//                                       /ingest/status answers with (fresh,
+//                                       running, never, stale, failed, partial,
+//                                       manual); "error" makes the route 404,
+//                                       like a backend that predates it
 //   step1.mock.fail = "POST /saved"     the next request whose "METHOD /path"
 //                                       starts with this fails once with a 500
 
@@ -20,10 +25,12 @@ import profileData from "./profile.json";
 import applicationsData from "./applications.json";
 import statusData from "./status.json";
 import transitionsData from "./transitions.json";
+import ingestData from "./ingest.json";
 import type {
   ApplicationDetail,
   ApplicationEvent,
   FeedStatus,
+  IngestStatus,
   Posting,
   Profile,
   ProfileInput,
@@ -220,6 +227,60 @@ function feedStatus(): MockResponse {
   return ok(body, 200, cur.state === "building" ? { "Retry-After": "1" } : {});
 }
 
+interface IngestScenario {
+  last_success_hours_ago: number | null;
+  interval_hours: number;
+  auto: boolean;
+  running: boolean;
+  active_postings: number;
+  sources: {
+    source: string;
+    last_success_hours_ago: number | null;
+    last_attempt_hours_ago: number | null;
+    fetched: number;
+    upserted: number;
+    deactivated: number;
+    error: string | null;
+  }[];
+}
+
+function ingestStatus(): MockResponse {
+  let pick: string = ingestData.default;
+  try {
+    pick = window.localStorage.getItem("step1.mock.ingest") || pick;
+  } catch {
+    // ignore
+  }
+  const sc = (ingestData.scenarios as Record<string, IngestScenario>)[pick];
+  if (!sc) return err(404, "Not Found");
+  const HOUR = 3_600_000;
+  const now = Date.now();
+  const at = (hoursAgo: number | null) =>
+    hoursAgo === null ? null : new Date(now - hoursAgo * HOUR).toISOString().replace(/\.\d+Z$/, "Z");
+  const last = at(sc.last_success_hours_ago);
+  const body: IngestStatus = {
+    last_success_at: last,
+    next_due_at:
+      sc.auto && sc.last_success_hours_ago !== null
+        ? at(sc.last_success_hours_ago - sc.interval_hours)
+        : null,
+    interval_hours: sc.interval_hours,
+    auto: sc.auto,
+    running: sc.running,
+    active_postings: sc.active_postings,
+    sources: sc.sources.map((x) => ({
+      source: x.source,
+      last_success_at: at(x.last_success_hours_ago),
+      last_attempt_at: at(x.last_attempt_hours_ago),
+      fetched: x.fetched,
+      upserted: x.upserted,
+      deactivated: x.deactivated,
+      error: x.error,
+    })),
+  };
+  return ok(body);
+}
+
 type Body = Record<string, unknown> | undefined;
 
 function route(method: string, url: URL, body: Body, token: string | null): MockResponse {
@@ -317,6 +378,8 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
     persist();
     return ok(resume);
   }
+
+  if (path === "/ingest/status" && method === "GET") return ingestStatus();
 
   // ---- feed ----
   if (path === "/feed/status" && method === "GET") return feedStatus();

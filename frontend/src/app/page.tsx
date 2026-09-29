@@ -23,6 +23,7 @@ import type { FeedFilters, FeedSort, Page, Posting } from "@/lib/types";
 import { AppShell } from "@/components/AppShell";
 import { Dialog } from "@/components/Dialog";
 import { FilterPanel } from "@/components/FilterPanel";
+import { FreshnessLine } from "@/components/FreshnessLine";
 import { PostingList } from "@/components/PostingList";
 import { SortControl } from "@/components/SortControl";
 import { FilterIcon } from "@/components/icons";
@@ -158,6 +159,7 @@ function Dashboard() {
               <p className="tnum text-sm text-muted" data-testid="feed-total">
                 {loading ? "Loading…" : summary}
               </p>
+              <FreshnessLine />
             </div>
             <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
               <SortControl value={shownSort} onChange={setSort} />

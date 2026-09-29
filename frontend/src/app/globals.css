@@ -23,6 +23,8 @@
   --danger-soft: #fdf0ef;
   --positive: #067647;
   --positive-soft: #ebf8f1;
+  --warn: #8a5a00;
+  --warn-soft: #fdf3dc;
   --overlay: rgb(15 15 20 / 0.45);
 }
 
@@ -45,6 +47,8 @@
     --danger-soft: #3a1d1b;
     --positive: #5fd39a;
     --positive-soft: #11301f;
+    --warn: #e2b252;
+    --warn-soft: #33290f;
     --overlay: rgb(0 0 0 / 0.6);
   }
 }
@@ -67,6 +71,8 @@
   --color-danger-soft: var(--danger-soft);
   --color-positive: var(--positive);
   --color-positive-soft: var(--positive-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

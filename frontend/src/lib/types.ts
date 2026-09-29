@@ -165,6 +165,28 @@ export interface ApplicationDetail {
   next_transitions: string[];
 }
 
+/** One upstream list in GET /ingest/status. */
+export interface IngestSource {
+  source: string;
+  last_success_at: string | null;
+  last_attempt_at: string | null;
+  fetched: number;
+  upserted: number;
+  deactivated: number;
+  error: string | null;
+}
+
+/** GET /ingest/status — how fresh the listings are. */
+export interface IngestStatus {
+  last_success_at: string | null;
+  next_due_at: string | null;
+  interval_hours: number;
+  auto: boolean;
+  running: boolean;
+  active_postings: number;
+  sources: IngestSource[];
+}
+
 /** GET /feed `sort`. `recent` is the default: newest first, then score. */
 export type FeedSort = "recent" | "score";
 

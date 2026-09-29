@@ -19,7 +19,25 @@ for (const scheme of ["light", "dark"] as const) {
     await shot("login");
 
     await signInDemo(page);
+    await expect(page.getByTestId("freshness")).toBeVisible();
     await shot("dashboard");
+
+    await page.getByRole("radio", { name: "Best match" }).click();
+    await expect(page.getByTestId("feed-total")).toContainText("best match first");
+    await expect(page.getByTestId("posting-card").first()).toBeVisible();
+    await shot("dashboard-best-match");
+    await page.getByRole("radio", { name: "Newest first" }).click();
+
+    for (const scenario of ["failed", "running"]) {
+      await page.evaluate((v) => localStorage.setItem("step1.mock.ingest", v), scenario);
+      await page.reload();
+      await expect(page.getByTestId("freshness")).toBeVisible();
+      await expect(page.getByTestId("posting-card").first()).toBeVisible();
+      await shot(`dashboard-listings-${scenario}`);
+    }
+    await page.evaluate(() => localStorage.removeItem("step1.mock.ingest"));
+    await page.reload();
+    await expect(page.getByTestId("posting-card").first()).toBeVisible();
 
     if (info.project.name === "mobile") {
       await page.getByTestId("open-filters").click();

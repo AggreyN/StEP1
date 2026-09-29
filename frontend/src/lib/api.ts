@@ -17,6 +17,7 @@ import type {
   FeedFilters,
   FeedSort,
   FeedStatus,
+  IngestStatus,
   Me,
   Page,
   Posting,
@@ -278,6 +279,14 @@ export async function getFeedStatus(): Promise<FeedStatus & { retryAfter: number
   const res = await send("GET", "/feed/status");
   const h = res.headers.get("Retry-After");
   return { ...(res.body as FeedStatus), retryAfter: h ? retryAfterOf(res.headers, 1) : null };
+}
+
+/** How fresh the listings are. This only feeds one informational line, so a
+ *  401 here never signs the user out — the feed call decides that. Callers
+ *  treat any failure (an older backend without the route, the network) as
+ *  "nothing to show". */
+export function getIngestStatus() {
+  return json<IngestStatus>("GET", "/ingest/status", { authRedirect: false });
 }
 
 export function getPosting(id: string) {
