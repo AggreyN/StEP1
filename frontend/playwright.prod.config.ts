@@ -6,6 +6,7 @@ import { defineConfig, devices } from "@playwright/test";
 //
 //   npm run test:prod
 const PORT = 3200;
+const DIST = ".next-prod";
 
 export default defineConfig({
   testDir: "./tests-prod",
@@ -24,10 +25,11 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npx next build && npx next start --port ${PORT}`,
+    // Built from a clean directory, with one retry (see scripts/build-clean.mjs).
+    command: `node scripts/build-clean.mjs && npx next start --port ${PORT}`,
     url: `http://localhost:${PORT}/login`,
     reuseExistingServer: false,
     timeout: 300_000,
-    env: { NEXT_PUBLIC_API_BASE: "mock", NEXT_DIST_DIR: ".next-prod" },
+    env: { NEXT_PUBLIC_API_BASE: "mock", NEXT_DIST_DIR: DIST },
   },
 });
