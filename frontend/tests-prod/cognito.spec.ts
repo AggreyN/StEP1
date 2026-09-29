@@ -102,7 +102,12 @@ test.beforeEach(async ({ page }) => {
   });
   page.on("pageerror", (e) => trouble.push(`page error: ${e.message}`));
 });
-test.afterEach(() => {
+test.afterEach(async ({ page }, info) => {
+  if (info.status !== info.expectedStatus) {
+    // what the person would have been looking at
+    const text = await page.locator("body").innerText().catch(() => "(no page)");
+    console.log(`\n[${info.title}] ended at ${page.url()}\n${text.slice(0, 600)}\n`);
+  }
   expect(trouble).toEqual([]);
 });
 
