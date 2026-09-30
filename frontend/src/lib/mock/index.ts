@@ -79,6 +79,9 @@ interface Account {
   saved: string[];
   apps: MockApp[];
   buildStartedAt: number | null; // null = not building
+  /** The last step a poll reported during this build, and when (mock only). */
+  buildShown?: number;
+  buildShownAt?: number;
   /** Fingerprint of the password last used to sign in (see `fingerprint`). */
   pw: string | null;
 }
@@ -309,13 +312,23 @@ function feedStatus(mine: Account): MockResponse {
     const { state, pct, step } = seq.filter((x) => x.state === "building").slice(-1)[0];
     return ok({ state, pct, step }, 200, { "Retry-After": "1" });
   }
-  // Progress follows the clock, not the number of polls, like a real job would.
+  // Progress follows the clock, like a real job would, but a poll never
+  // skips a step: a slow poll (a busy machine) would otherwise jump from the
+  // first step straight to ready and the middle step would never be shown.
   const elapsed = mine.buildStartedAt === null || instant ? Infinity : Date.now() - mine.buildStartedAt;
-  const cur = [...seq].reverse().find((x) => elapsed >= x.after_ms) ?? seq[0];
-  if (cur.state === "ready" && mine.buildStartedAt !== null) {
-    mine.buildStartedAt = null;
-    persist();
-  }
+  const byClock = seq.findLastIndex((x) => elapsed >= x.after_ms);
+  // A step also stays put for a moment once shown, so that two polls made
+  // together (React runs effects twice in development) both see it.
+  const shown = mine.buildShown ?? -1;
+  const settled = Date.now() - (mine.buildShownAt ?? 0) >= 400;
+  let index =
+    mine.buildStartedAt === null || instant ? seq.length - 1 : Math.min(Math.max(byClock, 0), shown + 1);
+  if (index > shown && shown >= 0 && !settled && !instant) index = shown;
+  const cur = seq[index];
+  if (index !== shown) mine.buildShownAt = Date.now();
+  mine.buildShown = index;
+  if (cur.state === "ready" && mine.buildStartedAt !== null) mine.buildStartedAt = null;
+  persist();
   const body: FeedStatus = { state: cur.state, pct: cur.pct, step: cur.step };
   return ok(body, 200, cur.state === "building" ? { "Retry-After": "1" } : {});
 }
@@ -515,6 +528,7 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
       profile_version: version,
     };
     mine.buildStartedAt = Date.now();
+    mine.buildShown = -1;
     persist();
     return ok({ profile_version: version, state: "building" }, 202, { "Retry-After": "1" });
   }
