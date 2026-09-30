@@ -92,6 +92,10 @@ DELETE_ACCOUNT_RATE_LIMIT = os.getenv("DELETE_ACCOUNT_RATE_LIMIT", "5/hour")
 # Public and cached for five minutes by whoever asks; this is for whoever
 # does not honour the cache.
 STATS_RATE_LIMIT = os.getenv("STATS_RATE_LIMIT", "60/minute")
+# Reviews of the app, per signed-in person AND per client address: each is
+# emailed to the owner, so this is also a cap on how much mail one person
+# can cause.
+REVIEW_RATE_LIMIT = os.getenv("REVIEW_RATE_LIMIT", "5/day")
 
 # --- Amazon Cognito (only used when AUTH_MODE=cognito) ---
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
@@ -145,6 +149,20 @@ TRUSTED_PROXY_HOPS = int(os.getenv("TRUSTED_PROXY_HOPS", "1"))
 # upload URLs are built from it, so behind a proxy or in compose it must be the
 # externally reachable address, not the container's bind address.
 PUBLIC_API_BASE = os.getenv("PUBLIC_API_BASE", "http://localhost:8000").rstrip("/")
+
+# The frontend's address, for links in email (the admin page is SITE_URL/admin).
+SITE_URL = os.getenv("SITE_URL", "http://localhost:3000").strip().rstrip("/")
+
+# --- Admin and notifications ---
+# Who may see the admin pages: signed-in people whose email is in this list,
+# comma-separated, compared lowercased. Empty means nobody. In cognito mode
+# the address must also be verified by the pool (auth.is_admin).
+ADMIN_EMAILS = frozenset(
+    e.strip().lower() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()
+)
+# SNS topic the owner is subscribed to. Empty: nothing is sent, and the
+# review is only logged as received.
+NOTIFY_TOPIC_ARN = os.getenv("NOTIFY_TOPIC_ARN", "").strip()
 
 # --- File storage: "local" filesystem or "s3" ---
 STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "local").strip().lower()
@@ -229,6 +247,7 @@ def _check_rate_limits() -> None:
         "REGISTER_RATE_LIMIT",
         "DELETE_ACCOUNT_RATE_LIMIT",
         "STATS_RATE_LIMIT",
+        "REVIEW_RATE_LIMIT",
     ):
         try:
             parse(globals()[name])
@@ -507,6 +526,10 @@ def _check_production() -> None:
         )
     if AUTH_MODE == "local" and not RATE_LIMIT_ENABLED:
         log.warning("RATE_LIMIT_ENABLED is false in production: sign-in is not throttled.")
+    if not ADMIN_EMAILS:
+        log.warning("ADMIN_EMAILS is empty in production: nobody can open the admin pages.")
+    if not NOTIFY_TOPIC_ARN:
+        log.warning("NOTIFY_TOPIC_ARN is empty in production: reviews are stored but not emailed.")
 
 
 _check_choices()

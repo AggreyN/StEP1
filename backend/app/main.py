@@ -7,13 +7,16 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.exc import OperationalError, ProgrammingError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import config
+from app.auth import NOT_FOUND
 from app.logging_config import AccessLogMiddleware
 from app.logging_config import setup as setup_logging
 from app.middleware import (
@@ -33,6 +36,7 @@ from app.routes import (  # noqa: E402  (logging must be configured first)
     ingest,
     postings,
     profile,
+    reviews,
     saved,
     stats,
 )
@@ -56,8 +60,9 @@ async def lifespan(app: FastAPI):
 def _loc(loc: tuple) -> str:
     # ("body", "interests", 0, "rank") -> "interests[0].rank"
     out = ""
-    for part in loc:
-        if part in ("body", "query", "path", "header"):
+    for n, part in enumerate(loc):
+        # Only the first part says where; after that, "body" is a field name.
+        if n == 0 and part in ("body", "query", "path", "header"):
             continue
         out += f"[{part}]" if isinstance(part, int) else (f".{part}" if out else str(part))
     return out
@@ -76,6 +81,22 @@ async def _validation_error(request: Request, exc: RequestValidationError):
         where = _loc(tuple(err.get("loc", ())))
         parts.append(f"{where}: {msg}" if where else msg)
     return JSONResponse(status_code=422, content={"detail": "; ".join(parts) or "Invalid request."})
+
+
+async def _http_error(request: Request, exc: StarletteHTTPException):
+    """Every HTTP error as {"detail": str}, as FastAPI does, with two changes.
+
+    A path that is not there says "Not found." rather than Starlette's "Not
+    Found", so that it reads exactly like an admin route does to someone who
+    is not an admin (auth.current_admin). And an admin path asked for with
+    the wrong method is a 404 too, not a 405: "method not allowed" would say
+    the path exists.
+    """
+    if exc.status_code == 404 and exc.detail == "Not Found":
+        return JSONResponse(status_code=404, content={"detail": NOT_FOUND})
+    if exc.status_code == 405 and request.url.path.startswith("/admin"):
+        return JSONResponse(status_code=404, content={"detail": NOT_FOUND})
+    return await http_exception_handler(request, exc)
 
 
 # A DB failure is a clean, NAMED 503 — never a bare 500. The two messages make
@@ -140,11 +161,23 @@ def create_app(*, prod: bool = config.APP_ENV == "prod") -> FastAPI:
 
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, too_many_requests)
+    app.add_exception_handler(StarletteHTTPException, _http_error)
     app.add_exception_handler(RequestValidationError, _validation_error)
     app.add_exception_handler(OperationalError, _db_unreachable)
     app.add_exception_handler(ProgrammingError, _db_schema_broken)
 
-    for module in (health, auth, profile, feed, postings, saved, applications, ingest, stats):
+    for module in (
+        health,
+        auth,
+        profile,
+        feed,
+        postings,
+        saved,
+        applications,
+        ingest,
+        stats,
+        reviews,
+    ):
         app.include_router(module.router)
     return app
 

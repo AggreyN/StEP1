@@ -54,7 +54,7 @@ os.environ["INGEST_CHECK_MINUTES"] = "30"
 _TABLES = (
     "application_events, applications, saved_postings, match_scores, profile_interests, "
     "profiles, resume_uploads, outreach_messages, contacts, integrations, users, postings, "
-    "companies, ingest_runs"
+    "companies, ingest_runs, reviews"
 )
 
 

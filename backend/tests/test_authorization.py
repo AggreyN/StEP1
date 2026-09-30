@@ -56,6 +56,14 @@ A_SKILL = "Haskell"
 A_EMAIL = "alpha@example.com"
 A_NAME = "Alpha Owner"
 A_PASSWORD = "alpha-own-password"
+A_REVIEW = "alpha-private-review-91c2"
+# Nobody in the world below is an admin: the admin route must be a 404 to
+# every one of them.
+OWNER = "owner@example.com"
+
+# Admin-only routes: to anyone who is not an admin, signed in or not, they
+# answer as a path that does not exist.
+ADMIN_ONLY = {("GET", "/admin/reviews")}
 
 PDF = {"Content-Type": "application/pdf"}
 
@@ -82,7 +90,8 @@ class World:
 
 
 @pytest.fixture()
-def world(client) -> World:
+def world(client, monkeypatch) -> World:
+    monkeypatch.setattr(config, "ADMIN_EMAILS", frozenset({OWNER}))
     seed(
         [
             make_row("p-saved", "Software Engineer Intern", "Acme", days_ago=1),
@@ -111,6 +120,8 @@ def world(client) -> World:
         headers=a,
     )
     assert noted.status_code == 201, noted.text
+    reviewed = client.post("/reviews", json={"rating": 4, "body": A_REVIEW}, headers=a)
+    assert reviewed.status_code == 201, reviewed.text
 
     # B differs from A wherever the scorer looks, so a score that leaked
     # across would be the wrong number and show.
@@ -145,7 +156,7 @@ def world(client) -> World:
         a=a, b=b, c=c, a_id=a_id, b_id=b_id, a_application=application, a_resume_key=key,
         a_pending_key=pending,
         secrets=[A_SCHOOL, A_MAJOR, A_NOTE, A_RESUME_NAME, "alpha-next-resume", A_EMAIL,
-                 A_NAME, key, pending],
+                 A_NAME, key, pending, A_REVIEW],
     )  # fmt: skip
 
 
@@ -166,6 +177,7 @@ OWNED_TABLES = {
     "outreach_messages": "application_id IN (SELECT id FROM applications WHERE user_id = :u)",
     "integrations": "user_id = :u",
     "resume_uploads": "user_id = :u",
+    "reviews": "user_id = :u",
 }
 # Shared by everyone, or bookkeeping: no row in these belongs to a user.
 SHARED_TABLES = {"postings", "companies", "ingest_runs", "alembic_version"}
@@ -260,6 +272,10 @@ def _key_is_in_bs_namespace(r, w, client):
 
 def _list_is_empty(r, w, client):
     assert r.json().get("items") == [] and r.json().get("total", 0) == 0
+
+
+def _review_is_bs(r, w, client):
+    assert r.json()["body"] == "written by B" and r.json()["rating"] == 2
 
 
 def _only_b_is_gone(r, w, client):
@@ -382,6 +398,16 @@ def cases(w: World) -> dict[tuple[str, str], list[Attempt]]:
             Attempt("b", "probes A's application with an illegal step", "POST",
                     f"/applications/{app_id}/events", HIDDEN, json={"kind": "offer"}),
         ],
+        ("POST", "/reviews"): [
+            Attempt("b", "writes a review", "POST", "/reviews", 201,
+                    json={"rating": 2, "body": "written by B"}, check=_review_is_bs),
+        ],
+        ("GET", "/admin/reviews"): [
+            Attempt(who, "lists every review, not being an admin", "GET", path, HIDDEN)
+            for who in ("b", "c")
+            for path in ("/admin/reviews", "/admin/reviews?page=2&page_size=5",
+                         "/admin/reviews?page=nonsense")
+        ],
     }  # fmt: skip
 
 
@@ -503,7 +529,10 @@ def test_the_public_routes_are_exactly_these(client, world):
             "key": world.a_resume_key}  # fmt: skip
     for method, template in sorted(ROUTES):
         path = template.replace("{key:path}", "{key}").format(**fill)
-        if client.request(method, path, json={}).status_code != 401:
+        r = client.request(method, path, json={})
+        if (method, template) in ADMIN_ONLY:
+            assert (r.status_code, r.json()) == (404, {"detail": "Not found."}), template
+        elif r.status_code != 401:
             public.add((method, template))
     assert public == {
         ("GET", "/health"),
@@ -519,7 +548,10 @@ def test_without_a_token_every_protected_route_is_401(client, world):
             "key": world.a_resume_key}  # fmt: skip
     # /ingest/status is exempt from the two-user cases because it shows
     # nothing of any user's. It still needs a token.
-    for method, template in sorted(set(ROUTES) - set(EXEMPT) | {("GET", "/ingest/status")}):
+    # Admin routes are a 404 instead (test_the_public_routes_are_exactly_these).
+    for method, template in sorted(
+        set(ROUTES) - set(EXEMPT) - ADMIN_ONLY | {("GET", "/ingest/status")}
+    ):
         path = template.replace("{key:path}", "{key}").format(**fill)
         r = client.request(method, path, json={})
         assert r.status_code == 401, f"{method} {path} -> {r.status_code}"

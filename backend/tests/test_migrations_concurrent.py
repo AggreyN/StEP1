@@ -16,7 +16,9 @@ from sqlalchemy.engine import make_url
 from app import config
 
 BACKEND = Path(__file__).resolve().parent.parent
-TABLES = 15  # fourteen of the application's, and alembic_version
+TABLES = 16  # fifteen of the application's, and alembic_version
+HEAD = "0003"
+REVISIONS = 3
 
 
 @pytest.fixture()
@@ -70,11 +72,11 @@ def test_tasks_that_start_together_all_migrate_safely(empty_database):
     for process, output in zip(started, outputs, strict=True):
         assert process.returncode == 0, output[-1500:]
         assert "already exists" not in output and "Traceback" not in output, output[-1500:]
-    assert state(empty_database) == (TABLES, "0002")
+    assert state(empty_database) == (TABLES, HEAD)
 
     # Each revision was applied once, by whoever got there first.
     applied = sum(output.count("Running upgrade") for output in outputs)
-    assert applied == 2, outputs
+    assert applied == REVISIONS, outputs
 
 
 def test_a_second_task_waits_for_the_first_to_finish(empty_database):
@@ -101,7 +103,7 @@ def test_a_second_task_waits_for_the_first_to_finish(empty_database):
     finally:
         holder.close()
         engine.dispose()
-    assert state(empty_database) == (TABLES, "0002")
+    assert state(empty_database) == (TABLES, HEAD)
 
 
 def test_the_lock_is_released_when_the_migration_is_done(empty_database):
@@ -132,7 +134,7 @@ def test_a_migration_that_dies_does_not_leave_the_lock_behind(empty_database):
 
     done = upgrade(empty_database)
     assert done.wait(timeout=60) == 0
-    assert state(empty_database) == (TABLES, "0002")
+    assert state(empty_database) == (TABLES, HEAD)
 
 
 def test_requests_are_served_while_a_later_task_migrates(client, db):

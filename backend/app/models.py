@@ -399,3 +399,27 @@ class IngestRun(Base):
     upserted: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     deactivated: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     error: Mapped[str | None] = mapped_column(Text)
+
+
+class Review(Base):
+    """A review of the app, written by a signed-in person.
+
+    Belongs to its author: deleting the account deletes it (the cascade), as
+    the Privacy page promises. Shown only on the owner's admin page.
+    """
+
+    __tablename__ = "reviews"
+    __table_args__ = (
+        CheckConstraint("rating BETWEEN 1 AND 5", name="ck_reviews_rating"),
+        CheckConstraint("char_length(body) BETWEEN 1 AND 2000", name="ck_reviews_body"),
+        Index("ix_reviews_user_id", "user_id"),
+        Index("ix_reviews_created_at", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    rating: Mapped[int] = mapped_column(SmallInteger)
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+    user: Mapped[User] = relationship()

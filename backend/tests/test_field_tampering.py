@@ -76,6 +76,7 @@ def _bodies(app_id: int) -> dict[tuple[str, str], tuple[str, dict]]:
             {"kind": "acknowledged"},
         ),
         ("DELETE", "/me"): ("/me", {"password": "correct-horse"}),
+        ("POST", "/reviews"): ("/reviews", {"rating": 5, "body": "Useful."}),
     }
 
 

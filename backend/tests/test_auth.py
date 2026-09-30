@@ -38,7 +38,13 @@ def test_login_and_me(client):
     token = r.json()["access_token"]
     me = client.get("/me", headers={"Authorization": f"Bearer {token}"})
     assert me.status_code == 200
-    assert me.json() == {"id": 1, "email": "ada@umd.edu", "display_name": "Ada", "onboarded": False}
+    assert me.json() == {
+        "id": 1,
+        "email": "ada@umd.edu",
+        "display_name": "Ada",
+        "onboarded": False,
+        "is_admin": False,
+    }
 
 
 def test_bad_login_is_401(client):

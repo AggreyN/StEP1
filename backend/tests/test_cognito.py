@@ -229,6 +229,7 @@ def test_a_valid_token_signs_in_and_creates_the_user(client, pool, db):
         "email": "ada@umd.edu",
         "display_name": "Ada Lovelace",
         "onboarded": False,
+        "is_admin": False,
     }
     (user,) = users(db)
     assert user.cognito_sub == "sub-ada" and user.password_hash is None
