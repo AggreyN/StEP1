@@ -58,6 +58,8 @@ test.describe("the files", () => {
       "application.html",
       "about.html",
       "privacy.html",
+      "review.html",
+      "admin.html",
       "404.html",
       "icon.svg",
     ]) {
@@ -87,7 +89,7 @@ test.describe("the files", () => {
     expect(expected).toContain("connect-src 'self';");
     expect(expected).not.toContain("frame-ancestors"); // not allowed in a <meta> tag; the header has it
     const pages = walk(OUT).filter((f) => f.endsWith(".html"));
-    expect(pages.length).toBeGreaterThanOrEqual(12);
+    expect(pages.length).toBeGreaterThanOrEqual(14);
     for (const f of pages) {
       const html = readFileSync(f, "utf8").replace(/&#x27;/g, "'");
       expect(html, path.relative(OUT, f)).toContain(`http-equiv="Content-Security-Policy" content="${expected}"`);
@@ -151,7 +153,7 @@ test.describe("deep links", () => {
   });
 
   test("signed-in pages send a signed-out visitor to sign in", async ({ page }) => {
-    for (const url of ["/", "/saved", "/applications", "/application?id=12", "/onboarding", "/onboarding/building"]) {
+    for (const url of ["/", "/saved", "/applications", "/application?id=12", "/onboarding", "/onboarding/building", "/review", "/admin"]) {
       const res = await page.goto(url);
       expect(res!.status(), url).toBe(200); // the file exists; the page itself asks for sign-in
       await expect(page, url).toHaveURL(/\/login$/);
@@ -168,6 +170,8 @@ test.describe("deep links", () => {
       ["/application?id=12", async () => expect(page.getByRole("heading", { level: 1 })).toHaveText("Software Development Intern")],
       ["/application?id=9", async () => expect(page.locator('[data-testid="timeline-event"][data-kind="ghosted"]')).toBeVisible()],
       ["/onboarding", async () => expect(page.getByLabel("Major")).toHaveValue("Information Science")],
+      ["/review", async () => expect(page.getByRole("radio", { name: "5 stars" })).toBeVisible()],
+      ["/admin", async () => expect(page.getByTestId("admin-review").first()).toBeVisible()],
     ];
     for (const [url, ready] of pages) {
       const res = await page.goto(url);
@@ -400,4 +404,30 @@ test("the site can't be framed", async ({ request }) => {
   const res = await request.get("/login");
   expect(res.headers()["x-frame-options"]).toBe("DENY");
   expect(res.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
+});
+
+test("a review can be sent from the exported site, and the admin page reads it", async ({ page }) => {
+  await signInDemo(page);
+  await page.goto("/review");
+  await page.getByRole("radio", { name: "4 stars" }).click();
+  await page.getByRole("textbox", { name: "Your review" }).fill("Sent from the static site.");
+  await page.getByTestId("send-review").click();
+  await expect(page.getByTestId("review-sent")).toBeVisible();
+  await page.goto("/admin");
+  await expect(page.getByTestId("admin-review").first()).toContainText("Sent from the static site.");
+  await page.reload();
+  await expect(page.getByTestId("admin-review").first()).toContainText("Sent from the static site.");
+});
+
+test("a non-admin deep-linking to /admin gets the not-found page", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByRole("tab", { name: "Register" }).click();
+  await page.getByLabel("Email").fill(freshEmail("notadmin"));
+  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page).toHaveURL(/\/onboarding$/);
+  await page.goto("/admin");
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
 });
