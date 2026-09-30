@@ -2,6 +2,7 @@
 // One sectioned page, not a wizard: six fields, a file, and the ranked
 // interests that drive the score.
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getProfile, putProfile, uploadResume, validateResume } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
@@ -11,6 +12,7 @@ import type { Profile, Resume } from "@/lib/types";
 import { AppShell } from "@/components/AppShell";
 import { ChipInput } from "@/components/ChipInput";
 import { DeleteAccount } from "@/components/DeleteAccount";
+import { useMe } from "@/lib/me";
 import { InterestRanker, MAX_INTERESTS, MIN_INTERESTS } from "@/components/InterestRanker";
 import { Button, Chip, ErrorNote, Spinner } from "@/components/ui";
 import { CheckIcon, XIcon } from "@/components/icons";
@@ -59,6 +61,7 @@ const thisYear = new Date().getFullYear();
 export default function OnboardingPage() {
   const authed = useRequireAuth();
   const router = useRouter();
+  const me = useMe();
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -349,7 +352,29 @@ export default function OnboardingPage() {
             </div>
           </div>
         </form>
-        <div className="mt-10">
+        <section
+          aria-labelledby="feedback-heading"
+          className="mt-10 rounded-card border border-line bg-surface p-3.5 sm:p-5"
+          data-testid="profile-feedback"
+        >
+          <h2 id="feedback-heading" className="text-base font-semibold">
+            Tell us what you think
+          </h2>
+          <p className="mt-0.5 text-sm text-muted">
+            A rating and a few words go straight to Aggrey, who runs StEP1.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+            <Link href="/review" className="font-medium text-accent-text underline underline-offset-2">
+              Leave a review
+            </Link>
+            {me?.is_admin && (
+              <Link href="/admin" className="font-medium text-accent-text underline underline-offset-2" data-testid="profile-admin-link">
+                Admin: read reviews
+              </Link>
+            )}
+          </div>
+        </section>
+        <div className="mt-6">
           <DeleteAccount />
         </div>
         </>

@@ -1,0 +1,122 @@
+{
+  "_comment": "Mock-only fixture for GET /admin/reviews. `created_hours_ago` becomes `created_at` so the list reads as recent whenever the app is run; it is removed before responding. A null user is a deleted account.",
+  "items": [
+    {
+      "id": 100,
+      "rating": 5,
+      "body": "This is the first internship tool that tells me WHY something matched. The reason chips are the whole thing for me.",
+      "created_hours_ago": 2,
+      "user": {
+        "email": "priya.raman@umd.edu",
+        "display_name": "Priya Raman"
+      }
+    },
+    {
+      "id": 99,
+      "rating": 4,
+      "body": "Love the timeline. Ghosted as a real state made me laugh and then made me feel better.\n\nWish I could export my applications to a spreadsheet for my career advisor.",
+      "created_hours_ago": 5,
+      "user": {
+        "email": "mbell@terpmail.umd.edu",
+        "display_name": "Marcus Bell"
+      }
+    },
+    {
+      "id": 98,
+      "rating": 2,
+      "body": "The feed kept showing me hardware roles even though I only ranked software and data. Maybe I set something wrong?",
+      "created_hours_ago": 9,
+      "user": {
+        "email": "j.okafor@umd.edu",
+        "display_name": null
+      }
+    },
+    {
+      "id": 97,
+      "rating": 5,
+      "body": "Found two security internships I had never seen on any other list. Applied to both the same night.",
+      "created_hours_ago": 14,
+      "user": {
+        "email": "dana.w@umd.edu",
+        "display_name": "Dana Whitfield"
+      }
+    },
+    {
+      "id": 96,
+      "rating": 3,
+      "body": "Useful, but the dashboard is a lot on my phone. Filters in a sheet is good, the cards are long.",
+      "created_hours_ago": 20,
+      "user": {
+        "email": "leotran@umd.edu",
+        "display_name": "Leo Tran"
+      }
+    },
+    {
+      "id": 95,
+      "rating": 1,
+      "body": "Signed up and got an empty feed. Turned out my graduation year was wrong. An error would have helped.",
+      "created_hours_ago": 26,
+      "user": null
+    },
+    {
+      "id": 94,
+      "rating": 4,
+      "body": "Would be great if it reminded me to follow up after a week of silence. Otherwise solid.",
+      "created_hours_ago": 31,
+      "user": {
+        "email": "salvarez@umd.edu",
+        "display_name": "Sofia Alvarez"
+      }
+    },
+    {
+      "id": 93,
+      "rating": 5,
+      "body": "Clean, fast, no ads. Please never add ads.",
+      "created_hours_ago": 40,
+      "user": {
+        "email": "bcarter@umd.edu",
+        "display_name": "Ben Carter"
+      }
+    },
+    {
+      "id": 92,
+      "rating": 3,
+      "body": "Resume upload pulled out Python and SQL but missed Tableau and R.",
+      "created_hours_ago": 52,
+      "user": {
+        "email": "aisha.k@umd.edu",
+        "display_name": "Aisha Khan"
+      }
+    },
+    {
+      "id": 91,
+      "rating": 4,
+      "body": "Sort by newest first is exactly what I needed during the September rush.",
+      "created_hours_ago": 60,
+      "user": {
+        "email": "noahkim@umd.edu",
+        "display_name": "Noah Kim"
+      }
+    },
+    {
+      "id": 90,
+      "rating": 2,
+      "body": "I applied through the card but the posting link was dead. Not StEP1's fault probably but annoying.",
+      "created_hours_ago": 72,
+      "user": {
+        "email": "gliu@umd.edu",
+        "display_name": "Grace Liu"
+      }
+    },
+    {
+      "id": 89,
+      "rating": 5,
+      "body": "Told my whole Info Sci section about it.\nThanks for building this.",
+      "created_hours_ago": 90,
+      "user": {
+        "email": "ohaddad@umd.edu",
+        "display_name": "Omar Haddad"
+      }
+    }
+  ]
+}

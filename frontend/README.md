@@ -91,6 +91,7 @@ What the suites cover:
 | `account` | deleting the account |
 | `applications` | grouping, ghosted styling, old-style links, the not-found page |
 | `public` | About and Privacy signed out, live numbers, footer links on every screen |
+| `reviews` | leaving a review, its checks and errors, the admin page, keyboard rating, axe at both widths |
 | `a11y` | axe on every screen and dialog, light and dark, desktop and 375px |
 | `keyboard` | ranking interests, and save, apply, advance, with the keyboard alone |
 | `mobile` | no horizontal scroll at 375px |
@@ -327,6 +328,24 @@ every screen.
 `src/lib/site.ts` holds the contact address and a constant named `HOSTING`:
 the sentences about where data lives. **Check them against the real
 deployment before launch.**
+
+## Reviews and the admin page
+
+Anyone signed in can leave a review at `/review`: a rating from 1 to 5 and
+up to 2000 characters. The page says that it goes to Aggrey by email with
+the writer's address attached. It is linked from the footer of every
+signed-in screen and from the Profile page (not from the phone tab bar).
+Calls: `POST /reviews`; the API's 422 and 429 messages are shown as they are.
+
+`/admin` lists every review, newest first, with the count and the average
+rating. It is for the owner only: `GET /me` says `is_admin`, and anyone
+else, or anyone the API answers 404, sees the not-found page. The Admin link
+appears in the desktop nav and on the Profile page only for the owner.
+Calls: `GET /admin/reviews?page=&page_size=`. Review text is shown as plain
+text with its line breaks, never as HTML.
+
+In mock mode `demo@umd.edu` is the admin and `src/lib/mock/reviews.json`
+holds twelve reviews; new ones are kept in the browser.
 
 ## Security
 

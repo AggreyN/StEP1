@@ -116,7 +116,7 @@ function Building() {
         </div>
       )}
     </main>
-    <SiteFooter />
+    <SiteFooter signedIn />
     </div>
   );
 }

@@ -5,30 +5,38 @@ import { signInDemo } from "./helpers";
 test("building: routes straight through when the first poll is already ready", async ({ page }) => {
   await signInDemo(page);
   await page.evaluate(() => localStorage.setItem("step1.mock.instant", "1"));
-  const started = Date.now();
   await page.goto("/onboarding/building?retry=1");
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId("posting-card").first()).toBeVisible();
-  // one poll (300 ms mock latency) plus navigation — no artificial wait
-  expect(Date.now() - started).toBeLessThan(5_000);
+  // No waiting for a second poll: the first answer was enough. (Development
+  // runs effects twice, so the one poll may be sent twice at the same moment.)
+  const polls = await page.evaluate(() =>
+    ((window as unknown as { __step1Requests?: string[] }).__step1Requests ?? []).filter((r) => r === "GET /feed/status")
+  );
+  expect(polls.length).toBeGreaterThanOrEqual(1);
+  expect(polls.length).toBeLessThanOrEqual(2);
 });
 
 test("building: polls, shows each real step, then routes to the dashboard", async ({ page }) => {
   await signInDemo(page);
+  // Record every step text the page shows, as it changes, rather than
+  // sampling it: a sample can fall between two changes.
+  await page.addInitScript(() => {
+    const seen: string[] = [];
+    (window as unknown as { __steps: string[] }).__steps = seen;
+    new MutationObserver(() => {
+      const t = document.querySelector('[data-testid="building-step"]')?.textContent;
+      if (t && t !== "Connecting…" && seen[seen.length - 1] !== t) seen.push(t);
+    }).observe(document, { subtree: true, childList: true, characterData: true });
+  });
   await page.goto("/onboarding");
   await page.getByTestId("submit-profile").click();
   await expect(page).toHaveURL(/\/onboarding\/building\?retry=1/);
+  await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
-  const seen = new Set<string>();
-  const step = page.getByTestId("building-step");
-  while (page.url().includes("/building")) {
-    const text = await step.textContent({ timeout: 1_000 }).catch(() => null);
-    if (text && text !== "Connecting…") seen.add(text);
-    await page.waitForTimeout(100);
-  }
+  const seen = await page.evaluate(() => (window as unknown as { __steps: string[] }).__steps);
   const building = status.sequence.filter((s) => s.state === "building").map((s) => s.step);
-  expect([...seen]).toEqual(expect.arrayContaining(building));
-  await expect(page).toHaveURL(/\/$/);
+  expect(seen).toEqual(expect.arrayContaining(building));
 });
 
 test("building: after 30 seconds it says so and links to the dashboard anyway", async ({ page }) => {

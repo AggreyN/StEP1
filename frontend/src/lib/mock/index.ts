@@ -30,6 +30,7 @@ import statusData from "./status.json";
 import transitionsData from "./transitions.json";
 import ingestData from "./ingest.json";
 import statsData from "./stats.json";
+import reviewsData from "./reviews.json";
 import type {
   ApplicationDetail,
   ApplicationEvent,
@@ -78,6 +79,9 @@ interface Account {
   saved: string[];
   apps: MockApp[];
   buildStartedAt: number | null; // null = not building
+  /** The last step a poll reported during this build, and when (mock only). */
+  buildShown?: number;
+  buildShownAt?: number;
   /** Fingerprint of the password last used to sign in (see `fingerprint`). */
   pw: string | null;
 }
@@ -86,7 +90,33 @@ interface State {
   profiles: Record<string, Profile>;
   resumes: Record<string, Resume>;
   accounts: Record<string, Account>;
+  /** Reviews written in this browser, newest last. The fixture's come after them in the admin list. */
+  reviews?: MockReview[];
   nextId: number;
+}
+
+interface MockReview {
+  id: number;
+  rating: number;
+  body: string;
+  created_at: string;
+  user: { email: string; display_name: string | null } | null;
+}
+
+/** demo@umd.edu stands in for the owner. */
+const isAdmin = (email: string) => email === DEMO_EMAIL;
+
+function allReviews(): MockReview[] {
+  const HOUR = 3_600_000;
+  const now = Date.now();
+  const fixture = (reviewsData.items as (Omit<MockReview, "created_at"> & { created_hours_ago: number })[]).map(
+    ({ created_hours_ago, ...r }) => ({
+      ...r,
+      created_at: new Date(now - created_hours_ago * HOUR).toISOString().replace(/\.\d+Z$/, "Z"),
+    })
+  );
+  const mine = [...(db().reviews ?? [])].reverse();
+  return [...mine, ...fixture];
 }
 
 function seed(): State {
@@ -282,13 +312,23 @@ function feedStatus(mine: Account): MockResponse {
     const { state, pct, step } = seq.filter((x) => x.state === "building").slice(-1)[0];
     return ok({ state, pct, step }, 200, { "Retry-After": "1" });
   }
-  // Progress follows the clock, not the number of polls, like a real job would.
+  // Progress follows the clock, like a real job would, but a poll never
+  // skips a step: a slow poll (a busy machine) would otherwise jump from the
+  // first step straight to ready and the middle step would never be shown.
   const elapsed = mine.buildStartedAt === null || instant ? Infinity : Date.now() - mine.buildStartedAt;
-  const cur = [...seq].reverse().find((x) => elapsed >= x.after_ms) ?? seq[0];
-  if (cur.state === "ready" && mine.buildStartedAt !== null) {
-    mine.buildStartedAt = null;
-    persist();
-  }
+  const byClock = seq.findLastIndex((x) => elapsed >= x.after_ms);
+  // A step also stays put for a moment once shown, so that two polls made
+  // together (React runs effects twice in development) both see it.
+  const shown = mine.buildShown ?? -1;
+  const settled = Date.now() - (mine.buildShownAt ?? 0) >= 400;
+  let index =
+    mine.buildStartedAt === null || instant ? seq.length - 1 : Math.min(Math.max(byClock, 0), shown + 1);
+  if (index > shown && shown >= 0 && !settled && !instant) index = shown;
+  const cur = seq[index];
+  if (index !== shown) mine.buildShownAt = Date.now();
+  mine.buildShown = index;
+  if (cur.state === "ready" && mine.buildStartedAt !== null) mine.buildStartedAt = null;
+  persist();
   const body: FeedStatus = { state: cur.state, pct: cur.pct, step: cur.step };
   return ok(body, 200, cur.state === "building" ? { "Retry-After": "1" } : {});
 }
@@ -400,8 +440,43 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
   const mine = account(email);
 
   if (method === "GET" && path === "/me") {
-    return ok({ ...user, onboarded: !!s.profiles[email] });
+    return ok({ ...user, onboarded: !!s.profiles[email], is_admin: isAdmin(email) });
   }
+  // ---- reviews ----
+  if (method === "POST" && path === "/reviews") {
+    const rating = body?.rating;
+    const text = typeof body?.body === "string" ? body.body.trim() : "";
+    if (!Number.isInteger(rating) || (rating as number) < 1 || (rating as number) > 5) {
+      return err(422, "rating: Choose a rating from 1 to 5.");
+    }
+    if (!text) return err(422, "body: Write a few words.");
+    if (text.length > 2000) return err(422, "body: A review can be at most 2000 characters.");
+    const review: MockReview = {
+      id: s.nextId++,
+      rating: rating as number,
+      body: text,
+      created_at: nowIso().replace(/\.\d+Z$/, "Z"),
+      user: { email: user.email, display_name: user.display_name },
+    };
+    s.reviews = [...(s.reviews ?? []), review];
+    persist();
+    return ok({ id: review.id, rating: review.rating, body: review.body, created_at: review.created_at }, 201);
+  }
+  if (method === "GET" && path === "/admin/reviews") {
+    if (!isAdmin(email)) return err(404, "Not found.");
+    const all = allReviews();
+    const page = Math.max(1, Number(q.get("page")) || 1);
+    const size = Math.min(100, Math.max(1, Number(q.get("page_size")) || 20));
+    const average = all.length ? all.reduce((n, r) => n + r.rating, 0) / all.length : null;
+    return ok({
+      items: all.slice((page - 1) * size, page * size),
+      page,
+      total: all.length,
+      has_more: page * size < all.length,
+      average_rating: average === null ? null : Math.round(average * 100) / 100,
+    });
+  }
+
   if (method === "DELETE" && path === "/me") {
     if (AUTH_MODE !== "cognito") {
       const password = String(body?.password ?? "");
@@ -410,6 +485,8 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
     }
     // Everything that belonged to this user goes: account, profile, resume,
     // saved postings, applications and their events.
+    // Their reviews stay, but no longer say who wrote them.
+    s.reviews = (s.reviews ?? []).map((r) => (r.user?.email === email ? { ...r, user: null } : r));
     delete s.users[email];
     delete s.profiles[email];
     delete s.resumes[email];
@@ -451,6 +528,7 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
       profile_version: version,
     };
     mine.buildStartedAt = Date.now();
+    mine.buildShown = -1;
     persist();
     return ok({ profile_version: version, state: "building" }, 202, { "Retry-After": "1" });
   }
@@ -607,7 +685,11 @@ function forcedFailure(method: string, path: string): MockResponse | null {
     if (!m[2]) window.localStorage.removeItem("step1.mock.fail");
     const status = m[1] ? Number(m[1]) : 500;
     if (status === 429) {
-      return ok({ detail: "Too many attempts. Wait a minute and try again." }, 429, { "Retry-After": "60" });
+      const detail =
+        path === "/reviews"
+          ? "You've sent a lot of reviews today. Try again tomorrow."
+          : "Too many attempts. Wait a minute and try again.";
+      return ok({ detail }, 429, { "Retry-After": "60" });
     }
     return err(status, "The server had a problem. Nothing was changed. Try again.");
   } catch {
