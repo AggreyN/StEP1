@@ -119,8 +119,42 @@ class Pool:
             cognito._state["next_unknown_kid_fetch"] = 0.0
 
 
+class FakeIdp:
+    """Stands in for the pool's admin API, so deleting an account never
+    reaches AWS from a test. Records each call; `fail` makes the next calls
+    raise the error a real pool would."""
+
+    def __init__(self):
+        self.calls: list[tuple[str, str, str]] = []
+        self.fail: Exception | None = None
+
+    def _call(self, name, UserPoolId, Username):
+        self.calls.append((name, UserPoolId, Username))
+        if self.fail is not None:
+            raise self.fail
+
+    def admin_user_global_sign_out(self, **kw):
+        self._call("sign_out", **kw)
+
+    def admin_delete_user(self, **kw):
+        self._call("delete", **kw)
+
+
+def client_error(code: str):
+    from botocore.exceptions import ClientError
+
+    return ClientError({"Error": {"Code": code, "Message": code}}, "AdminDeleteUser")
+
+
 @pytest.fixture()
-def pool(monkeypatch):
+def idp(monkeypatch):
+    fake = FakeIdp()
+    monkeypatch.setattr(cognito, "_idp", lambda: fake)
+    return fake
+
+
+@pytest.fixture()
+def pool(monkeypatch, idp):
     stub = Pool()
     monkeypatch.setattr(config, "AUTH_MODE", "cognito")
     monkeypatch.setattr(config, "AWS_REGION", REGION)
@@ -670,13 +704,56 @@ def test_delete_me_asks_for_no_password(client, pool, db):
     assert client.delete("/me", headers=headers).status_code == 204
     assert users(db) == []
 
-    # The token is still the pool's and still valid: deleting here removes
-    # what this service holds, not the person's place in the pool. Signing in
-    # again starts a new, empty account.
+    # An ID token already issued stays valid until it expires; Cognito can't
+    # recall it. Used again, it finds nothing of what was deleted.
     again = client.get("/me", headers=headers)
     assert again.status_code == 200
     assert again.json()["id"] != 1 and again.json()["onboarded"] is False
     assert client.get("/saved", headers=headers).json()["total"] == 0
+
+
+def test_delete_me_removes_the_person_from_the_pool(client, pool, idp, db):
+    headers = bearer(token(sub="sub-ada"))
+    me(client, token(sub="sub-ada"))
+    assert client.delete("/me", headers=headers).status_code == 204
+    # Signed out everywhere first, so no refresh token outlives the account,
+    # then deleted, by the pool's own id for the person, from this pool only.
+    assert idp.calls == [("sign_out", POOL, "sub-ada"), ("delete", POOL, "sub-ada")]
+
+
+@pytest.fixture()
+def route_errors(monkeypatch):
+    """What the delete route logs as an error, whatever the logging setup."""
+    from app.routes import auth as auth_routes
+
+    seen: list[str] = []
+    monkeypatch.setattr(auth_routes.log, "error", lambda msg, *a, **kw: seen.append(msg))
+    return seen
+
+
+def test_delete_me_when_the_pool_has_already_let_them_go(client, pool, idp, db, route_errors):
+    me(client, token())
+    idp.fail = client_error("UserNotFoundException")
+    assert client.delete("/me", headers=bearer(token())).status_code == 204
+    assert users(db) == []
+    assert route_errors == []
+
+
+def test_delete_me_when_the_pool_cannot_be_reached(client, pool, idp, db, route_errors):
+    # The data is still deleted: a sign-in with nothing behind it is the
+    # recoverable failure. It is logged for someone to finish by hand.
+    me(client, token())
+    idp.fail = client_error("InternalErrorException")
+    assert client.delete("/me", headers=bearer(token())).status_code == 204
+    assert users(db) == []
+    assert route_errors == ["account deleted but the pool still has the user"]
+
+
+def test_delete_me_in_local_mode_never_touches_a_pool(client, idp, db):
+    headers = register(client, "ada@umd.edu")
+    r = client.request("DELETE", "/me", json={"password": "correct-horse"}, headers=headers)
+    assert r.status_code == 204
+    assert idp.calls == []
 
 
 def test_delete_me_ignores_a_password_if_one_is_sent(client, pool):

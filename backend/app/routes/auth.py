@@ -16,7 +16,7 @@ from app.deps import current_user, get_db
 from app.models import Profile, ResumeUpload, User
 from app.ratelimit import delete_account_limit, limiter, login_limit, register_limit
 from app.schemas import DeleteAccountIn, LoginIn, MeOut, RegisterIn, TokenOut, UserOut
-from app.services import feed_state, storage
+from app.services import cognito, feed_state, storage
 
 router = APIRouter(tags=["auth"])
 log = logging.getLogger(__name__)
@@ -96,10 +96,11 @@ def delete_me(
         if not user.password_hash or not verify_password(body.password, user.password_hash):
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Password is incorrect.")
     # In cognito mode the pool holds the password and has already checked it
-    # to issue the token. Deleting here removes what this service holds; the
-    # pool's own record of the user is the pool's to delete.
+    # to issue the token. The person is removed from the pool too, below,
+    # once everything this service holds is gone.
 
     user_id = user.id
+    sub = user.cognito_sub
     # Found before the rows that say where they are have gone.
     keys = set(db.scalars(select(ResumeUpload.key).where(ResumeUpload.user_id == user_id)))
     resume = db.scalar(select(Profile.resume_s3_key).where(Profile.user_id == user_id))
@@ -123,5 +124,10 @@ def delete_me(
             extra={"user_id": user_id, "objects": len(failed)},
         )
     feed_state.forget(user_id)
+
+    # Last, like the files: a failure here leaves a sign-in with nothing
+    # behind it, which an operator can remove, never data without an owner.
+    if config.AUTH_MODE == "cognito" and sub and not cognito.remove_from_pool(sub):
+        log.error("account deleted but the pool still has the user", extra={"user_id": user_id})
     log.info("account deleted", extra={"user_id": user_id, "objects": len(keys)})
     return Response(status_code=status.HTTP_204_NO_CONTENT)

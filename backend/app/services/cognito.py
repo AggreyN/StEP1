@@ -181,3 +181,49 @@ def verify(token: str) -> dict:
     if not isinstance(claims.get("sub"), str) or not claims["sub"]:
         raise InvalidToken("sub is not a string")
     return claims
+
+
+# --------------------------------------------------------------------------- #
+# Removing a person from the pool
+# --------------------------------------------------------------------------- #
+
+
+def _idp():
+    import boto3
+
+    return boto3.client("cognito-idp", region_name=config.AWS_REGION)
+
+
+def remove_from_pool(sub: str) -> bool:
+    """Sign the person out everywhere, then delete them from the pool.
+
+    Deleting an account here removes what this service holds. Without this,
+    the pool would keep the person's email and name, and they could sign in
+    again to a new, empty account: not what "delete my account" promises.
+
+    Signing out first revokes their refresh tokens, so no session can be
+    renewed. An ID token already issued stays valid until it expires (an
+    hour at most); Cognito cannot recall it, and the frontend discards it.
+
+    True when the person is gone, including when they were gone already.
+    False when the pool could not be reached or refused; the caller logs it.
+    """
+    from botocore.exceptions import BotoCoreError, ClientError
+
+    client = _idp()
+    pool = config.COGNITO_USER_POOL_ID
+    try:
+        client.admin_user_global_sign_out(UserPoolId=pool, Username=sub)
+        client.admin_delete_user(UserPoolId=pool, Username=sub)
+    except ClientError as exc:
+        if exc.response.get("Error", {}).get("Code") == "UserNotFoundException":
+            return True
+        log.error(
+            "cognito: could not remove user from pool: %s",
+            exc.response.get("Error", {}).get("Code"),
+        )
+        return False
+    except BotoCoreError as exc:
+        log.error("cognito: could not reach the pool to remove a user: %s", type(exc).__name__)
+        return False
+    return True
