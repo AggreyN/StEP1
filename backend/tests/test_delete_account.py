@@ -41,6 +41,7 @@ OWNED = {
     "contacts": "user_id = :u",
     "outreach_messages": "application_id IN (SELECT id FROM applications WHERE user_id = :u)",
     "integrations": "user_id = :u",
+    "reviews": "user_id = :u",
 }
 SHARED = {"postings", "companies", "ingest_runs"}
 
@@ -83,6 +84,10 @@ def someone_with_everything(client, email: str) -> tuple[dict, int, list[Path]]:
     )
     pending = presign(client, headers, len(make_pdf()))
     assert put_upload(client, headers, pending, make_pdf()).status_code == 204
+    reviewed = client.post(
+        "/reviews", json={"rating": 5, "body": f"{email} likes it"}, headers=headers
+    )
+    assert reviewed.status_code == 201, reviewed.text
 
     with SessionLocal() as db:
         user_id = db.execute(text("SELECT id FROM users WHERE email = :e"), {"e": email}).scalar()

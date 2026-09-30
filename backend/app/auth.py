@@ -25,7 +25,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 from sqlalchemy import select
@@ -173,6 +173,7 @@ def _user_for(claims: dict, db: Session) -> User:
 # The dependency every protected route uses
 # --------------------------------------------------------------------------- #
 def current_user(
+    request: Request,
     creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
     db: Session = Depends(get_db),
 ) -> User:
@@ -183,5 +184,61 @@ def current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     if config.AUTH_MODE == "cognito":
-        return _user_for(_claims(creds.credentials), db)
-    return _user_from_local_token(creds.credentials, db)
+        claims = _claims(creds.credentials)
+        # What this token says about the address, for is_admin(). The row's
+        # copy can lag (it is not updated onto an address someone else holds).
+        request.state.admin_email = _email_from(claims) if _email_verified(claims) else None
+        return _user_for(claims, db)
+    user = _user_from_local_token(creds.credentials, db)
+    request.state.admin_email = user.email.lower()
+    return user
+
+
+# --------------------------------------------------------------------------- #
+# Admin
+# --------------------------------------------------------------------------- #
+
+
+def _email_verified(claims: dict) -> bool:
+    # Cognito sends a boolean; some pools and older tokens send "true".
+    verified = claims.get("email_verified")
+    return verified is True or (isinstance(verified, str) and verified.lower() == "true")
+
+
+def is_admin(request: Request) -> bool:
+    """Whether the caller of this request, already authenticated by
+    current_user, is an admin: their address is in ADMIN_EMAILS.
+
+    In cognito mode the address is the one in the token, and only if the pool
+    has verified it: an address someone merely typed in proves nothing. In
+    local mode addresses are never verified by anyone, which is acceptable
+    only because local mode is for development.
+    """
+    email = getattr(request.state, "admin_email", None)
+    return bool(email) and email in config.ADMIN_EMAILS
+
+
+def current_admin(
+    request: Request,
+    creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    db: Session = Depends(get_db),
+) -> User:
+    """For admin-only routes. Anyone who is not an admin, signed in or not,
+    gets exactly what a path that does not exist gets, so the route cannot be
+    found by trying it. A token that cannot be checked right now (503) still
+    says so: that is about the pool, not the route.
+    """
+    try:
+        user = current_user(request, creds, db)
+    except HTTPException as exc:
+        if 400 <= exc.status_code < 500:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+        raise
+    if not is_admin(request):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND)
+    return user
+
+
+# The body of every 404 for a path that is not there, and of an admin route
+# to anyone who is not an admin. main.py uses it for unmatched paths too.
+NOT_FOUND = "Not found."

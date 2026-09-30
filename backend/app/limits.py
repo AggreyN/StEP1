@@ -47,6 +47,7 @@ STORAGE_KEY_MAX = 200
 
 # --- Applications ---
 NOTE_MAX = 2000
+REVIEW_BODY_MAX = 2000
 EVENT_KIND_MAX = 40
 # "{source}:{source_id}" — 32 + 1 + 128 in the schema.
 POSTING_ID_MAX = 170

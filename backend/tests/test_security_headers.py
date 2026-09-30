@@ -184,7 +184,7 @@ def test_docs_and_schema_do_not_exist_in_production():
         for path in ("/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"):
             r = c.get(path)
             assert r.status_code == 404, path
-            assert r.json() == {"detail": "Not Found"}
+            assert r.json() == {"detail": "Not found."}
             check(r, hsts=True)
         assert c.get("/health").status_code == 200
 

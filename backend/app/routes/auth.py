@@ -11,7 +11,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app import config
-from app.auth import create_local_token, hash_password, verify_password
+from app.auth import create_local_token, hash_password, is_admin, verify_password
 from app.deps import current_user, get_db
 from app.models import Profile, ResumeUpload, User
 from app.ratelimit import delete_account_limit, limiter, login_limit, register_limit
@@ -65,13 +65,16 @@ def login(request: Request, body: LoginIn, db: Session = Depends(get_db)):
 
 
 @router.get("/me", response_model=MeOut)
-def me(user: User = Depends(current_user), db: Session = Depends(get_db)):
+def me(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     onboarded_at = db.scalar(select(Profile.onboarded_at).where(Profile.user_id == user.id))
     return MeOut(
         id=user.id,
         email=user.email,
         display_name=user.display_name,
         onboarded=onboarded_at is not None,
+        # For the frontend to show the admin link. The admin routes check
+        # for themselves; this grants nothing.
+        is_admin=is_admin(request),
     )
 
 

@@ -499,3 +499,26 @@ def test_a_placeholder_does_not_hide_the_other_problems():
     )
     assert [p.split(" ")[0] for p in found] == ["DATABASE_URL", "JWT_SECRET", "BCRYPT_ROUNDS"]
     assert "does not require TLS" in found[0] and "placeholder" in found[1]
+
+
+def test_no_admin_and_no_topic_start_with_a_warning_each():
+    """Neither is a way in or a way to lose data: without them nobody can
+    open the admin pages, and reviews are stored without being emailed. So
+    production starts, and says so."""
+    filled = _example() | {
+        "DATABASE_URL": GOOD_DATABASE,
+        "JWT_SECRET": GOOD_SECRET,
+        "S3_BUCKET": "step1-resumes-ab12cd",
+        "ADMIN_EMAILS": "",
+        "NOTIFY_TOPIC_ARN": "",
+    }
+    done = start(filled)
+    assert done.returncode == 0, done.stderr
+    assert "ADMIN_EMAILS is empty in production" in done.stderr
+    assert "NOTIFY_TOPIC_ARN is empty in production" in done.stderr
+
+
+def test_a_mistyped_review_limit_stops_the_start():
+    done = start({"REVIEW_RATE_LIMIT": "five a day"})
+    assert done.returncode != 0
+    assert "REVIEW_RATE_LIMIT='five a day' is not a rate limit" in done.stderr

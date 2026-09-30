@@ -110,7 +110,7 @@ def _walk(value, path=""):
             yield from _walk(v, f"{path}[{n}]")
 
 
-def test_a_whole_session_leaks_nothing(client):
+def test_a_whole_session_leaks_nothing(client, monkeypatch):
     """Every route, called for real by a user who has one of everything,
     beside another user who also does. Then every response is searched."""
     seed([make_row("a", company="Acme"), make_row("b", company="Globex")])
@@ -137,6 +137,11 @@ def test_a_whole_session_leaks_nothing(client):
         ).all()
     (my_email, my_hash, my_key, my_text), (_, their_hash, their_key, their_text) = rows
 
+    # "me" is the admin here, so that the admin route is called for real. Only
+    # "me" has written a review: the other user's email must still not appear.
+    from app import config
+
+    monkeypatch.setattr(config, "ADMIN_EMAILS", frozenset({"me@example.com"}))
     slot = presign(client, me, len(make_pdf()))
     calls = {
         ("GET", "/health"): client.get("/health"),
@@ -178,6 +183,10 @@ def test_a_whole_session_leaks_nothing(client):
         ),
         ("GET", "/ingest/status"): client.get("/ingest/status", headers=me),
         ("GET", "/stats"): client.get("/stats"),
+        ("POST", "/reviews"): client.post(
+            "/reviews", json={"rating": 5, "body": "Useful."}, headers=me
+        ),
+        ("GET", "/admin/reviews"): client.get("/admin/reviews", headers=me),
         # Last: after this there is no "me" to make the other calls as.
         ("DELETE", "/me"): client.request(
             "DELETE", "/me", json={"password": "my-own-password"}, headers=me

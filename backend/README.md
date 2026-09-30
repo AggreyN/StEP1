@@ -281,6 +281,10 @@ All have defaults. The ones you are likely to touch:
 | `COGNITO_JWKS_URL` | derived from the pool id | Override for where the pool's public keys are fetched |
 | `COGNITO_JWKS_PATH` | unset | A local file instead, for a pool's keys cached outside an HTTPS fetch |
 | `S3_ENDPOINT_URL` | unset | Never set in production; points `STORAGE_BACKEND=s3` at a stand-in for tests |
+| `ADMIN_EMAILS` | empty | Who may open the admin pages. See [Reviews](#reviews) |
+| `NOTIFY_TOPIC_ARN` | empty | SNS topic reviews are emailed through. Empty: not sent |
+| `SITE_URL` | `http://localhost:3000` | The frontend's address, for links in email |
+| `REVIEW_RATE_LIMIT` | `5/day` | Reviews per person, and per client address |
 
 Secret-bearing values (`DATABASE_URL`, `JWT_SECRET`, the Cognito ids) go
 through `services/secrets.get_secret()`: a plain environment variable by
@@ -324,6 +328,9 @@ GET    /saved                    POST /saved/{id}            DELETE /saved/{id}
 
 GET    /applications             POST /applications
 GET    /applications/{id}        POST /applications/{id}/events
+
+POST   /reviews                  -> 201, emailed to the owner  rate limited
+GET    /admin/reviews?page=&page_size=                         admins only
 ```
 
 A posting's id is `"{source}:{source_id}"`, for example
@@ -344,6 +351,42 @@ Public: no token. For the About page.
 Counts of the shared board and nothing about any user, so the response is the
 same for everyone and is sent with `Cache-Control: public, max-age=300`.
 Limited to 60 requests a minute per address.
+
+### Reviews
+
+Anyone signed in can write a review of the app:
+
+```jsonc
+POST /reviews   { "rating": 4, "body": "Found three internships in a week." }
+-> 201          { "id": 7, "rating": 4, "body": "...", "created_at": "2026-09-30T20:12:05Z" }
+```
+
+`rating` is a whole number from 1 to 5; `body` is trimmed and must then be 1
+to 2,000 characters. Anything else is a 422 naming the field. Each person, and
+separately each client address, may send `REVIEW_RATE_LIMIT` (default
+`5/day`); past that it is a 429 `You've sent a lot of reviews today. Try again
+tomorrow.` with `Retry-After`. A review refused with a 422 does not count.
+
+Each review is emailed to the owner by publishing to the SNS topic in
+`NOTIFY_TOPIC_ARN` (`services/notify.py`, the only code that talks to SNS).
+The email is sent after the response, with short timeouts; if it fails, that
+is logged and the review is kept. With no topic set, nothing is sent. The
+subject is `StEP1 review: N/5 from <name or email>`, reduced to plain ASCII on
+one line; the review itself only ever goes in the plain-text body, quoted.
+The body links to `SITE_URL/admin`.
+
+`GET /admin/reviews` lists every review, newest first, with the reviewer's
+email and name, the total and the average rating (one decimal, `null` with
+no reviews). Admins are the people whose email is in `ADMIN_EMAILS`
+(comma-separated, compared lowercased; empty means nobody). In cognito mode
+the address is the one in the token and must be verified by the pool. `GET
+/me` says `"is_admin"` so the frontend can show a link; the route checks for
+itself. **To anyone who is not an admin, signed in or not, and with any
+method, the route answers exactly as a path that does not exist:
+`404 {"detail": "Not found."}`.** Every unknown path now says `Not found.`
+too, so the two cannot be told apart.
+
+Reviews belong to their author: deleting an account deletes them.
 
 ### `DELETE /me`
 

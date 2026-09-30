@@ -15,6 +15,7 @@ from pydantic import (
     EmailStr,
     Field,
     PlainSerializer,
+    StrictInt,
     field_validator,
     model_validator,
 )
@@ -149,6 +150,7 @@ class TokenOut(BaseModel):
 
 class MeOut(UserOut):
     onboarded: bool
+    is_admin: bool
 
 
 # --------------------------------------------------------------------------- #
@@ -448,3 +450,51 @@ class ApplicationDetailOut(ApplicationSummaryOut):
 
 class ApplicationListOut(BaseModel):
     items: list[ApplicationSummaryOut]
+
+
+# --------------------------------------------------------------------------- #
+# Reviews
+# --------------------------------------------------------------------------- #
+
+
+class ReviewIn(RequestModel):
+    # Strict: a JSON number, whole. Not "5", not 4.5, not true.
+    rating: StrictInt = Field(ge=1, le=5)
+    body: str
+
+    @field_validator("body")
+    @classmethod
+    def _trimmed(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("write something before sending")
+        if len(v) > limits.REVIEW_BODY_MAX:
+            raise ValueError(f"must be at most {limits.REVIEW_BODY_MAX:,} characters")
+        if "\x00" in v:
+            # PostgreSQL text cannot hold it; refuse it here, by name.
+            raise ValueError("can't contain a null character")
+        return v
+
+
+class ReviewOut(BaseModel):
+    id: int
+    rating: int
+    body: str
+    created_at: UtcDateTime
+
+
+class ReviewerOut(BaseModel):
+    email: str
+    display_name: str | None
+
+
+class AdminReviewOut(ReviewOut):
+    user: ReviewerOut | None
+
+
+class AdminReviewsOut(BaseModel):
+    items: list[AdminReviewOut]
+    page: int
+    total: int
+    has_more: bool
+    average_rating: float | None
