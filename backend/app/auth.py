@@ -141,7 +141,13 @@ def _user_for(claims: dict, db: Session) -> User:
         # a password, or another identity claiming the same address. Handing
         # it to whoever arrives with a matching email would be handing over
         # the account.
-        if db.scalar(select(User.id).where(User.email == email)) is not None:
+        holder = db.scalar(select(User).where(User.email == email))
+        if holder is not None:
+            # A first request that ran alongside this one may have created
+            # this person's row between the lookup by sub and now. That is
+            # them, not someone else.
+            if holder.cognito_sub == sub:
+                return holder
             raise HTTPException(status.HTTP_409_CONFLICT, _TAKEN)
         user = User(email=email, cognito_sub=sub, display_name=name)
         db.add(user)
