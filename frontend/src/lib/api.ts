@@ -28,6 +28,9 @@ import type {
   ProfileAccepted,
   ProfileInput,
   Resume,
+  Review,
+  AdminReviewPage,
+  ReviewInput,
   Stats,
 } from "./types";
 
@@ -165,6 +168,17 @@ export function login(email: string, password: string) {
     body: { email, password },
     authRedirect: false,
   });
+}
+
+// ---------- reviews ----------
+
+export function submitReview(input: ReviewInput) {
+  return json<Review>("POST", "/reviews", { body: input });
+}
+
+/** Admins only. Anyone else gets a 404, as if the page didn't exist. */
+export function getAdminReviews(page = 1, page_size = PAGE_SIZE) {
+  return json<AdminReviewPage>("GET", "/admin/reviews", { query: { page, page_size } });
 }
 
 export function getMe() {

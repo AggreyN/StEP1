@@ -26,6 +26,36 @@ export interface User {
 
 export interface Me extends User {
   onboarded: boolean;
+  /** The site's owner. Only admins may open /admin. */
+  is_admin: boolean;
+}
+
+/** POST /reviews body. */
+export interface ReviewInput {
+  rating: number; // 1 to 5
+  body: string; // trimmed, 1 to 2000 characters
+}
+
+/** POST /reviews response. */
+export interface Review {
+  id: number;
+  rating: number;
+  body: string;
+  created_at: string;
+}
+
+/** One row of GET /admin/reviews. `user` is null when the account was deleted. */
+export interface AdminReview extends Review {
+  user: { email: string; display_name: string | null } | null;
+}
+
+/** GET /admin/reviews. Newest first. */
+export interface AdminReviewPage {
+  items: AdminReview[];
+  page: number;
+  total: number;
+  has_more: boolean;
+  average_rating: number | null;
 }
 
 export interface AuthResponse {
