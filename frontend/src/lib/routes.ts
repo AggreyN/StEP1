@@ -18,6 +18,8 @@ export const PAGES = [
   "/application",
   "/about",
   "/privacy",
+  "/review",
+  "/admin",
 ] as const;
 
 export function applicationHref(id: number | string): string {

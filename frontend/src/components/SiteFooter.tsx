@@ -1,11 +1,12 @@
 // The footer on every screen: where the listings come from, and the two
-// public pages. No hooks, so public pages can render it on the server.
+// public pages. Signed-in screens also get a link to leave a review. No
+// hooks, so public pages can render it on the server.
 import Link from "next/link";
 import { SOURCES } from "@/lib/site";
 
 const link = "underline underline-offset-2 hover:text-muted";
 
-export function SiteFooter() {
+export function SiteFooter({ signedIn = false }: { signedIn?: boolean }) {
   return (
     <footer className="font-ui mt-auto border-t border-line px-4 py-5 text-center text-xs leading-5 text-faint">
       <p>
@@ -26,6 +27,11 @@ export function SiteFooter() {
         <Link className={link} href="/privacy">
           Privacy
         </Link>
+        {signedIn && (
+          <Link className={link} href="/review">
+            Leave a review
+          </Link>
+        )}
       </nav>
     </footer>
   );

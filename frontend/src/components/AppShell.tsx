@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { clearSession, signOut } from "@/lib/auth";
 import { AUTH_MODE } from "@/lib/config";
+import { useMe } from "@/lib/me";
 import { SiteFooter } from "./SiteFooter";
 
 const NAV = [
@@ -27,6 +28,10 @@ export function AppShell({ children, wide = false }: { children: ReactNode; wide
   const active = (href: string) =>
     href === "/" ? path === "/" : path === href || path.startsWith(href + "/");
   const width = wide ? "max-w-6xl" : "max-w-3xl";
+  // The owner's Admin link, desktop header only. On a phone it sits on the
+  // Profile page instead, so the tab bar keeps four items.
+  const me = useMe();
+  const desktopNav = me?.is_admin ? [...NAV, { href: "/admin", label: "Admin" }] : NAV;
 
   return (
     <div className="flex min-h-screen flex-col pb-14 sm:pb-0">
@@ -43,7 +48,7 @@ export function AppShell({ children, wide = false }: { children: ReactNode; wide
           </Link>
           {/* Desktop: links in the header. Phones get the tab bar below. */}
           <nav aria-label="Main" className="hidden min-w-0 flex-1 items-center gap-1 sm:flex">
-            {NAV.map((n) => (
+            {desktopNav.map((n) => (
               <Link
                 key={n.href}
                 href={n.href}
@@ -75,7 +80,7 @@ export function AppShell({ children, wide = false }: { children: ReactNode; wide
       <main id="content" tabIndex={-1} className={`mx-auto w-full flex-1 px-4 py-4 outline-none sm:py-5 ${width}`}>
         {children}
       </main>
-      <SiteFooter />
+      <SiteFooter signedIn />
 
       <nav
         aria-label="Main"
