@@ -49,4 +49,4 @@ export const HOSTING = {
 };
 
 /** Shown on the Privacy page. Update when the policy text changes. */
-export const PRIVACY_LAST_UPDATED = "September 28, 2026";
+export const PRIVACY_LAST_UPDATED = "October 1, 2026";

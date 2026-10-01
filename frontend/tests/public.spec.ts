@@ -101,7 +101,11 @@ test.describe("Privacy", () => {
       "the events and notes on each one",
       "No analytics, no tracking, no ads, and no cookies.",
       "browser's local storage",
-      "Nothing is sold, and nothing is shared with anyone.",
+      "Nothing is sold. Nothing is shared with anyone, except the one case described under Tailored resumes below.",
+      "sent to an AI model run on Amazon Bedrock",
+      "not used to train models",
+      "stored with your account and deleted with it",
+      "your base resume (the version you edit here)",
       "The hosted site runs on Amazon Web Services in the United States.",
       "Resumes sit in a private, encrypted storage bucket and are never public.",
       "The database is encrypted at rest.",
@@ -119,7 +123,7 @@ test.describe("Privacy", () => {
     // about half a page
     const words = (await main.innerText()).split(/\s+/).filter(Boolean).length;
     expect(words).toBeGreaterThan(200);
-    expect(words).toBeLessThan(420);
+    expect(words).toBeLessThan(520);
     expect(await requests(page)).toEqual([]);
   });
 });
