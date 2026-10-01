@@ -63,40 +63,46 @@ function Tailor() {
   const authed = useRequireAuth();
   const postingId = useSearchParams().get("posting");
   const [posting, setPosting] = useState<Posting | null>(null);
+  const [postingMissing, setPostingMissing] = useState(false);
   const [jobText, setJobText] = useState("");
   const [running, setRunning] = useState<{ startedAt: number } | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<{ result: TailorResult; postingId?: string } | null>(null);
   const [problem, setProblem] = useState<{ message: string; needsBase: boolean } | null>(null);
-  const started = useRef<string | null>(null);
+  const lastAsk = useRef<Ask | null>(null);
 
-  const run = useCallback(async (ask: Ask) => {
-    setRunning({ startedAt: Date.now() });
-    setElapsed(0);
-    setProblem(null);
-    setResult(null);
-    try {
-      const out = await tailorResume(ask);
-      setResult({ result: out, postingId: "posting_id" in ask ? ask.posting_id : undefined });
-    } catch (e) {
-      setProblem({
-        message: e instanceof Error ? e.message : "Couldn't tailor your resume.",
-        needsBase: e instanceof ApiError && e.status === 409,
-      });
-    } finally {
-      setRunning(null);
-    }
-  }, []);
+  const run = useCallback(
+    async (ask: Ask) => {
+      lastAsk.current = ask;
+      setRunning({ startedAt: Date.now() });
+      setElapsed(0);
+      setProblem(null);
+      setResult(null);
+      try {
+        const out = await tailorResume(ask);
+        // A description pasted for a posting is still saved against that posting.
+        setResult({ result: out, postingId: "posting_id" in ask ? ask.posting_id : postingId ?? undefined });
+      } catch (e) {
+        setProblem({
+          message: e instanceof Error ? e.message : "Couldn't tailor your resume.",
+          needsBase: e instanceof ApiError && e.status === 409,
+        });
+      } finally {
+        setRunning(null);
+      }
+    },
+    [postingId],
+  );
 
-  // From a posting: look it up for the heading, and start straight away (once).
+  // From a posting: look it up for the heading and the link to the original.
+  // Nothing starts until the person chooses: the lists only carry a title and
+  // a company, so the full description makes a much better draft.
   useEffect(() => {
-    if (!authed || !postingId || started.current === postingId) return;
-    started.current = postingId;
+    if (!authed || !postingId) return;
     getPosting(postingId)
       .then(setPosting)
-      .catch(() => {});
-    void run({ posting_id: postingId });
-  }, [authed, postingId, run]);
+      .catch(() => setPostingMissing(true));
+  }, [authed, postingId]);
 
   useEffect(() => {
     if (!running) return;
@@ -110,7 +116,9 @@ function Tailor() {
   function submitText(e: FormEvent) {
     e.preventDefault();
     if (!length || tooLong || running) return;
-    void run({ job_text: jobText });
+    // Tell the model which job this is, since a pasted description may not say.
+    const heading = posting ? `Role: ${posting.title} at ${posting.company.name}\n\n` : "";
+    void run({ job_text: (heading + jobText).slice(0, JOB_TEXT_MAX) });
   }
 
   if (!authed) return null;
@@ -120,6 +128,7 @@ function Tailor() {
       ? `${posting.title} at ${posting.company.name}`
       : "this posting"
     : "the job you pasted";
+  const showForm = !result && !running;
 
   return (
     <AppShell>
@@ -132,13 +141,35 @@ function Tailor() {
         .
       </p>
 
-      {!postingId && !result && (
+      {showForm && (
         <form onSubmit={submitText} noValidate className="mt-4 rounded-card border border-line bg-surface p-3.5 sm:p-5">
+          {postingId && (
+            <div className="mb-4" data-testid="paste-advice">
+              <p className="text-[15px] font-semibold">{posting ? forWhat : postingMissing ? "This posting" : "Loading the posting"}</p>
+              <p className="mt-1.5 max-w-prose rounded-control bg-accent-soft px-3 py-2 text-[15px] text-accent-text">
+                <span className="font-semibold">Paste the full job description for the best result.</span> Our job
+                lists only include the title and the company, so the draft is far more specific when it can read
+                what the job actually asks for.
+              </p>
+              {posting?.url && (
+                <a
+                  href={posting.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block font-medium text-accent-text underline underline-offset-2"
+                  data-testid="open-original"
+                >
+                  Open the original posting<span className="sr-only"> (opens in a new tab)</span>
+                </a>
+              )}
+              <span className="ml-1 text-sm text-muted">, copy the description, and paste it below.</span>
+            </div>
+          )}
           <label className="block">
             <span className="mb-1 block text-sm font-medium">Job description</span>
             <span className="mb-1.5 block text-sm text-muted" id="job-text-hint">
-              Paste the whole posting: the role, what they ask for, and what they offer. To tailor for a posting
-              in your matches, use its Tailor resume button instead.
+              Paste the whole posting: the role, what they ask for, and what they offer.
+              {postingId ? "" : " To tailor for a posting in your matches, use its Tailor resume button instead."}
             </span>
             <textarea
               value={jobText}
@@ -154,9 +185,19 @@ function Tailor() {
               {tooLong ? `. That is ${(jobText.length - JOB_TEXT_MAX).toLocaleString()} too many.` : ""}
             </span>
           </label>
-          <Button type="submit" variant="primary" className="mt-3" disabled={!length || tooLong} busy={!!running} data-testid="tailor-text">
-            Tailor my resume
-          </Button>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button type="submit" variant="primary" disabled={!length || tooLong} data-testid="tailor-text">
+              {postingId ? "Tailor with this description" : "Tailor my resume"}
+            </Button>
+            {postingId && (
+              <Button type="button" onClick={() => void run({ posting_id: postingId })} data-testid="tailor-title-only">
+                Tailor from the title only
+              </Button>
+            )}
+          </div>
+          {postingId && (
+            <p className="mt-2 text-sm text-muted">The title-only draft is quicker but less specific.</p>
+          )}
         </form>
       )}
 
@@ -180,10 +221,7 @@ function Tailor() {
               Set up your base resume
             </Link>
           ) : (
-            <Button
-              onClick={() => void run(postingId ? { posting_id: postingId } : { job_text: jobText })}
-              data-testid="tailor-again"
-            >
+            <Button onClick={() => lastAsk.current && void run(lastAsk.current)} data-testid="tailor-again">
               Try again
             </Button>
           )}
@@ -192,6 +230,11 @@ function Tailor() {
 
       {result && (
         <div className="mt-4 space-y-4">
+          {result.postingId && lastAsk.current && "posting_id" in lastAsk.current && (
+            <p className="rounded-control bg-accent-soft px-3 py-2 text-sm text-accent-text" data-testid="title-only-note">
+              This draft was made from the job title only. For a sharper one, paste the full description and tailor again.
+            </p>
+          )}
           <Report result={result.result} />
           <h2 className="text-lg font-semibold tracking-tight">Your draft for {forWhat}</h2>
           <TailoredEditor
