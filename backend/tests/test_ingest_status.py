@@ -43,7 +43,7 @@ def test_status_before_any_ingest(client, auth):
         "sources": [
             {"source": s, "last_success_at": None, "last_attempt_at": None, "fetched": 0,
              "upserted": 0, "deactivated": 0, "error": None}
-            for s in ("simplify", "vanshb03")
+            for s in backfill.SOURCES
         ],
     }  # fmt: skip
     assert isinstance(body["interval_hours"], int)
@@ -62,7 +62,7 @@ def test_status_after_ingests(client, auth, db):
     body = client.get("/ingest/status", headers=auth).json()
     assert set(body) == STATUS_KEYS and all(set(s) == SOURCE_KEYS for s in body["sources"])
     by_source = {s["source"]: s for s in body["sources"]}
-    assert [s["source"] for s in body["sources"]] == ["simplify", "vanshb03"]
+    assert [s["source"] for s in body["sources"]] == list(backfill.SOURCES)
 
     # The board is as fresh as its least recently refreshed source.
     assert body["last_success_at"] == by_source["simplify"]["last_success_at"]
@@ -72,8 +72,9 @@ def test_status_after_ingests(client, auth, db):
     assert parse(body["next_due_at"]) - parse(body["last_success_at"]) == timedelta(hours=24)
     assert datetime.now(UTC) - parse(body["last_success_at"]) < timedelta(hours=5, minutes=1)
 
-    assert body["active_postings"] == 6 and body["running"] is False
-    for s in body["sources"]:
+    # Both fakes carry the same three jobs: shown once each.
+    assert body["active_postings"] == 3 and body["running"] is False
+    for s in (by_source["simplify"], by_source["vanshb03"]):
         assert (s["fetched"], s["upserted"], s["deactivated"], s["error"]) == (3, 3, 0, None)
         assert s["last_attempt_at"] == s["last_success_at"]
 

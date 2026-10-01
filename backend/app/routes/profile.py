@@ -73,6 +73,7 @@ def profile_out(profile: Profile) -> ProfileOut:
         target_terms=list(profile.target_terms or []),
         preferred_locations=list(profile.preferred_locations or []),
         remote_ok=profile.remote_ok,
+        looking_for=list(profile.looking_for or ["internship"]),
         interests=[
             InterestOut(role=i.role, label=ROLE_LABELS[i.role], rank=i.rank)
             for i in sorted(profile.interests, key=lambda i: i.rank)
@@ -119,6 +120,8 @@ def put_profile(
     profile.target_terms = body.target_terms
     profile.preferred_locations = body.preferred_locations
     profile.remote_ok = body.remote_ok
+    if body.looking_for is not None:
+        profile.looking_for = body.looking_for
     if body.skills is not None:
         profile.resume_skills = resume_parse.canonicalize(body.skills)
 

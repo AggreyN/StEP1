@@ -10,7 +10,7 @@ from tests.conftest import make_row, onboard, register, seed
 POSTING_KEYS = {
     "id", "title", "company", "roles", "role_labels", "locations", "is_remote", "terms",
     "degrees", "url", "date_posted", "salary", "source", "score", "reasons", "saved",
-    "application",
+    "application", "kind",
 }  # fmt: skip
 
 BOARD = [

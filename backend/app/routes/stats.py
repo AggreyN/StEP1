@@ -16,7 +16,7 @@ from app.deps import get_db
 from app.models import Posting
 from app.ratelimit import limiter, stats_limit
 from app.schemas import StatsOut
-from app.services import ingest_scheduler
+from app.services import dedupe, ingest_scheduler
 from app.sources import backfill
 from app.sources.roles import ROLE_LABELS
 
@@ -30,7 +30,7 @@ CACHE_SECONDS = 300
 @router.get("/stats", response_model=StatsOut)
 @limiter.limit(stats_limit, error_message="Too many requests.")
 def stats(request: Request, response: Response, db: Session = Depends(get_db)):
-    open_now = (Posting.active.is_(True), Posting.is_visible.is_(True))
+    open_now = (Posting.active.is_(True), Posting.is_visible.is_(True), dedupe.SHOWN)
     postings, companies = db.execute(
         select(func.count(), func.count(func.distinct(Posting.company_id))).where(*open_now)
     ).one()

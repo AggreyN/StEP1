@@ -200,6 +200,19 @@ class ProfileIn(RequestModel):
     # Present -> replaces resume_skills (lets the user delete a wrongly
     # extracted skill). Absent -> the extracted list is left alone.
     skills: list[str] | None = None
+    # Which kinds of posting to be offered. Absent -> left as it was
+    # (internships only, for a new profile).
+    looking_for: list[Literal["internship", "new_grad"]] | None = None
+
+    @field_validator("looking_for")
+    @classmethod
+    def _looking_for(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return None
+        kept = [k for k in ("internship", "new_grad") if k in v]
+        if not kept:
+            raise ValueError("pick at least one: internship, new_grad")
+        return kept
 
     @field_validator("preferred_locations")
     @classmethod
@@ -267,6 +280,7 @@ class ProfileOut(BaseModel):
     target_terms: list[str]
     preferred_locations: list[str]
     remote_ok: bool
+    looking_for: list[str]
     interests: list[InterestOut]
     resume: ResumeOut | None
     profile_version: int
@@ -347,6 +361,7 @@ class PostingOut(BaseModel):
     date_posted: UtcDateTime | None
     salary: SalaryOut | None
     source: str
+    kind: str
     score: int | None
     reasons: list[ReasonOut]
     saved: bool

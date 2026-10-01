@@ -12,7 +12,7 @@ from app import limits
 from app.deps import current_user, get_db
 from app.models import INTEREST_ROLES, MatchScore, Posting, Profile, User
 from app.schemas import FeedOut, FeedStatusOut
-from app.services import feed_state, postings
+from app.services import dedupe, feed_state, postings
 from app.sources.roles import OTHER
 
 router = APIRouter(tags=["feed"])
@@ -76,6 +76,7 @@ def feed(
         # not at the next rescore.
         Posting.active.is_(True),
         Posting.is_visible.is_(True),
+        dedupe.SHOWN,
     ]
     wanted = [r.strip() for r in (roles or "").split(",") if r.strip()]
     if wanted:

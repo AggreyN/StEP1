@@ -193,6 +193,27 @@ RESUME_PARSE_TIMEOUT_S = float(os.getenv("RESUME_PARSE_TIMEOUT_S", "10"))
 SIMPLIFY_REPO = os.getenv("SIMPLIFY_REPO", "SimplifyJobs/Summer2027-Internships")
 VANSHB03_REPO = os.getenv("VANSHB03_REPO", "vanshb03/Summer2027-Internships")
 SOURCE_BRANCH = os.getenv("SOURCE_BRANCH", "dev")
+# The other lists. Slugs and branches roll forward each cycle, so all config.
+SIMPLIFY_NEWGRAD_REPO = os.getenv("SIMPLIFY_NEWGRAD_REPO", "SimplifyJobs/New-Grad-Positions")
+SIMPLIFY_NEWGRAD_BRANCH = os.getenv("SIMPLIFY_NEWGRAD_BRANCH", "dev")
+JOBRIGHT_DATA_ANALYSIS_REPO = os.getenv(
+    "JOBRIGHT_DATA_ANALYSIS_REPO", "jobright-ai/2026-Data-Analysis-Internship"
+)
+JOBRIGHT_BUSINESS_ANALYST_REPO = os.getenv(
+    "JOBRIGHT_BUSINESS_ANALYST_REPO", "jobright-ai/2026-Business-Analyst-Internship"
+)
+JOBRIGHT_PRODUCT_REPO = os.getenv(
+    "JOBRIGHT_PRODUCT_REPO", "jobright-ai/2026-Product-Management-Internship"
+)
+JOBRIGHT_BRANCH = os.getenv("JOBRIGHT_BRANCH", "master")
+SPEEDYAPPLY_AI_REPO = os.getenv("SPEEDYAPPLY_AI_REPO", "speedyapply/2027-AI-College-Jobs")
+SPEEDYAPPLY_BRANCH = os.getenv("SPEEDYAPPLY_BRANCH", "main")
+ZAPPLY_REPO = os.getenv("ZAPPLY_REPO", "zapplyjobs/Internships-2027")
+ZAPPLY_BRANCH = os.getenv("ZAPPLY_BRANCH", "main")
+# Off by default. The Zapply list is CC BY-NC-SA 4.0: non-commercial use only,
+# and adaptations must be shared under the same license. Turn on only once
+# the owner has decided StEP1 can honour both (see docs/ARCHITECTURE.md §2).
+ZAPPLY_ENABLED = os.getenv("ZAPPLY_ENABLED", "false").lower() == "true"
 SOURCE_FETCH_TIMEOUT_S = float(os.getenv("SOURCE_FETCH_TIMEOUT_S", "60"))
 # Backfill refuses to deactivate rows when a fetch returns fewer than this
 # fraction of the currently-active set. A truncated or empty upstream file

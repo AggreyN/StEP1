@@ -17,8 +17,8 @@ from app import config
 
 BACKEND = Path(__file__).resolve().parent.parent
 TABLES = 16  # fifteen of the application's, and alembic_version
-HEAD = "0003"
-REVISIONS = 3
+HEAD = "0004"
+REVISIONS = 4
 
 
 @pytest.fixture()

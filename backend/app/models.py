@@ -115,6 +115,10 @@ class Profile(Base):
         ARRAY(Text), server_default=text("'{}'"), default=list
     )
     remote_ok: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), default=False)
+    # Internships, new-grad roles, or both. Matching only offers these kinds.
+    looking_for: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), server_default=text("'{internship}'"), default=lambda: ["internship"]
+    )
     work_auth: Mapped[str | None] = mapped_column(String(80))
     resume_s3_key: Mapped[str | None] = mapped_column(String(512))
     resume_filename: Mapped[str | None] = mapped_column(String(255))
@@ -212,6 +216,9 @@ class Posting(Base):
         Index("ix_postings_active_date_posted", "active", text("date_posted DESC")),
         Index("ix_postings_category_active", "category", "active"),
         Index("ix_postings_company_id", "company_id"),
+        Index("ix_postings_dedupe_key", "dedupe_key"),
+        Index("ix_postings_title_key", "title_key"),
+        CheckConstraint("kind IN ('internship', 'new_grad')", name="ck_postings_kind"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -238,6 +245,14 @@ class Posting(Base):
     # NULL after an absence-deactivation, so a posting that reappears unchanged
     # is still rewritten (and reactivated) instead of skipped as "unchanged".
     content_hash: Mapped[str | None] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(16), server_default=text("'internship'"))
+    # The same job in several lists (services/dedupe.py). dedupe_key is the
+    # apply URL without tracking parameters (or, without a URL, title_key);
+    # title_key is company, title and place. canonical_id is the posting
+    # shown for the group; NULL until dedupe has run, which counts as itself.
+    dedupe_key: Mapped[str | None] = mapped_column(Text)
+    title_key: Mapped[str | None] = mapped_column(Text)
+    canonical_id: Mapped[int | None] = mapped_column(BigInteger)
     search_tsv: Mapped[str] = mapped_column(
         TSVECTOR,
         Computed(

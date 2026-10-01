@@ -222,6 +222,58 @@ is a re-backfill, not a re-scrape.
 
 ---
 
+### 2.6 What is ingested today (updated 2026-10-01)
+
+Seven lists feed the board, each its own module behind the same `Source`
+interface, each with its own `ingest_runs` history, all refreshed daily by the
+in-process scheduler. Slugs and branches are settings, because the lists roll
+forward each cycle.
+
+| Source (id) | Repository | Format | Kind | License | Open on 2026-10-01 |
+|---|---|---|---|---|---|
+| Simplify internships (`simplify`) | SimplifyJobs/Summer2027-Internships | `.github/scripts/listings.json` | internship | none stated | 4,428 |
+| Simplify new grad (`simplify_newgrad`) | SimplifyJobs/New-Grad-Positions | same JSON | new grad | none stated | 3,056 |
+| vanshb03 (`vanshb03`) | vanshb03/Summer2027-Internships | same JSON | internship | MIT | 371 |
+| SpeedyApply AI/ML (`speedyapply_ai`) | speedyapply/2027-AI-College-Jobs | four README tables (USA and international, intern and new grad) | both | none stated | 2,029 |
+| jobright.ai Data Analysis (`jobright_data`) | jobright-ai/2026-Data-Analysis-Internship | README table | internship | none stated | 100 |
+| jobright.ai Business Analyst (`jobright_business`) | jobright-ai/2026-Business-Analyst-Internship | README table | internship | none stated | 91 |
+| jobright.ai Product Management (`jobright_product`) | jobright-ai/2026-Product-Management-Internship | README table | internship | none stated | 100 |
+| Zapply (`zapply`), **off** | zapplyjobs/Internships-2027 | README table | internship | CC BY-NC-SA 4.0 | not ingested |
+
+The README tables are read by `sources/readme_table.py`: pipe and HTML
+tables, links in Markdown or anchor tags, "↳" for the company above, lock
+emoji for closed, other emoji stripped as markers. A list with no term column
+gets the terms its titles name ("Summer 2027") or none; one with only a
+relative age ("4d") or a month and day ("Sep 30") gets the day it implies.
+Each parser has a test against a sample saved from the real list.
+
+**Kind.** `postings.kind` is `internship` or `new_grad`, from which list (or
+which file of a list) a posting came. A profile's `looking_for` (default
+internships only) is a hard filter in matching.
+
+**One job, shown once.** The same role is often in several lists. Each copy
+is stored and credited, but only one is shown in the feed, in saved postings
+and in every count: postings that share an apply URL (tracking parameters
+removed), or that come from different lists and share company, title and
+city, are one job, and the copy from the most structured list is shown
+(Simplify, then vanshb03, then SpeedyApply, then jobright.ai). Copies are
+only grouped within one kind. On 2026-10-01 this folded 578 of 10,175 open
+postings (5.7%) into others, leaving 9,597.
+
+**Attribution.** Every posting links out to the list's own link for it: the
+employer's page for Simplify, vanshb03 and SpeedyApply, and jobright.ai's
+page for the jobright.ai lists, which is the only link they publish. Every
+list is credited by name in the README and the UI.
+
+**Zapply is not ingested.** Its LICENSE is Creative Commons
+Attribution-NonCommercial-ShareAlike 4.0: reuse is allowed only for
+non-commercial purposes, and anything built from it must be shared under the
+same license. Whether StEP1 can promise both is the owner's decision, not the
+code's. The source is written and tested and turned on with
+`ZAPPLY_ENABLED=true`.
+
+---
+
 ## 3 · Database schema
 
 PostgreSQL 16, SQLAlchemy 2.0 `Mapped[]` style, Alembic migrations —
@@ -555,7 +607,11 @@ the SES path is a swap, not a rewrite.
 **Licensing.** The vanshb03 repo is MIT. **SimplifyJobs/Pitt CSC ships no
 LICENSE file at all** — link out to the original posting URL, credit the list
 in your README and in the UI, and don't present the dataset as yours. That's
-both the right thing and the safe thing.
+both the right thing and the safe thing. The same holds for the lists added
+since (§2.6): SimplifyJobs New-Grad-Positions, SpeedyApply and the three
+jobright.ai lists state no license and no terms in their READMEs, and are
+credited and linked the same way. Zapply's list is CC BY-NC-SA 4.0 and is not
+ingested until the owner decides (§2.6).
 
 **Resumes are PII.** Private bucket, Block Public Access on, SSE-S3 (or KMS),
 presigned PUT/GET with short expiry, no object ever served through the API,

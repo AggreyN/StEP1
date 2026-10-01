@@ -264,6 +264,8 @@ _CANDIDATES = text(
                       AND m.posting_id <> p.id AND NOT m.applied) AS saved_here
       FROM postings p
      WHERE p.active AND p.is_visible
+       AND (p.canonical_id IS NULL OR p.canonical_id = p.id)
+       AND p.kind = ANY(CAST(:kinds AS TEXT[]))
        AND (p.date_posted IS NULL OR p.date_posted >= :cutoff)
        AND (CAST(:company_id AS INTEGER) IS NULL OR p.company_id = :company_id)
     """
@@ -286,6 +288,7 @@ def score_all(
             "user_id": profile.user_id,
             "cutoff": now - timedelta(days=config.POSTING_MAX_AGE_DAYS),
             "company_id": company_id,
+            "kinds": list(profile.looking_for or ["internship"]),
         },
     ).all()
     return [score_posting(r, student, now) for r in rows if passes_filters(r, student)]

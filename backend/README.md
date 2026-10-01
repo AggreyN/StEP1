@@ -792,8 +792,28 @@ tests/
 
 ## Data sources and credit
 
-Postings come from two community-maintained lists. This project links out to
-the original posting and does not present the data as its own.
+Postings come from community-maintained lists. This project links out to the
+original posting and does not present the data as its own.
 
 - [SimplifyJobs / Pitt CSC Summer Internships](https://github.com/SimplifyJobs/Summer2027-Internships)
+- [SimplifyJobs New Grad Positions](https://github.com/SimplifyJobs/New-Grad-Positions)
 - [vanshb03 / Summer2027-Internships](https://github.com/vanshb03/Summer2027-Internships) (MIT)
+- [SpeedyApply 2027 AI College Jobs](https://github.com/speedyapply/2027-AI-College-Jobs)
+- [jobright.ai Data Analysis Internships](https://github.com/jobright-ai/2026-Data-Analysis-Internship)
+- [jobright.ai Business Analyst Internships](https://github.com/jobright-ai/2026-Business-Analyst-Internship)
+- [jobright.ai Product Management Internships](https://github.com/jobright-ai/2026-Product-Management-Internship)
+
+[Zapply Internships 2027](https://github.com/zapplyjobs/Internships-2027) is
+supported but off (`ZAPPLY_ENABLED=false`): its license, CC BY-NC-SA 4.0,
+allows only non-commercial use and requires anything built from it to be
+shared under the same license.
+
+Each list is a module in `app/sources/` (JSON lists through `simplify.py` and
+`vanshb03.py`, README tables through `table_sources.py` and
+`readme_table.py`), with its repository and branch as settings. Every posting
+is `kind` `internship` or `new_grad`, and a profile's `looking_for` (default
+`["internship"]`) decides which kinds a student is offered. The same job in
+several lists is stored once per list but shown once (`services/dedupe.py`):
+same apply URL without tracking parameters, or, across lists, same company,
+title and city; the copy from the most structured list is shown. See
+`docs/ARCHITECTURE.md` §2.6.

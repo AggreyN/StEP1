@@ -29,23 +29,22 @@ _CHUNK = 256 * 1024
 _MAX_BYTES = 64 * 1024 * 1024
 
 
-def listings_url(repo: str) -> str:
-    return (
-        f"https://raw.githubusercontent.com/{repo}/{config.SOURCE_BRANCH}"
-        "/.github/scripts/listings.json"
-    )
+def listings_url(repo: str, branch: str | None = None) -> str:
+    return raw_url(repo, ".github/scripts/listings.json", branch)
 
 
-def fetch_listings(repo: str) -> list[dict]:
-    """Download and parse one list.
+def raw_url(repo: str, path: str, branch: str | None = None) -> str:
+    return f"https://raw.githubusercontent.com/{repo}/{branch or config.SOURCE_BRANCH}/{path}"
+
+
+def fetch_bytes(url: str) -> bytes:
+    """Download one file.
 
     Read in pieces rather than all at once, for two reasons. Between pieces
     it can notice that the process has been asked to stop, and stop. And it
     can give up on a response that is too large or too slow while it is still
     arriving, rather than after holding all of it.
     """
-    url = listings_url(repo)
-    log.info("fetching listings", extra={"repo": repo})
     deadline = time.monotonic() + config.SOURCE_FETCH_TIMEOUT_S
     pieces: list[bytes] = []
     size = 0
@@ -62,7 +61,20 @@ def fetch_listings(repo: str) -> list[dict]:
                 )
             pieces.append(piece)
     check_cancelled()
-    data = json.loads(b"".join(pieces))
+    return b"".join(pieces)
+
+
+def fetch_text(repo: str, path: str, branch: str | None = None) -> str:
+    """A text file from a repo, e.g. a README holding the list as a table."""
+    log.info("fetching listings", extra={"repo": repo, "path": path})
+    return fetch_bytes(raw_url(repo, path, branch)).decode("utf-8", errors="replace")
+
+
+def fetch_listings(repo: str, branch: str | None = None) -> list[dict]:
+    """Download and parse one list's JSON (Simplify's format)."""
+    url = listings_url(repo, branch)
+    log.info("fetching listings", extra={"repo": repo})
+    data = json.loads(fetch_bytes(url))
     if not isinstance(data, list):
         raise ValueError(f"{url} did not return a JSON array")
     return [row for row in data if isinstance(row, dict)]

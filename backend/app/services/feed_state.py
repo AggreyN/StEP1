@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 from app import config
 from app.database import SessionLocal
 from app.models import IngestRun, Posting, Profile
-from app.services import matching
+from app.services import dedupe, matching
 
 log = logging.getLogger(__name__)
 
@@ -64,7 +64,9 @@ def begin(user_id: int) -> None:
 
 def open_posting_count(db: Session) -> int:
     return db.scalar(
-        select(func.count()).where(Posting.active.is_(True), Posting.is_visible.is_(True))
+        select(func.count()).where(
+            Posting.active.is_(True), Posting.is_visible.is_(True), dedupe.SHOWN
+        )
     )
 
 

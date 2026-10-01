@@ -65,7 +65,22 @@ class NormalizedPosting:
     salary_min: Decimal | None = None
     salary_max: Decimal | None = None
     salary_unit: str | None = None  # "hour" | "year"
+    kind: str = "internship"  # "internship" | "new_grad"
     raw: dict = field(default_factory=dict)
+
+    @property
+    def dedupe_key(self) -> str:
+        """The same job, as any list would link to it: the apply URL without
+        tracking parameters; failing that, company, title and place."""
+        return url_key(self.url) or self.title_key
+
+    @property
+    def title_key(self) -> str:
+        place = self.locations[0] if self.locations else ""
+        return "t:" + "|".join(
+            _WS.sub(" ", _NON_ALNUM.sub(" ", part.lower())).strip()
+            for part in (normalize_company(self.company_name), self.title, place.split(",")[0])
+        )
 
     @property
     def content_hash(self) -> str:
@@ -89,6 +104,7 @@ class NormalizedPosting:
             "active": self.active,
             "is_visible": self.is_visible,
             "salary": [str(self.salary_min), str(self.salary_max), self.salary_unit],
+            "kind": self.kind,
         }
         return hashlib.sha256(json.dumps(material, sort_keys=True).encode()).hexdigest()
 
@@ -139,3 +155,46 @@ def normalize_company(name: str) -> str:
     key = _WS.sub(" ", key).strip()
     key = _COMPANY_SUFFIX.sub("", key).strip()
     return key or name.lower().strip()
+
+
+# Query parameters that say where a click came from, not which job it is.
+_TRACKING = {
+    "ref", "refs", "src", "source", "s", "gh_src", "lever-source", "lever-origin",
+    "trk", "campaign", "utm", "fbclid", "gclid", "mc_cid", "mc_eid", "iis", "iisn",
+}  # fmt: skip
+
+
+def url_key(url: str) -> str | None:
+    """A URL reduced to what identifies the page: scheme dropped, host
+    lowercased without www., fragment and tracking parameters gone, the rest
+    sorted, no trailing slash. None for something that is not a web URL."""
+    from urllib.parse import parse_qsl, urlencode, urlsplit
+
+    try:
+        parts = urlsplit(url.strip())
+    except ValueError:
+        return None
+    if parts.scheme not in ("http", "https") or not parts.netloc:
+        return None
+    host = parts.netloc.lower().removeprefix("www.")
+    query = sorted(
+        (k, v)
+        for k, v in parse_qsl(parts.query, keep_blank_values=False)
+        if not k.lower().startswith("utm_") and k.lower() not in _TRACKING
+    )
+    path = parts.path.rstrip("/")
+    return f"u:{host}{path}" + (f"?{urlencode(query)}" if query else "")
+
+
+_TERM = re.compile(r"\b(summer|fall|autumn|spring|winter)\s*[,'-]?\s*(20\d\d)\b", re.I)
+
+
+def terms_in(title: str) -> list[str]:
+    """Terms a title names, "Summer 2027" style. For lists with no term column."""
+    found: list[str] = []
+    for season, year in _TERM.findall(title):
+        season = "Fall" if season.lower() == "autumn" else season.capitalize()
+        term = f"{season} {year}"
+        if term not in found:
+            found.append(term)
+    return found

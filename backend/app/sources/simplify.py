@@ -32,9 +32,12 @@ def normalize_terms(values) -> list[str]:
     return [t for t in clean_list(values) if t.lower() not in _NO_TERM]
 
 
-def normalize_row(row: dict) -> NormalizedPosting | None:
+def normalize_row(
+    row: dict, source: str = "simplify", kind: str = "internship"
+) -> NormalizedPosting | None:
     """One Simplify JSON object -> NormalizedPosting. None if it lacks the
-    fields nothing downstream can work without."""
+    fields nothing downstream can work without. The New-Grad list uses the
+    same format, so it comes through here too, as a different source."""
     source_id = str(row.get("id") or "").strip()
     title = " ".join(str(row.get("title") or "").split())
     url = str(row.get("url") or "").strip()
@@ -43,7 +46,7 @@ def normalize_row(row: dict) -> NormalizedPosting | None:
     category = (row.get("category") or None) and str(row["category"]).strip()
     locations = clean_list(row.get("locations"))
     return NormalizedPosting(
-        source="simplify",
+        source=source,
         source_id=source_id,
         company_name=" ".join(str(row.get("company_name") or "Unknown").split()),
         company_url=(str(row.get("company_url") or "").strip() or None),
@@ -59,6 +62,7 @@ def normalize_row(row: dict) -> NormalizedPosting | None:
         date_updated=epoch_to_dt(row.get("date_updated")),
         active=bool(row.get("active", True)),
         is_visible=bool(row.get("is_visible", True)),
+        kind=kind,
         raw=row,
     )
 
@@ -69,5 +73,17 @@ class SimplifySource(Source):
     def fetch(self) -> Iterable[NormalizedPosting]:
         for row in fetch_listings(config.SIMPLIFY_REPO):
             posting = normalize_row(row)
+            if posting is not None:
+                yield posting
+
+
+class SimplifyNewGradSource(Source):
+    """SimplifyJobs/New-Grad-Positions: the same JSON, for full-time roles."""
+
+    name = "simplify_newgrad"
+
+    def fetch(self) -> Iterable[NormalizedPosting]:
+        for row in fetch_listings(config.SIMPLIFY_NEWGRAD_REPO, config.SIMPLIFY_NEWGRAD_BRANCH):
+            posting = normalize_row(row, source=self.name, kind="new_grad")
             if posting is not None:
                 yield posting

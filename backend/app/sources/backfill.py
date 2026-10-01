@@ -47,15 +47,32 @@ from app import config
 from app.models import Company, IngestRun, Posting
 from app.sources import base
 from app.sources.base import NormalizedPosting, Source, normalize_company
-from app.sources.simplify import SimplifySource
+from app.sources.simplify import SimplifyNewGradSource, SimplifySource
+from app.sources.table_sources import (
+    JobrightBusinessAnalystSource,
+    JobrightDataAnalysisSource,
+    JobrightProductSource,
+    SpeedyApplyAISource,
+    ZapplySource,
+)
 from app.sources.vanshb03 import Vanshb03Source
 
 log = logging.getLogger(__name__)
 
+# In order of preference when the same job is in several lists: structured
+# JSON first, then tables that link straight to the employer, then tables
+# that link through the list's own site (services/dedupe.py).
 SOURCES: dict[str, type[Source]] = {
     SimplifySource.name: SimplifySource,
+    SimplifyNewGradSource.name: SimplifyNewGradSource,
     Vanshb03Source.name: Vanshb03Source,
+    SpeedyApplyAISource.name: SpeedyApplyAISource,
+    JobrightDataAnalysisSource.name: JobrightDataAnalysisSource,
+    JobrightBusinessAnalystSource.name: JobrightBusinessAnalystSource,
+    JobrightProductSource.name: JobrightProductSource,
 }
+if config.ZAPPLY_ENABLED:
+    SOURCES[ZapplySource.name] = ZapplySource
 
 # The advisory lock every ingest holds. Two-integer form; the first integer is
 # a namespace so the pair can't collide with another feature's locks (the
@@ -212,6 +229,9 @@ def _row(p: NormalizedPosting, company_ids: dict[str, int], now: datetime) -> di
         "salary_max": p.salary_max,
         "salary_unit": p.salary_unit,
         "raw": p.raw,
+        "kind": p.kind,
+        "dedupe_key": p.dedupe_key,
+        "title_key": p.title_key,
         "content_hash": p.content_hash,
         "first_seen_at": now,
         "last_seen_at": now,
@@ -341,6 +361,15 @@ def ingest(
     run.error = result.error
     db.add(run)
     db.commit()
+    if result.error != INTERRUPTED:
+        # Which copy of each job is shown may have changed with this run.
+        try:
+            from app.services import dedupe
+
+            dedupe.recompute(db)
+        except Exception as exc:  # noqa: BLE001 - the ingest itself succeeded
+            db.rollback()
+            log.error("dedupe failed", extra={"error": f"{type(exc).__name__}: {exc}"[:500]})
     result.duration_ms = round((time.perf_counter() - started) * 1000)
     # One line per run, whoever started it: the command line or the scheduler.
     log.info("ingest finished", extra=asdict(result) | {"upserted": result.upserted})
