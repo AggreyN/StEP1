@@ -24,6 +24,7 @@ export const PAGES = [
   "/resume",
   "/tailor",
   "/resumes",
+  "/resumes/edit",
 ] as const;
 
 export function applicationHref(id: number | string): string {

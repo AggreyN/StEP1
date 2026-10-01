@@ -139,6 +139,14 @@ export function PostingCard({
               I applied
             </button>
           )}
+          <Link
+            href={`/tailor?posting=${encodeURIComponent(p.id)}`}
+            data-testid="tailor-button"
+            aria-label={`Tailor resume for ${p.title} at ${p.company.name}`}
+            className="inline-flex h-10 items-center rounded-control border border-line-strong bg-surface px-3 text-sm font-medium hover:bg-surface-2 sm:h-9"
+          >
+            Tailor resume
+          </Link>
           <a
             href={p.url}
             target="_blank"
