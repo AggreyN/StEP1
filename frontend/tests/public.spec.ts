@@ -63,7 +63,7 @@ test.describe("About", () => {
     await page.goto("/about");
     const main = page.getByRole("main");
     await expect(main).toContainText(
-      "StEP1 pulls from community-maintained internship boards, then classifies every posting by role and scores it against your profile."
+      "StEP1 pulls from community-maintained internship and new grad boards, then classifies every posting by role and scores it against your profile."
     );
     await expect(main).not.toContainText("federal job listings");
     await expect(main).not.toContainText("public job APIs");

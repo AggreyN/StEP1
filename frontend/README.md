@@ -26,7 +26,7 @@ Sign in with any email and a password of 8 or more characters.
 
 Mock data lives in memory and is mirrored to `localStorage`, so a reload keeps
 your saves and applications. Each mock user has their own. To reset, clear
-site data (or remove the `step1.mock.v3` key).
+site data (or remove the `step1.mock.v4` key).
 
 ### Against the real API
 

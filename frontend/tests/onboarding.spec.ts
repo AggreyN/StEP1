@@ -37,6 +37,7 @@ test("GPA is not asked for and not sent", async ({ page }) => {
         "degree_level",
         "grad_year",
         "interests",
+        "looking_for",
         "major",
         "minor",
         "preferred_locations",

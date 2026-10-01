@@ -181,7 +181,7 @@ test.describe("the admin page", () => {
     await signInDemo(page);
     // 25 reviews: more than one page of 20
     await page.evaluate(() => {
-      const key = "step1.mock.v3";
+      const key = "step1.mock.v4";
       const state = JSON.parse(localStorage.getItem(key)!);
       state.reviews = Array.from({ length: 13 }, (_, i) => ({
         id: 5000 + i,

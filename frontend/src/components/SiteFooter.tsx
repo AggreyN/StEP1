@@ -11,13 +11,14 @@ export function SiteFooter({ signedIn = false }: { signedIn?: boolean }) {
     <footer className="font-ui mt-auto border-t border-line px-4 py-5 text-center text-xs leading-5 text-faint">
       <p>
         Listings from{" "}
-        <a className={link} href={SOURCES[0].url} target="_blank" rel="noreferrer">
-          {SOURCES[0].name}
-        </a>{" "}
-        and{" "}
-        <a className={link} href={SOURCES[1].url} target="_blank" rel="noreferrer">
-          {SOURCES[1].name}
-        </a>
+        {SOURCES.map((src, i) => (
+          <span key={src.url}>
+            <a className={link} href={src.url} target="_blank" rel="noreferrer">
+              {src.name}
+            </a>
+            {i < SOURCES.length - 2 ? ", " : i === SOURCES.length - 2 ? " and " : ""}
+          </span>
+        ))}
         . Every listing links out to the original posting. StEP1 doesn&apos;t own or host them.
       </p>
       <nav aria-label="Site" className="mt-1.5 flex justify-center gap-4">

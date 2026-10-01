@@ -93,6 +93,20 @@ export function FilterPanel({
       </label>
 
       <label className="block">
+        <span className="mb-1.5 block font-medium">Kind of role</span>
+        <select
+          className={field}
+          value={value.kind}
+          onChange={(e) => onChange({ ...value, kind: e.target.value as FeedFilters["kind"] })}
+          aria-label="Kind of role"
+        >
+          <option value="">Internships and new grad</option>
+          <option value="internship">Internships</option>
+          <option value="new_grad">New grad roles</option>
+        </select>
+      </label>
+
+      <label className="block">
         <span className="mb-1.5 block font-medium">Term</span>
         <select className={field} value={value.term} onChange={(e) => onChange({ ...value, term: e.target.value })} aria-label="Term">
           <option value="">Any term</option>

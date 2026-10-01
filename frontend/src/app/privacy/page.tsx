@@ -93,14 +93,15 @@ export default function PrivacyPage() {
 
       <SectionLabel>Where listings come from</SectionLabel>
       <p className="m-0 max-w-[62ch]">
-        Listings come from two community-maintained lists on GitHub,{" "}
-        <a className={link} href={SOURCES[0].url} target="_blank" rel="noreferrer">
-          {SOURCES[0].name}
-        </a>{" "}
-        and{" "}
-        <a className={link} href={SOURCES[1].url} target="_blank" rel="noreferrer">
-          {SOURCES[1].name}
-        </a>
+        Listings come from community-maintained lists on GitHub:{" "}
+        {SOURCES.map((src, i) => (
+          <span key={src.url}>
+            <a className={link} href={src.url} target="_blank" rel="noreferrer">
+              {src.name}
+            </a>
+            {i < SOURCES.length - 2 ? ", " : i === SOURCES.length - 2 ? " and " : ""}
+          </span>
+        ))}
         . Every listing links to the original posting, and that is where you
         apply. StEP1 never applies for you.
       </p>

@@ -19,7 +19,7 @@ import Link from "next/link";
 import { AboutStats } from "@/components/AboutStats";
 import { CopyEmail } from "@/components/CopyEmail";
 import { Paragraphs, ProsePage, Rule, SectionLabel } from "@/components/prose";
-import { CONTACT_MAILTO } from "@/lib/site";
+import { CONTACT_MAILTO, SOURCES } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "About",
@@ -89,11 +89,24 @@ export default function AboutPage() {
 
       <SectionLabel>What it does today</SectionLabel>
       <p className="mb-[18px] max-w-[62ch]">
-        StEP1 pulls from community-maintained internship boards, then classifies
-        every posting by role and scores it against your profile.
+        StEP1 pulls from community-maintained internship and new grad boards,
+        then classifies every posting by role and scores it against your
+        profile.
       </p>
 
       <AboutStats />
+
+      <p className="font-ui mb-[18px] max-w-[62ch] text-[0.85rem] text-[var(--ink-2)]" data-testid="about-sources">
+        The boards:{" "}
+        {SOURCES.map((src, i) => (
+          <span key={src.url}>
+            <a href={src.url} target="_blank" rel="noreferrer" className="text-[var(--accent-text)] underline underline-offset-2">
+              {src.name}
+            </a>
+            {i < SOURCES.length - 2 ? ", " : i === SOURCES.length - 2 ? " and " : "."}
+          </span>
+        ))}
+      </p>
 
       <Paragraphs>
         <p>
