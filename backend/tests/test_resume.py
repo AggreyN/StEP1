@@ -563,8 +563,16 @@ def test_no_route_serves_a_resume(client, auth):
 
     routes = api_routes(app)
     assert len(routes) >= 20
+    # The owner's admin pages are the one exception, on purpose: a link to a
+    # person's resume, for admins only (tests/test_admin_users.py).
+    admin_only = {
+        ("GET", "/admin/users/{user_id}/resume-file"),
+        ("GET", "/admin/resume-files/{token}"),
+    }
     for (method, path), route in routes.items():
-        if "resume" in path:
+        if (method, path) in admin_only or path.startswith("/admin/users/{user_id}/resumes"):
+            continue
+        if "resume" in path and not path.startswith(("/resumes", "/resume/")):
             assert method in ("POST", "PUT"), f"{method} {path} would read a resume back"
         response_class = getattr(route.response_class, "value", route.response_class)
         assert not issubclass(response_class, FileResponse | StreamingResponse), path

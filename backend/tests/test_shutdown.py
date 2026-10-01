@@ -175,7 +175,7 @@ def upstream(monkeypatch):
         target=server.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True
     ).start()
     url = f"http://127.0.0.1:{server.server_address[1]}/listings.json"
-    monkeypatch.setattr(github_list, "listings_url", lambda repo: url)
+    monkeypatch.setattr(github_list, "listings_url", lambda repo, branch=None: url)
     Trickle.body = None
     yield server
     server.shutdown()

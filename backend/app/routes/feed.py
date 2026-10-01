@@ -12,7 +12,7 @@ from app import limits
 from app.deps import current_user, get_db
 from app.models import INTEREST_ROLES, MatchScore, Posting, Profile, User
 from app.schemas import FeedOut, FeedStatusOut
-from app.services import feed_state, postings
+from app.services import dedupe, feed_state, postings
 from app.sources.roles import OTHER
 
 router = APIRouter(tags=["feed"])
@@ -60,6 +60,9 @@ def feed(
     ),
     min_score: int | None = Query(None, ge=0, le=100),
     remote: bool | None = Query(None, description="true -> remote postings only."),
+    kind: Literal["internship", "new_grad"] | None = Query(
+        None, description="Narrow to one kind, within what the profile is looking for."
+    ),
     sort: Literal["recent", "score"] = Query(
         "recent", description="recent: newest first (default). score: best match first."
     ),
@@ -76,6 +79,7 @@ def feed(
         # not at the next rescore.
         Posting.active.is_(True),
         Posting.is_visible.is_(True),
+        dedupe.SHOWN,
     ]
     wanted = [r.strip() for r in (roles or "").split(",") if r.strip()]
     if wanted:
@@ -97,6 +101,10 @@ def feed(
         conditions.append(MatchScore.score >= min_score)
     if remote:
         conditions.append(Posting.is_remote.is_(True))
+    # looking_for is already a hard filter (only those kinds are scored);
+    # this narrows within it, and again on read in case scores predate a change.
+    kinds = [k for k in (profile.looking_for or ["internship"]) if kind in (None, k)]
+    conditions.append(Posting.kind.in_(kinds))
 
     joined = select(Posting, MatchScore.score, MatchScore.reasons).join(
         MatchScore, MatchScore.posting_id == Posting.id

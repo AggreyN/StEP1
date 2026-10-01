@@ -285,6 +285,10 @@ All have defaults. The ones you are likely to touch:
 | `NOTIFY_TOPIC_ARN` | empty | SNS topic reviews are emailed through. Empty: not sent |
 | `SITE_URL` | `http://localhost:3000` | The frontend's address, for links in email |
 | `REVIEW_RATE_LIMIT` | `5/day` | Reviews per person, and per client address |
+| `LLM_BACKEND` | `fake`, `bedrock` when `APP_ENV=prod` | Who writes resume drafts. See [Resume tailoring](#resume-tailoring) |
+| `TAILOR_MODEL_ID` | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Bedrock inference profile |
+| `LLM_TIMEOUT_S` / `LLM_MAX_TOKENS` | `60` / `8000` | Per model call |
+| `TAILOR_RATE_LIMIT` / `EXTRACT_RATE_LIMIT` | `10/day` / `5/day` | Per person |
 
 Secret-bearing values (`DATABASE_URL`, `JWT_SECRET`, the Cognito ids) go
 through `services/secrets.get_secret()`: a plain environment variable by
@@ -331,6 +335,16 @@ GET    /applications/{id}        POST /applications/{id}/events
 
 POST   /reviews                  -> 201, emailed to the owner  rate limited
 GET    /admin/reviews?page=&page_size=                         admins only
+GET    /admin/users?q=&page=&page_size=                        admins only
+GET    /admin/users/{id}         GET /admin/users/{id}/resume-file   admins only
+GET    /admin/users/{id}/resumes/{rid}[/download?format=pdf|docx]     admins only
+
+POST   /resume/base/extract      -> a draft base resume from the upload (not saved)
+GET    /resume/base              PUT  /resume/base
+POST   /tailor                   -> a tailored draft and a report (not saved)
+GET    /resumes                  POST /resumes
+GET    /resumes/{id}             PUT  /resumes/{id}           DELETE /resumes/{id}
+GET    /resumes/{id}/download?format=pdf|docx
 ```
 
 A posting's id is `"{source}:{source_id}"`, for example
@@ -387,6 +401,86 @@ method, the route answers exactly as a path that does not exist:
 too, so the two cannot be told apart.
 
 Reviews belong to their author: deleting an account deletes them.
+
+### Resume tailoring
+
+Each person works from their own resume, as data. `POST /resume/base/extract`
+drafts one from the text of their uploaded PDF (409 `Upload your resume
+first.` without one); they correct it and `PUT /resume/base`. That saved base
+resume, a `ResumeDoc` (`name`, `contact`, `sections` of `entries` with
+`heading`, `right`, `sub`, `sub_right`, `lines`) plus a `skill_inventory`, is
+the only thing tailoring draws from. Bounds: name 120 characters; 8 contact
+items of 200; 12 sections, titled in 80; 20 entries per section; heading,
+right, sub and sub_right 200 each; 12 lines per entry of 300 each; 200
+inventory items of 80.
+
+`POST /tailor` takes exactly one of `posting_id` or `job_text` (up to 20,000
+characters) and returns `{"draft", "report": {"fit", "changes", "gaps",
+"question"}, "suggested_name"}`. Nothing is saved until the person saves it
+with `POST /resumes` (a name of 1 to 80 characters, names may repeat, up to
+100 per person). A posting on the board carries only its title and
+particulars (the lists publish no descriptions), so a pasted description
+tailors better.
+
+The model writes; `services/tailor.py` decides what may stand. Name,
+contact, sections, entries, dates, titles and places must be the base's;
+every number in a line must appear in the base; every skill or tool named
+must be in the inventory or already in the base's text; skills lines hold
+inventory items only; and the owner's style rules hold (no em dashes, no
+filler like "results-driven" or "responsible for", no first person). A draft
+that breaks a rule is sent back once with the violations listed; whatever
+still breaks one is removed, and the report says how many. The job text is
+untrusted: it is passed as delimited data the model is told not to follow,
+and none of the checks depend on it listening.
+
+`services/llm.py` is the only code that calls a model: Claude on Amazon
+Bedrock through the Converse API, with one forced tool call for structured
+output, the system prompt marked for caching, `LLM_TIMEOUT_S`, one retry on
+throttling, and each call's token counts logged (never its text). When
+Bedrock cannot answer, the routes return 503 `Resume tailoring is busy right
+now. Try again in a minute.` `LLM_BACKEND=fake` (the default outside
+production) answers deterministically without AWS. Rate limits are per
+person: `TAILOR_RATE_LIMIT` and `EXTRACT_RATE_LIMIT`, counted when the model
+is about to be called.
+
+`GET /resumes/{id}/download?format=pdf|docx` renders the resume: the PDF is
+the owner's resume skill's single-column Helvetica layout, stepping font and
+margins down until it fits one page (`X-Resume-Pages` says if it could not);
+the DOCX is the same content in the same order, single column, for
+applicant tracking systems. The file is named after the resume.
+
+The production task role needs, besides what it already has:
+
+```json
+{"Effect": "Allow", "Action": "bedrock:InvokeModel", "Resource": [
+  "arn:aws:bedrock:us-east-1:<account>:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0",
+  "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
+  "arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
+  "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"]}
+```
+
+### Admin: users
+
+The owner (anyone in `ADMIN_EMAILS`) can see every person, under the same
+rule as `/admin/reviews`: to everyone else these paths do not exist.
+
+- `GET /admin/users?q=` lists people newest first, with counts and when they
+  were last active (the latest of an application event, a save, a review, a
+  tailored resume, onboarding or a resume upload). `q` matches email or name,
+  case-insensitively and literally (`%` and `_` are not wildcards).
+- `GET /admin/users/{id}` returns the person's profile exactly as they see it
+  at `GET /profile` (or `null` before onboarding), their saved postings and
+  applications in their own shapes (score `null`, no reasons), their tailored
+  resumes and their reviews.
+- `GET /admin/users/{id}/resumes/{rid}` returns one of their saved resumes in
+  full, and `.../download?format=pdf|docx` the file.
+- `GET /admin/users/{id}/resume-file` returns a link to their uploaded resume,
+  good for `PRESIGN_EXPIRY_SECONDS`, that downloads as an attachment under the
+  name they uploaded it with: a presigned S3 GET, or with local storage a
+  link to `/admin/resume-files/{token}` signed by the running process.
+
+Each read of a person's data writes one line to the `audit` logger with the
+admin's email, the person's id and the route. Never the data itself.
 
 ### `DELETE /me`
 
@@ -769,8 +863,28 @@ tests/
 
 ## Data sources and credit
 
-Postings come from two community-maintained lists. This project links out to
-the original posting and does not present the data as its own.
+Postings come from community-maintained lists. This project links out to the
+original posting and does not present the data as its own.
 
 - [SimplifyJobs / Pitt CSC Summer Internships](https://github.com/SimplifyJobs/Summer2027-Internships)
+- [SimplifyJobs New Grad Positions](https://github.com/SimplifyJobs/New-Grad-Positions)
 - [vanshb03 / Summer2027-Internships](https://github.com/vanshb03/Summer2027-Internships) (MIT)
+- [SpeedyApply 2027 AI College Jobs](https://github.com/speedyapply/2027-AI-College-Jobs)
+- [jobright.ai Data Analysis Internships](https://github.com/jobright-ai/2026-Data-Analysis-Internship)
+- [jobright.ai Business Analyst Internships](https://github.com/jobright-ai/2026-Business-Analyst-Internship)
+- [jobright.ai Product Management Internships](https://github.com/jobright-ai/2026-Product-Management-Internship)
+
+[Zapply Internships 2027](https://github.com/zapplyjobs/Internships-2027) is
+supported but off (`ZAPPLY_ENABLED=false`): its license, CC BY-NC-SA 4.0,
+allows only non-commercial use and requires anything built from it to be
+shared under the same license.
+
+Each list is a module in `app/sources/` (JSON lists through `simplify.py` and
+`vanshb03.py`, README tables through `table_sources.py` and
+`readme_table.py`), with its repository and branch as settings. Every posting
+is `kind` `internship` or `new_grad`, and a profile's `looking_for` (default
+`["internship"]`) decides which kinds a student is offered. The same job in
+several lists is stored once per list but shown once (`services/dedupe.py`):
+same apply URL without tracking parameters, or, across lists, same company,
+title and city; the copy from the most structured list is shown. See
+`docs/ARCHITECTURE.md` §2.6.

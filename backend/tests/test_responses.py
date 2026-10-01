@@ -15,12 +15,14 @@ from app.database import Base, SessionLocal
 from app.main import app
 from tests.conftest import (
     api_routes,
+    base_resume,
     make_pdf,
     make_row,
     onboard,
     presign,
     put_upload,
     register,
+    resume_doc,
     seed,
     upload_resume,
 )
@@ -36,6 +38,15 @@ NEVER = {
 # The one place a storage key is returned: to its owner, who needs it to
 # finish the upload they just started.
 KEY_ALLOWED_IN = {("POST", "/profile/resume/presign")}
+# Routes whose body is a file, not JSON. Each is listed on purpose.
+FILE_ROUTES = {
+    ("GET", "/admin/resume-files/{token}"),
+    ("GET", "/resumes/{resume_id}/download"),
+    ("GET", "/admin/users/{user_id}/resumes/{resume_id}/download"),
+}
+# The one route whose job is to hand a person's own resume text back to
+# them, as a structured draft for them to review.
+OWN_TEXT_ALLOWED_IN = {("POST", "/resume/base/extract")}
 
 
 def _fields(model, seen=None) -> dict[str, set[str]]:
@@ -64,6 +75,11 @@ def test_every_route_declares_what_it_returns():
     undeclared = []
     for (method, path), route in sorted(ROUTES.items()):
         if route.response_model is None and route.status_code != 204:
+            # A file download: the body is the file, sent as an attachment.
+            if getattr(route.response_class, "__name__", "") in ("FileResponse", "Response") and (
+                (method, path) in FILE_ROUTES
+            ):
+                continue
             undeclared.append(f"{method} {path}")
     assert undeclared == [], (
         f"Give these a response_model=, or status_code=204 if they return nothing: {undeclared}"
@@ -142,6 +158,8 @@ def test_a_whole_session_leaks_nothing(client, monkeypatch):
     from app import config
 
     monkeypatch.setattr(config, "ADMIN_EMAILS", frozenset({"me@example.com"}))
+    with SessionLocal() as db:
+        my_id = db.execute(text("SELECT id FROM users WHERE email = 'me@example.com'")).scalar()
     slot = presign(client, me, len(make_pdf()))
     calls = {
         ("GET", "/health"): client.get("/health"),
@@ -187,6 +205,46 @@ def test_a_whole_session_leaks_nothing(client, monkeypatch):
             "/reviews", json={"rating": 5, "body": "Useful."}, headers=me
         ),
         ("GET", "/admin/reviews"): client.get("/admin/reviews", headers=me),
+        # The admin's views of a person, pointed at "me": the other user's
+        # details are what the admin pages exist to show, and are tested there.
+        ("POST", "/resume/base/extract"): client.post("/resume/base/extract", headers=me),
+        ("PUT", "/resume/base"): client.put("/resume/base", json=base_resume(), headers=me),
+        ("GET", "/resume/base"): client.get("/resume/base", headers=me),
+        ("POST", "/tailor"): client.post("/tailor", json={"posting_id": "simplify:a"}, headers=me),
+        ("POST", "/resumes"): (
+            saved_resume := client.post(
+                "/resumes",
+                json={"name": "Mine", "doc": resume_doc(), "posting_id": "simplify:a"},
+                headers=me,
+            )
+        ),
+        ("GET", "/resumes"): client.get("/resumes", headers=me),
+        ("GET", "/resumes/{resume_id}"): client.get(
+            f"/resumes/{saved_resume.json()['id']}", headers=me
+        ),
+        ("PUT", "/resumes/{resume_id}"): client.put(
+            f"/resumes/{saved_resume.json()['id']}", json={"name": "Mine, renamed"}, headers=me
+        ),
+        ("GET", "/admin/users/{user_id}/resumes/{resume_id}"): client.get(
+            f"/admin/users/{my_id}/resumes/{saved_resume.json()['id']}", headers=me
+        ),
+        ("GET", "/admin/users/{user_id}/resumes/{resume_id}/download"): client.get(
+            f"/admin/users/{my_id}/resumes/{saved_resume.json()['id']}/download", headers=me
+        ),
+        ("GET", "/resumes/{resume_id}/download"): client.get(
+            f"/resumes/{saved_resume.json()['id']}/download?format=docx", headers=me
+        ),
+        ("DELETE", "/resumes/{resume_id}"): client.delete(
+            f"/resumes/{saved_resume.json()['id']}", headers=me
+        ),
+        ("GET", "/admin/users"): client.get("/admin/users?q=me@example", headers=me),
+        ("GET", "/admin/users/{user_id}"): client.get(f"/admin/users/{my_id}", headers=me),
+        ("GET", "/admin/users/{user_id}/resume-file"): (
+            link := client.get(f"/admin/users/{my_id}/resume-file", headers=me)
+        ),
+        ("GET", "/admin/resume-files/{token}"): client.get(
+            link.json()["url"].removeprefix("http://testserver")
+        ),
         # Last: after this there is no "me" to make the other calls as.
         ("DELETE", "/me"): client.request(
             "DELETE", "/me", json={"password": "my-own-password"}, headers=me
@@ -216,10 +274,15 @@ def test_a_whole_session_leaks_nothing(client, monkeypatch):
         if r.status_code == 204:
             assert r.content == b"", route
             continue
+        if route in FILE_ROUTES:
+            assert r.headers["content-disposition"].startswith("attachment;"), route
+            continue
         assert r.headers["content-type"].startswith("application/json"), route
         for where, key, _ in _walk(r.json()):
             assert key not in NEVER, f"{route} has {key!r} at {where or 'the top'}"
         for what, value in forbidden_values.items():
+            if what == "text from my resume" and route in OWN_TEXT_ALLOWED_IN:
+                continue
             assert value not in r.text, f"{route} contains {what}"
         if route not in KEY_ALLOWED_IN:
             assert "resumes/" not in r.text, f"{route} contains a storage key"

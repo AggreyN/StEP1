@@ -83,7 +83,8 @@ def test_updated_at_is_the_freshness_the_status_route_reports(client, db, auth):
     status = client.get("/ingest/status", headers=auth).json()
     stats = client.get("/stats").json()
     assert stats["updated_at"] == status["last_success_at"] is not None
-    assert stats["active_postings"] == status["active_postings"] == 6
+    # Both fakes carry the same three jobs: each is counted once.
+    assert stats["active_postings"] == status["active_postings"] == 3
 
 
 def test_takes_no_input(client):

@@ -145,6 +145,9 @@ _CATEGORY_FALLBACK = {
     "product management": PRODUCT,
     "quant": QUANT,
     "quantitative finance": QUANT,
+    # The jobright.ai lists, one per field; the list says which.
+    "data analysis": DATA_ANALYTICS,
+    "business analyst": DATA_ANALYTICS,
 }
 
 

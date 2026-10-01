@@ -106,3 +106,23 @@ async def too_many_requests(request: Request, exc: RateLimitExceeded) -> JSONRes
         content={"detail": f"{what} Try again {wait_in_words(seconds)}."},
         headers={"Retry-After": str(seconds)},
     )
+
+
+def take(limit: str, *keys: tuple[str, ...]) -> int | None:
+    """Count one use against `limit` for each key, if every key has room.
+    Returns None when allowed (and counted), or the seconds until the
+    tightest key has room again (and counts nothing). For limits that need
+    to know who is asking, which the decorator above cannot."""
+    if not limiter.enabled:
+        return None
+    from limits import parse
+
+    item = parse(limit)
+    strategy = limiter.limiter
+    blocked = [key for key in keys if not strategy.test(item, *key)]
+    if blocked:
+        reset = max(strategy.get_window_stats(item, *key).reset_time for key in blocked)
+        return max(1, math.ceil(reset - time.time()))
+    for key in keys:
+        strategy.hit(item, *key)
+    return None

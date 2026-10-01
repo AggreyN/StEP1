@@ -36,11 +36,13 @@ from app.main import app
 from tests.conftest import (
     PROFILE,
     api_routes,
+    base_resume,
     make_pdf,
     make_row,
     onboard,
     presign,
     register,
+    resume_doc,
     seed,
     upload_resume,
 )
@@ -57,13 +59,23 @@ A_EMAIL = "alpha@example.com"
 A_NAME = "Alpha Owner"
 A_PASSWORD = "alpha-own-password"
 A_REVIEW = "alpha-private-review-91c2"
+A_BASE_LINE = "Built alpha-only-pipeline in Python for 3 teams"
+A_SAVED_NAME = "Alpha Only Saved Resume"
 # Nobody in the world below is an admin: the admin route must be a 404 to
 # every one of them.
 OWNER = "owner@example.com"
 
 # Admin-only routes: to anyone who is not an admin, signed in or not, they
 # answer as a path that does not exist.
-ADMIN_ONLY = {("GET", "/admin/reviews")}
+ADMIN_ONLY = {
+    ("GET", "/admin/reviews"),
+    ("GET", "/admin/users"),
+    ("GET", "/admin/users/{user_id}"),
+    ("GET", "/admin/users/{user_id}/resume-file"),
+    ("GET", "/admin/resume-files/{token}"),
+    ("GET", "/admin/users/{user_id}/resumes/{resume_id}"),
+    ("GET", "/admin/users/{user_id}/resumes/{resume_id}/download"),
+}
 
 PDF = {"Content-Type": "application/pdf"}
 
@@ -83,6 +95,7 @@ class World:
     a_application: int
     a_resume_key: str
     a_pending_key: str  # a slot A was issued and has not uploaded to yet
+    a_saved_resume: int = 0
     saved: str = "simplify:p-saved"  # A saved it
     applied: str = "simplify:p-applied"  # A applied to it
     other: str = "simplify:p-other"
@@ -122,6 +135,15 @@ def world(client, monkeypatch) -> World:
     assert noted.status_code == 201, noted.text
     reviewed = client.post("/reviews", json={"rating": 4, "body": A_REVIEW}, headers=a)
     assert reviewed.status_code == 201, reviewed.text
+    based = client.put("/resume/base", json=base_resume(line=A_BASE_LINE), headers=a)
+    assert based.status_code == 200, based.text
+    saved_resume = client.post(
+        "/resumes",
+        json={"name": A_SAVED_NAME, "doc": resume_doc(line=A_BASE_LINE),
+              "posting_id": "simplify:p-applied"},
+        headers=a,
+    )  # fmt: skip
+    assert saved_resume.status_code == 201, saved_resume.text
 
     # B differs from A wherever the scorer looks, so a score that leaked
     # across would be the wrong number and show.
@@ -154,9 +176,9 @@ def world(client, monkeypatch) -> World:
 
     return World(
         a=a, b=b, c=c, a_id=a_id, b_id=b_id, a_application=application, a_resume_key=key,
-        a_pending_key=pending,
+        a_pending_key=pending, a_saved_resume=saved_resume.json()["id"],
         secrets=[A_SCHOOL, A_MAJOR, A_NOTE, A_RESUME_NAME, "alpha-next-resume", A_EMAIL,
-                 A_NAME, key, pending, A_REVIEW],
+                 A_NAME, key, pending, A_REVIEW, "alpha-only-pipeline", A_SAVED_NAME],
     )  # fmt: skip
 
 
@@ -178,6 +200,8 @@ OWNED_TABLES = {
     "integrations": "user_id = :u",
     "resume_uploads": "user_id = :u",
     "reviews": "user_id = :u",
+    "base_resumes": "user_id = :u",
+    "tailored_resumes": "user_id = :u",
 }
 # Shared by everyone, or bookkeeping: no row in these belongs to a user.
 SHARED_TABLES = {"postings", "companies", "ingest_runs", "alembic_version"}
@@ -278,6 +302,11 @@ def _review_is_bs(r, w, client):
     assert r.json()["body"] == "written by B" and r.json()["rating"] == 2
 
 
+def _base_is_bs(r, w, client):
+    assert r.json()["name"] == "Bravo"
+    assert client.get("/resume/base", headers=w.b).json()["name"] == "Bravo"
+
+
 def _only_b_is_gone(r, w, client):
     assert client.get("/me", headers=w.b).status_code == 401
     assert client.get("/me", headers=w.a).json()["email"] == A_EMAIL
@@ -294,6 +323,18 @@ def _b_applied_as_b(r, w, client):
     assert body["id"] != w.a_application
     assert [e["kind"] for e in body["events"]] == ["applied"]  # A's note is not here
     assert body["posting"]["application"] == {"id": body["id"], "status": "applied"}
+
+
+def _unsigned(claims: dict) -> str:
+    """A token signed with nothing (alg "none"), built here rather than
+    written out as a literal."""
+    import base64
+    import json
+
+    def part(value: dict) -> str:
+        return base64.urlsafe_b64encode(json.dumps(value).encode()).rstrip(b"=").decode()
+
+    return f"{part({'alg': 'none'})}.{part(claims)}."
 
 
 def cases(w: World) -> dict[tuple[str, str], list[Attempt]]:
@@ -407,6 +448,80 @@ def cases(w: World) -> dict[tuple[str, str], list[Attempt]]:
             for who in ("b", "c")
             for path in ("/admin/reviews", "/admin/reviews?page=2&page_size=5",
                          "/admin/reviews?page=nonsense")
+        ],
+        ("POST", "/resume/base/extract"): [
+            # B's own upload, if any; C has none. Never A's.
+            Attempt("c", "drafts a base resume with no upload", "POST",
+                    "/resume/base/extract", 409),
+        ],
+        ("GET", "/resume/base"): [
+            Attempt(who, "reads a base resume, having none", "GET", "/resume/base", HIDDEN)
+            for who in ("b", "c")
+        ],
+        ("PUT", "/resume/base"): [
+            Attempt("b", "saves a base resume", "PUT", "/resume/base", 200,
+                    json=base_resume(name="Bravo"), check=_base_is_bs),
+        ],
+        ("POST", "/tailor"): [
+            Attempt("c", "tailors with no base resume", "POST", "/tailor", 409,
+                    json={"job_text": "Data intern"}),
+        ],
+        ("POST", "/resumes"): [
+            Attempt("b", "saves a resume", "POST", "/resumes", 201,
+                    json={"name": "Bravo resume", "doc": resume_doc(name="Bravo")}),
+        ],
+        ("GET", "/resumes"): [
+            Attempt(who, "lists saved resumes", "GET", "/resumes", OWN, check=_list_is_empty)
+            for who in ("b", "c")
+        ],
+        ("GET", "/resumes/{resume_id}"): [
+            Attempt(who, "opens A's saved resume", "GET", f"/resumes/{w.a_saved_resume}", HIDDEN)
+            for who in ("b", "c")
+        ],
+        ("PUT", "/resumes/{resume_id}"): [
+            Attempt(who, "renames A's saved resume", "PUT", f"/resumes/{w.a_saved_resume}",
+                    HIDDEN, json={"name": "mine now"})
+            for who in ("b", "c")
+        ],
+        ("DELETE", "/resumes/{resume_id}"): [
+            Attempt(who, "deletes A's saved resume", "DELETE", f"/resumes/{w.a_saved_resume}",
+                    HIDDEN)
+            for who in ("b", "c")
+        ],
+        ("GET", "/resumes/{resume_id}/download"): [
+            Attempt(who, "downloads A's saved resume", "GET",
+                    f"/resumes/{w.a_saved_resume}/download?format={fmt}", HIDDEN)
+            for who in ("b", "c") for fmt in ("pdf", "docx")
+        ],
+        ("GET", "/admin/users"): [
+            Attempt(who, "lists every user, not being an admin", "GET", path, HIDDEN)
+            for who in ("b", "c")
+            for path in ("/admin/users", f"/admin/users?q={A_EMAIL}", "/admin/users?page=x")
+        ],
+        ("GET", "/admin/users/{user_id}"): [
+            Attempt(who, "reads A's everything, not being an admin", "GET",
+                    f"/admin/users/{uid}", HIDDEN)
+            for who in ("b", "c") for uid in (w.a_id, w.b_id, 999_999, "x")
+        ],
+        ("GET", "/admin/users/{user_id}/resume-file"): [
+            Attempt(who, "asks for A's resume file, not being an admin", "GET",
+                    f"/admin/users/{w.a_id}/resume-file", HIDDEN)
+            for who in ("b", "c")
+        ],
+        ("GET", "/admin/users/{user_id}/resumes/{resume_id}"): [
+            Attempt(who, "opens A's saved resume through the admin page", "GET",
+                    f"/admin/users/{w.a_id}/resumes/{w.a_saved_resume}", HIDDEN)
+            for who in ("b", "c")
+        ],
+        ("GET", "/admin/users/{user_id}/resumes/{resume_id}/download"): [
+            Attempt(who, "downloads A's saved resume through the admin page", "GET",
+                    f"/admin/users/{w.a_id}/resumes/{w.a_saved_resume}/download", HIDDEN)
+            for who in ("b", "c")
+        ],
+        ("GET", "/admin/resume-files/{token}"): [
+            Attempt(who, "forges a download link", "GET", f"/admin/resume-files/{token}", HIDDEN)
+            for who in ("b", "c")
+            for token in ("x", _unsigned({"k": f"resumes/{w.a_id}/x"}))
         ],
     }  # fmt: skip
 
@@ -526,7 +641,8 @@ def test_the_public_routes_are_exactly_these(client, world):
     be added here on purpose."""
     public = set()
     fill = {"application_id": world.a_application, "posting_id": world.saved,
-            "key": world.a_resume_key}  # fmt: skip
+            "key": world.a_resume_key, "user_id": world.a_id,
+            "token": "not-a-signed-link", "resume_id": world.a_saved_resume}  # fmt: skip
     for method, template in sorted(ROUTES):
         path = template.replace("{key:path}", "{key}").format(**fill)
         r = client.request(method, path, json={})
@@ -545,7 +661,8 @@ def test_the_public_routes_are_exactly_these(client, world):
 
 def test_without_a_token_every_protected_route_is_401(client, world):
     fill = {"application_id": world.a_application, "posting_id": world.saved,
-            "key": world.a_resume_key}  # fmt: skip
+            "key": world.a_resume_key, "user_id": world.a_id,
+            "token": "not-a-signed-link", "resume_id": world.a_saved_resume}  # fmt: skip
     # /ingest/status is exempt from the two-user cases because it shows
     # nothing of any user's. It still needs a token.
     # Admin routes are a 404 instead (test_the_public_routes_are_exactly_these).

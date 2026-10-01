@@ -34,6 +34,7 @@ def test_get_profile_matches_contract_shape(client, auth, profile_body):
         "target_terms": ["Summer 2027"],
         "preferred_locations": ["Washington, DC", "New York, NY"],
         "remote_ok": True,
+        "looking_for": ["internship"],
         "interests": [
             {"role": "software", "label": "Software Engineering", "rank": 1},
             {"role": "ai_ml_data", "label": "AI / ML / Data Science", "rank": 2},

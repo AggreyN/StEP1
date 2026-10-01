@@ -210,3 +210,36 @@ def delete(key: str) -> bool:
     except Exception:  # noqa: BLE001
         return False
     return True
+
+
+def attachment(filename: str) -> str:
+    """A Content-Disposition value that makes a browser save the file under
+    this name. The plain `filename=` is ASCII with quotes and backslashes
+    removed, for old clients; `filename*=` carries the real name, encoded."""
+    import unicodedata
+    from urllib.parse import quote
+
+    ascii_name = unicodedata.normalize("NFKD", filename).encode("ascii", "ignore").decode()
+    ascii_name = "".join(c for c in ascii_name if 32 <= ord(c) < 127 and c not in '"\\') or "file"
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename, safe='')}"
+
+
+def presign_get(key: str, filename: str) -> str:
+    """S3 only: a short-lived URL that downloads the object as an attachment
+    named `filename`. Good for PRESIGN_EXPIRY_SECONDS."""
+    return _s3().generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": config.S3_BUCKET,
+            "Key": _check(key),
+            "ResponseContentDisposition": attachment(filename),
+            "ResponseContentType": "application/pdf",
+        },
+        ExpiresIn=config.PRESIGN_EXPIRY_SECONDS,
+        HttpMethod="GET",
+    )
+
+
+def local_path(key: str) -> Path:
+    """Local backend only: where the object is on disk."""
+    return _local_path(key)

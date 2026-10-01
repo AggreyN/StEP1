@@ -115,6 +115,10 @@ class Profile(Base):
         ARRAY(Text), server_default=text("'{}'"), default=list
     )
     remote_ok: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), default=False)
+    # Internships, new-grad roles, or both. Matching only offers these kinds.
+    looking_for: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), server_default=text("'{internship}'"), default=lambda: ["internship"]
+    )
     work_auth: Mapped[str | None] = mapped_column(String(80))
     resume_s3_key: Mapped[str | None] = mapped_column(String(512))
     resume_filename: Mapped[str | None] = mapped_column(String(255))
@@ -212,6 +216,9 @@ class Posting(Base):
         Index("ix_postings_active_date_posted", "active", text("date_posted DESC")),
         Index("ix_postings_category_active", "category", "active"),
         Index("ix_postings_company_id", "company_id"),
+        Index("ix_postings_dedupe_key", "dedupe_key"),
+        Index("ix_postings_title_key", "title_key"),
+        CheckConstraint("kind IN ('internship', 'new_grad')", name="ck_postings_kind"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -238,6 +245,14 @@ class Posting(Base):
     # NULL after an absence-deactivation, so a posting that reappears unchanged
     # is still rewritten (and reactivated) instead of skipped as "unchanged".
     content_hash: Mapped[str | None] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(16), server_default=text("'internship'"))
+    # The same job in several lists (services/dedupe.py). dedupe_key is the
+    # apply URL without tracking parameters (or, without a URL, title_key);
+    # title_key is company, title and place. canonical_id is the posting
+    # shown for the group; NULL until dedupe has run, which counts as itself.
+    dedupe_key: Mapped[str | None] = mapped_column(Text)
+    title_key: Mapped[str | None] = mapped_column(Text)
+    canonical_id: Mapped[int | None] = mapped_column(BigInteger)
     search_tsv: Mapped[str] = mapped_column(
         TSVECTOR,
         Computed(
@@ -423,3 +438,40 @@ class Review(Base):
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
 
     user: Mapped[User] = relationship()
+
+
+class BaseResumeDoc(Base):
+    """A person's base resume as data (schemas.BaseResume), as they confirmed
+    it. The one source of truth tailoring may draw from."""
+
+    __tablename__ = "base_resumes"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    doc: Mapped[dict] = mapped_column(JSONB)
+    updated_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
+class TailoredResume(Base):
+    """A resume a person saved (usually a tailored draft), named by them."""
+
+    __tablename__ = "tailored_resumes"
+    __table_args__ = (
+        Index("ix_tailored_resumes_user_updated", "user_id", text("updated_at DESC")),
+        CheckConstraint("char_length(name) BETWEEN 1 AND 80", name="ck_tailored_resumes_name"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(80))
+    doc: Mapped[dict] = mapped_column(JSONB)
+    # The posting it was tailored for, if any. A posting is never deleted
+    # today; if one ever is, the resume stays and forgets it.
+    posting_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("postings.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+    posting: Mapped[Posting | None] = relationship()

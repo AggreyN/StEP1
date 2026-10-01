@@ -13,7 +13,16 @@ from pydantic import BaseModel
 
 from app.main import app
 from app.schemas import RequestModel
-from tests.conftest import PROFILE, api_routes, make_row, onboard, register, seed
+from tests.conftest import (
+    PROFILE,
+    api_routes,
+    base_resume,
+    make_row,
+    onboard,
+    register,
+    resume_doc,
+    seed,
+)
 
 APP = Path(__file__).resolve().parent.parent / "app"
 
@@ -77,6 +86,10 @@ def _bodies(app_id: int) -> dict[tuple[str, str], tuple[str, dict]]:
         ),
         ("DELETE", "/me"): ("/me", {"password": "correct-horse"}),
         ("POST", "/reviews"): ("/reviews", {"rating": 5, "body": "Useful."}),
+        ("PUT", "/resume/base"): ("/resume/base", base_resume()),
+        ("POST", "/tailor"): ("/tailor", {"job_text": "Data analyst intern. SQL, Python."}),
+        ("POST", "/resumes"): ("/resumes", {"name": "Mine", "doc": resume_doc()}),
+        ("PUT", "/resumes/{resume_id}"): ("/resumes/1", {"name": "Renamed"}),
     }
 
 

@@ -33,15 +33,30 @@ def list_saved(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    total = db.scalar(select(func.count()).where(SavedPosting.user_id == user.id))
+    # Two saves of the same job from two lists are one saved job: the most
+    # recent save of each is listed.
+    group = func.coalesce(Posting.canonical_id, Posting.id)
+    ranked = (
+        select(
+            SavedPosting.posting_id,
+            SavedPosting.created_at,
+            func.row_number()
+            .over(partition_by=group, order_by=SavedPosting.created_at.desc())
+            .label("n"),
+        )
+        .join(Posting, Posting.id == SavedPosting.posting_id)
+        .where(SavedPosting.user_id == user.id)
+        .subquery()
+    )
+    once = select(ranked.c.posting_id, ranked.c.created_at).where(ranked.c.n == 1).subquery()
+    total = db.scalar(select(func.count()).select_from(once))
     rows = db.scalars(
         select(Posting)
-        .join(SavedPosting, SavedPosting.posting_id == Posting.id)
+        .join(once, once.c.posting_id == Posting.id)
         .options(joinedload(Posting.company))
-        .where(SavedPosting.user_id == user.id)
         # Closed postings stay listed: the student saved them, and "this one
         # closed" is worth knowing.
-        .order_by(SavedPosting.created_at.desc(), Posting.id)
+        .order_by(once.c.created_at.desc(), Posting.id)
         .limit(page_size)
         .offset((page - 1) * page_size)
     ).all()

@@ -54,7 +54,7 @@ os.environ["INGEST_CHECK_MINUTES"] = "30"
 _TABLES = (
     "application_events, applications, saved_postings, match_scores, profile_interests, "
     "profiles, resume_uploads, outreach_messages, contacts, integrations, users, postings, "
-    "companies, ingest_runs, reviews"
+    "companies, ingest_runs, reviews, base_resumes, tailored_resumes"
 )
 
 
@@ -378,3 +378,35 @@ def make_scanned_pdf() -> bytes:
     data = doc.tobytes()
     doc.close()
     return data
+
+
+def resume_doc(
+    name: str = "Ada Lovelace", line: str = "Built a REST API in Python for 3 teams"
+) -> dict:
+    """A small, valid ResumeDoc."""
+    return {
+        "name": name,
+        "contact": ["ada@umd.edu", "College Park, MD"],
+        "sections": [
+            {
+                "title": "Experience",
+                "entries": [
+                    {
+                        "heading": "Example Corp",
+                        "right": "May 2026 - Aug 2026",
+                        "sub": "Software Engineering Intern",
+                        "sub_right": "Arlington, VA",
+                        "lines": [line],
+                    }
+                ],
+            },
+            {
+                "title": "Technical Skills",
+                "entries": [{"lines": ["Languages: Python, SQL"]}],
+            },
+        ],
+    }
+
+
+def base_resume(**over) -> dict:
+    return resume_doc(**over) | {"skill_inventory": ["Python", "SQL", "REST APIs"]}

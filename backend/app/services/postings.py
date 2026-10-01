@@ -101,6 +101,7 @@ def serialize(
                 date_posted=p.date_posted,
                 salary=_salary(p),
                 source=p.source,
+                kind=p.kind or "internship",
                 score=score,
                 reasons=reasons,
                 saved=p.id in saved,
