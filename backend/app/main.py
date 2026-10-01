@@ -29,6 +29,7 @@ setup_logging()
 
 from app.ratelimit import limiter, too_many_requests  # noqa: E402
 from app.routes import (  # noqa: E402  (logging must be configured first)
+    admin,
     applications,
     auth,
     feed,
@@ -177,6 +178,7 @@ def create_app(*, prod: bool = config.APP_ENV == "prod") -> FastAPI:
         ingest,
         stats,
         reviews,
+        admin,
     ):
         app.include_router(module.router)
     return app

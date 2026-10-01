@@ -498,3 +498,75 @@ class AdminReviewsOut(BaseModel):
     total: int
     has_more: bool
     average_rating: float | None
+
+
+# --------------------------------------------------------------------------- #
+# Admin: users
+# --------------------------------------------------------------------------- #
+
+
+class AdminUserRow(BaseModel):
+    id: int
+    email: str
+    display_name: str | None
+    created_at: UtcDateTime
+    onboarded: bool
+    school: str | None
+    major: str | None
+    grad_year: int | None
+    applications: int
+    saved: int
+    tailored_resumes: int
+    has_resume: bool
+    last_active_at: UtcDateTime | None
+
+
+class AdminUsersOut(BaseModel):
+    items: list[AdminUserRow]
+    page: int
+    total: int
+    has_more: bool
+
+
+class AdminUserIdentity(BaseModel):
+    id: int
+    email: str
+    display_name: str | None
+    created_at: UtcDateTime
+    is_admin: bool
+
+
+class AdminUserReviewOut(BaseModel):
+    id: int
+    rating: int
+    body: str
+    created_at: UtcDateTime
+
+
+class AdminResumeFileOut(BaseModel):
+    url: str
+    filename: str
+    expires_at: UtcDateTime
+
+
+class ResumePostingRef(BaseModel):
+    id: str
+    title: str
+    company: str
+
+
+class ResumeSummaryOut(BaseModel):
+    id: int
+    name: str
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
+    posting: ResumePostingRef | None
+
+
+class AdminUserDetailOut(BaseModel):
+    user: AdminUserIdentity
+    profile: ProfileOut | None
+    saved: list[PostingOut]
+    applications: list[ApplicationDetailOut]
+    resumes: list[ResumeSummaryOut]
+    reviews: list[AdminUserReviewOut]

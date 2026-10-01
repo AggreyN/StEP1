@@ -29,8 +29,10 @@ router = APIRouter(tags=["applications"])
 _WITH_POSTING = joinedload(Application.posting).joinedload(Posting.company)
 
 
-def _detail(db: Session, application: Application, user_id: int) -> ApplicationDetailOut:
-    posting = postings.serialize([application.posting], db, user_id)[0]
+def _detail(
+    db: Session, application: Application, user_id: int, scores: dict | None = None
+) -> ApplicationDetailOut:
+    posting = postings.serialize([application.posting], db, user_id, scores=scores)[0]
     return ApplicationDetailOut(
         id=application.id,
         posting=posting,

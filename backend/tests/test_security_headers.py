@@ -72,7 +72,8 @@ def test_on_every_kind_of_response(client, auth):
 def test_on_every_route_the_app_has(client, auth):
     routes = api_routes(app)
     assert len(routes) >= 20
-    fill = {"application_id": 1, "posting_id": "simplify:x", "key": "resumes/1/x.pdf"}
+    fill = {"application_id": 1, "posting_id": "simplify:x", "key": "resumes/1/x.pdf",
+            "user_id": 1, "token": "x", "resume_id": 1}  # fmt: skip
     for method, template in sorted(routes):
         path = template.replace("{key:path}", "{key}").format(**fill)
         check(client.request(method, path, headers=auth, json={}))

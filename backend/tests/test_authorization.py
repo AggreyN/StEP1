@@ -63,7 +63,13 @@ OWNER = "owner@example.com"
 
 # Admin-only routes: to anyone who is not an admin, signed in or not, they
 # answer as a path that does not exist.
-ADMIN_ONLY = {("GET", "/admin/reviews")}
+ADMIN_ONLY = {
+    ("GET", "/admin/reviews"),
+    ("GET", "/admin/users"),
+    ("GET", "/admin/users/{user_id}"),
+    ("GET", "/admin/users/{user_id}/resume-file"),
+    ("GET", "/admin/resume-files/{token}"),
+}
 
 PDF = {"Content-Type": "application/pdf"}
 
@@ -296,6 +302,18 @@ def _b_applied_as_b(r, w, client):
     assert body["posting"]["application"] == {"id": body["id"], "status": "applied"}
 
 
+def _unsigned(claims: dict) -> str:
+    """A token signed with nothing (alg "none"), built here rather than
+    written out as a literal."""
+    import base64
+    import json
+
+    def part(value: dict) -> str:
+        return base64.urlsafe_b64encode(json.dumps(value).encode()).rstrip(b"=").decode()
+
+    return f"{part({'alg': 'none'})}.{part(claims)}."
+
+
 def cases(w: World) -> dict[tuple[str, str], list[Attempt]]:
     app_id = w.a_application
     note = {"kind": "note", "note": "written by someone else"}
@@ -407,6 +425,26 @@ def cases(w: World) -> dict[tuple[str, str], list[Attempt]]:
             for who in ("b", "c")
             for path in ("/admin/reviews", "/admin/reviews?page=2&page_size=5",
                          "/admin/reviews?page=nonsense")
+        ],
+        ("GET", "/admin/users"): [
+            Attempt(who, "lists every user, not being an admin", "GET", path, HIDDEN)
+            for who in ("b", "c")
+            for path in ("/admin/users", f"/admin/users?q={A_EMAIL}", "/admin/users?page=x")
+        ],
+        ("GET", "/admin/users/{user_id}"): [
+            Attempt(who, "reads A's everything, not being an admin", "GET",
+                    f"/admin/users/{uid}", HIDDEN)
+            for who in ("b", "c") for uid in (w.a_id, w.b_id, 999_999, "x")
+        ],
+        ("GET", "/admin/users/{user_id}/resume-file"): [
+            Attempt(who, "asks for A's resume file, not being an admin", "GET",
+                    f"/admin/users/{w.a_id}/resume-file", HIDDEN)
+            for who in ("b", "c")
+        ],
+        ("GET", "/admin/resume-files/{token}"): [
+            Attempt(who, "forges a download link", "GET", f"/admin/resume-files/{token}", HIDDEN)
+            for who in ("b", "c")
+            for token in ("x", _unsigned({"k": f"resumes/{w.a_id}/x"}))
         ],
     }  # fmt: skip
 
@@ -526,7 +564,8 @@ def test_the_public_routes_are_exactly_these(client, world):
     be added here on purpose."""
     public = set()
     fill = {"application_id": world.a_application, "posting_id": world.saved,
-            "key": world.a_resume_key}  # fmt: skip
+            "key": world.a_resume_key, "user_id": world.a_id,
+            "token": "not-a-signed-link"}  # fmt: skip
     for method, template in sorted(ROUTES):
         path = template.replace("{key:path}", "{key}").format(**fill)
         r = client.request(method, path, json={})
@@ -545,7 +584,8 @@ def test_the_public_routes_are_exactly_these(client, world):
 
 def test_without_a_token_every_protected_route_is_401(client, world):
     fill = {"application_id": world.a_application, "posting_id": world.saved,
-            "key": world.a_resume_key}  # fmt: skip
+            "key": world.a_resume_key, "user_id": world.a_id,
+            "token": "not-a-signed-link"}  # fmt: skip
     # /ingest/status is exempt from the two-user cases because it shows
     # nothing of any user's. It still needs a token.
     # Admin routes are a 404 instead (test_the_public_routes_are_exactly_these).

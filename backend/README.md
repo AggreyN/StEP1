@@ -331,6 +331,8 @@ GET    /applications/{id}        POST /applications/{id}/events
 
 POST   /reviews                  -> 201, emailed to the owner  rate limited
 GET    /admin/reviews?page=&page_size=                         admins only
+GET    /admin/users?q=&page=&page_size=                        admins only
+GET    /admin/users/{id}         GET /admin/users/{id}/resume-file   admins only
 ```
 
 A posting's id is `"{source}:{source_id}"`, for example
@@ -387,6 +389,27 @@ method, the route answers exactly as a path that does not exist:
 too, so the two cannot be told apart.
 
 Reviews belong to their author: deleting an account deletes them.
+
+### Admin: users
+
+The owner (anyone in `ADMIN_EMAILS`) can see every person, under the same
+rule as `/admin/reviews`: to everyone else these paths do not exist.
+
+- `GET /admin/users?q=` lists people newest first, with counts and when they
+  were last active (the latest of an application event, a save, a review, a
+  tailored resume, onboarding or a resume upload). `q` matches email or name,
+  case-insensitively and literally (`%` and `_` are not wildcards).
+- `GET /admin/users/{id}` returns the person's profile exactly as they see it
+  at `GET /profile` (or `null` before onboarding), their saved postings and
+  applications in their own shapes (score `null`, no reasons), their tailored
+  resumes and their reviews.
+- `GET /admin/users/{id}/resume-file` returns a link to their uploaded resume,
+  good for `PRESIGN_EXPIRY_SECONDS`, that downloads as an attachment under the
+  name they uploaded it with: a presigned S3 GET, or with local storage a
+  link to `/admin/resume-files/{token}` signed by the running process.
+
+Each read of a person's data writes one line to the `audit` logger with the
+admin's email, the person's id and the route. Never the data itself.
 
 ### `DELETE /me`
 
