@@ -10,12 +10,14 @@ from decimal import Decimal
 from typing import Annotated, Literal
 
 from pydantic import (
+    AfterValidator,
     BaseModel,
     ConfigDict,
     EmailStr,
     Field,
     PlainSerializer,
     StrictInt,
+    StringConstraints,
     field_validator,
     model_validator,
 )
@@ -585,3 +587,123 @@ class AdminUserDetailOut(BaseModel):
     applications: list[ApplicationDetailOut]
     resumes: list[ResumeSummaryOut]
     reviews: list[AdminUserReviewOut]
+
+
+# --------------------------------------------------------------------------- #
+# Resumes as documents: the base resume, tailored drafts, saved resumes
+# --------------------------------------------------------------------------- #
+
+
+def _no_nul(value: str) -> str:
+    if "\x00" in value:
+        raise ValueError("can't contain a null character")
+    return value
+
+
+def _text(most: int, least: int = 0):
+    return Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=least, max_length=most),
+        AfterValidator(_no_nul),
+    ]
+
+
+class ResumeEntry(RequestModel):
+    heading: _text(limits.RESUME_FIELD_MAX) = ""
+    right: _text(limits.RESUME_FIELD_MAX) = ""
+    sub: _text(limits.RESUME_FIELD_MAX) = ""
+    sub_right: _text(limits.RESUME_FIELD_MAX) = ""
+    lines: list[_text(limits.RESUME_LINE_MAX)] = Field(
+        default_factory=list, max_length=limits.RESUME_LINES_MAX
+    )
+
+    @field_validator("lines")
+    @classmethod
+    def _no_blank_lines(cls, v: list[str]) -> list[str]:
+        return [line for line in v if line]
+
+
+class ResumeSection(RequestModel):
+    title: _text(limits.RESUME_TITLE_MAX, 1)
+    entries: list[ResumeEntry] = Field(default_factory=list, max_length=limits.RESUME_ENTRIES_MAX)
+
+
+class ResumeDoc(RequestModel):
+    """A resume as data. Rendered to PDF and DOCX in this order: name,
+    contact line, then each section's entries. An entry with a heading is an
+    experience-style block (heading and right on one row, sub and sub_right on
+    the next, lines as bullets); without one, its lines are plain rows (a
+    skills section)."""
+
+    name: _text(limits.RESUME_NAME_MAX, 1)
+    contact: list[_text(limits.RESUME_CONTACT_CHARS_MAX, 1)] = Field(
+        default_factory=list, max_length=limits.RESUME_CONTACT_MAX
+    )
+    sections: list[ResumeSection] = Field(
+        default_factory=list, max_length=limits.RESUME_SECTIONS_MAX
+    )
+
+
+class BaseResume(ResumeDoc):
+    """A person's own resume, as they confirmed it: the only source of truth
+    for tailoring. skill_inventory is every skill they can defend."""
+
+    skill_inventory: list[_text(limits.RESUME_INVENTORY_CHARS_MAX, 1)] = Field(
+        default_factory=list, max_length=limits.RESUME_INVENTORY_MAX
+    )
+
+
+class TailorIn(RequestModel):
+    posting_id: str | None = Field(default=None, min_length=1, max_length=limits.POSTING_ID_MAX)
+    job_text: str | None = Field(default=None, max_length=limits.JOB_TEXT_MAX)
+
+    @model_validator(mode="after")
+    def _exactly_one(self):
+        has_posting = self.posting_id is not None
+        has_text = bool(self.job_text and self.job_text.strip())
+        if has_posting == has_text:
+            raise ValueError("give exactly one of posting_id or job_text")
+        if "\x00" in (self.job_text or ""):
+            raise ValueError("job_text: can't contain a null character")
+        return self
+
+
+class TailorReport(BaseModel):
+    fit: str
+    changes: list[str]
+    gaps: list[str]
+    question: str | None
+
+
+class TailorOut(BaseModel):
+    draft: ResumeDoc
+    report: TailorReport
+    suggested_name: str
+
+
+class SavedResumeIn(RequestModel):
+    name: _text(limits.SAVED_RESUME_NAME_MAX, 1)
+    doc: ResumeDoc
+    posting_id: str | None = Field(default=None, min_length=1, max_length=limits.POSTING_ID_MAX)
+
+
+class SavedResumeUpdate(RequestModel):
+    name: _text(limits.SAVED_RESUME_NAME_MAX, 1) | None = None
+    doc: ResumeDoc | None = None
+
+
+class ResumeFullOut(ResumeSummaryOut):
+    doc: ResumeDoc
+
+
+class ResumeListOut(BaseModel):
+    items: list[ResumeSummaryOut]
+
+
+def document(model: BaseModel) -> dict:
+    """A validated document (a ResumeDoc, a BaseResume) as JSON, to store
+    whole in a JSONB column. Every key in it is one the model declares;
+    nothing a client sent past the schema survives validation to get here.
+    This is not a request body unpacked into a row: no column is set from it
+    by name."""
+    return model.model_dump(mode="json")

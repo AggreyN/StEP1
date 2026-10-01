@@ -150,3 +150,22 @@ def test_looking_for_must_name_a_kind(client, profile_body):
         r = client.put("/profile", json=profile_body | {"looking_for": bad}, headers=headers)
         assert r.status_code == 422, bad
         assert r.json()["detail"].startswith("looking_for"), r.json()
+
+
+def test_the_feed_narrows_by_kind_within_looking_for(client):
+    board()
+    headers = register(client)
+    onboard(client, headers, looking_for=["internship", "new_grad"])
+
+    def ids(query):
+        r = client.get(f"/feed?page_size=100&{query}", headers=headers)
+        assert r.status_code == 200, r.text
+        return sorted(i["id"] for i in r.json()["items"])
+
+    assert ids("kind=new_grad") == ["simplify:grad"]
+    assert ids("kind=internship") == ["simplify:intern"]
+    assert client.get("/feed?kind=contract", headers=headers).status_code == 422
+    # Narrowing never widens: someone looking only for internships asking for
+    # new-grad roles gets none.
+    onboard(client, headers, looking_for=["internship"])
+    assert ids("kind=new_grad") == []

@@ -72,3 +72,20 @@ def echo(value: object) -> str:
     error would repeat back whatever it was sent, at whatever size."""
     shown = str(value)
     return shown if len(shown) <= ECHO_MAX else shown[:ECHO_MAX] + "…"
+
+
+# --- Resumes as documents (ResumeDoc, BaseResume) ---
+RESUME_NAME_MAX = 120  # the person's name at the top
+RESUME_CONTACT_MAX = 8  # contact items
+RESUME_CONTACT_CHARS_MAX = 200
+RESUME_SECTIONS_MAX = 12
+RESUME_TITLE_MAX = 80  # a section title
+RESUME_ENTRIES_MAX = 20  # per section
+RESUME_FIELD_MAX = 200  # heading, right, sub, sub_right
+RESUME_LINES_MAX = 12  # per entry
+RESUME_LINE_MAX = 300  # characters in one line
+RESUME_INVENTORY_MAX = 200  # skill_inventory items
+RESUME_INVENTORY_CHARS_MAX = 80
+SAVED_RESUME_NAME_MAX = 80
+SAVED_RESUMES_MAX = 100  # per person
+JOB_TEXT_MAX = 20_000

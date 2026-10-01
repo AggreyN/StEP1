@@ -10,12 +10,14 @@ from app.database import Base, SessionLocal, engine
 from app.ratelimit import limiter
 from app.services import feed_state
 from tests.conftest import (
+    base_resume,
     make_pdf,
     make_row,
     onboard,
     presign,
     put_upload,
     register,
+    resume_doc,
     seed,
     upload_resume,
 )
@@ -42,6 +44,8 @@ OWNED = {
     "outreach_messages": "application_id IN (SELECT id FROM applications WHERE user_id = :u)",
     "integrations": "user_id = :u",
     "reviews": "user_id = :u",
+    "base_resumes": "user_id = :u",
+    "tailored_resumes": "user_id = :u",
 }
 SHARED = {"postings", "companies", "ingest_runs"}
 
@@ -88,6 +92,13 @@ def someone_with_everything(client, email: str) -> tuple[dict, int, list[Path]]:
         "/reviews", json={"rating": 5, "body": f"{email} likes it"}, headers=headers
     )
     assert reviewed.status_code == 201, reviewed.text
+    assert client.put("/resume/base", json=base_resume(), headers=headers).status_code == 200
+    saved = client.post(
+        "/resumes",
+        json={"name": "For Acme", "doc": resume_doc(), "posting_id": "simplify:a"},
+        headers=headers,
+    )
+    assert saved.status_code == 201, saved.text
 
     with SessionLocal() as db:
         user_id = db.execute(text("SELECT id FROM users WHERE email = :e"), {"e": email}).scalar()

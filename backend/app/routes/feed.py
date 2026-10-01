@@ -60,6 +60,9 @@ def feed(
     ),
     min_score: int | None = Query(None, ge=0, le=100),
     remote: bool | None = Query(None, description="true -> remote postings only."),
+    kind: Literal["internship", "new_grad"] | None = Query(
+        None, description="Narrow to one kind, within what the profile is looking for."
+    ),
     sort: Literal["recent", "score"] = Query(
         "recent", description="recent: newest first (default). score: best match first."
     ),
@@ -98,6 +101,10 @@ def feed(
         conditions.append(MatchScore.score >= min_score)
     if remote:
         conditions.append(Posting.is_remote.is_(True))
+    # looking_for is already a hard filter (only those kinds are scored);
+    # this narrows within it, and again on read in case scores predate a change.
+    kinds = [k for k in (profile.looking_for or ["internship"]) if kind in (None, k)]
+    conditions.append(Posting.kind.in_(kinds))
 
     joined = select(Posting, MatchScore.score, MatchScore.reasons).join(
         MatchScore, MatchScore.posting_id == Posting.id

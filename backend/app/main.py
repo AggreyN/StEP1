@@ -37,6 +37,7 @@ from app.routes import (  # noqa: E402  (logging must be configured first)
     ingest,
     postings,
     profile,
+    resumes,
     reviews,
     saved,
     stats,
@@ -155,7 +156,9 @@ def create_app(*, prod: bool = config.APP_ENV == "prod") -> FastAPI:
         # Retry-After is not CORS-safelisted. Without this the browser cannot
         # read the header on PUT /profile's 202 and the "building" poll loop
         # silently falls back to guessing (the Rackner bug, again).
-        expose_headers=["Retry-After"],
+        # Content-Disposition carries a download's file name; without this a
+        # page on another origin cannot read it.
+        expose_headers=["Retry-After", "Content-Disposition"],
     )
     app.add_middleware(SecurityHeadersMiddleware, prod=prod)
     app.add_middleware(AccessLogMiddleware)
@@ -179,6 +182,7 @@ def create_app(*, prod: bool = config.APP_ENV == "prod") -> FastAPI:
         stats,
         reviews,
         admin,
+        resumes,
     ):
         app.include_router(module.router)
     return app

@@ -570,7 +570,7 @@ def test_no_route_serves_a_resume(client, auth):
         ("GET", "/admin/resume-files/{token}"),
     }
     for (method, path), route in routes.items():
-        if (method, path) in admin_only:
+        if (method, path) in admin_only or path.startswith("/admin/users/{user_id}/resumes"):
             continue
         if "resume" in path and not path.startswith(("/resumes", "/resume/")):
             assert method in ("POST", "PUT"), f"{method} {path} would read a resume back"

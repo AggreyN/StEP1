@@ -40,3 +40,10 @@ requests>=2.31
 
 # --- Resume parsing ---
 PyMuPDF>=1.24.3             # imported as `pymupdf` (the name 1.24.3 introduced)
+
+# --- Resume files (tailored resumes as PDF and DOCX) ---
+# Pinned: they shape every downloaded resume, and a layout change should be a
+# deliberate upgrade, tested, not a side effect of a rebuild.
+reportlab==5.0.1
+pypdf==6.19.0
+python-docx==1.2.0

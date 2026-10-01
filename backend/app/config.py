@@ -153,6 +153,19 @@ PUBLIC_API_BASE = os.getenv("PUBLIC_API_BASE", "http://localhost:8000").rstrip("
 # The frontend's address, for links in email (the admin page is SITE_URL/admin).
 SITE_URL = os.getenv("SITE_URL", "http://localhost:3000").strip().rstrip("/")
 
+# --- Resume tailoring (services/llm.py) ---
+# bedrock: Claude on Amazon Bedrock. fake: a deterministic stand-in, for
+# tests and for local development without AWS. Defaults to fake outside prod.
+LLM_BACKEND = os.getenv("LLM_BACKEND", "bedrock" if APP_ENV == "prod" else "fake").strip().lower()
+# A Bedrock inference profile. Haiku 4.5 is the model enabled on this
+# account today; a Sonnet-class model tailors better once it is enabled.
+TAILOR_MODEL_ID = os.getenv("TAILOR_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
+LLM_TIMEOUT_S = float(os.getenv("LLM_TIMEOUT_S", "60"))
+LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "8000"))
+# Per signed-in person: each call costs real money.
+TAILOR_RATE_LIMIT = os.getenv("TAILOR_RATE_LIMIT", "10/day")
+EXTRACT_RATE_LIMIT = os.getenv("EXTRACT_RATE_LIMIT", "5/day")
+
 # --- Admin and notifications ---
 # Who may see the admin pages: signed-in people whose email is in this list,
 # comma-separated, compared lowercased. Empty means nobody. In cognito mode
@@ -269,6 +282,8 @@ def _check_rate_limits() -> None:
         "DELETE_ACCOUNT_RATE_LIMIT",
         "STATS_RATE_LIMIT",
         "REVIEW_RATE_LIMIT",
+        "TAILOR_RATE_LIMIT",
+        "EXTRACT_RATE_LIMIT",
     ):
         try:
             parse(globals()[name])
@@ -288,6 +303,7 @@ def _check_choices() -> None:
         ("AUTH_MODE", AUTH_MODE, ("local", "cognito")),
         ("STORAGE_BACKEND", STORAGE_BACKEND, ("local", "s3")),
         ("SECRETS_BACKEND", SECRETS_BACKEND, ("env", "secretsmanager")),
+        ("LLM_BACKEND", LLM_BACKEND, ("bedrock", "fake")),
     ):
         if value not in allowed:
             raise RuntimeError(
@@ -551,6 +567,8 @@ def _check_production() -> None:
         log.warning("ADMIN_EMAILS is empty in production: nobody can open the admin pages.")
     if not NOTIFY_TOPIC_ARN:
         log.warning("NOTIFY_TOPIC_ARN is empty in production: reviews are stored but not emailed.")
+    if LLM_BACKEND == "fake":
+        log.warning("LLM_BACKEND is fake in production: resume tailoring returns placeholders.")
 
 
 _check_choices()

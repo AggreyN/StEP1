@@ -5,6 +5,8 @@
                                            applications, resumes, reviews
     GET /admin/users/{id}/resume-file      a short-lived link to their resume
     GET /admin/resume-files/{token}        local storage only: that link
+    GET /admin/users/{id}/resumes/{rid}    one of their saved resumes, in full
+    GET /admin/users/{id}/resumes/{rid}/download?format=pdf|docx
 
 To anyone who is not an admin, signed in or not, every one of these answers
 as a path that does not exist (auth.current_admin).
@@ -18,17 +20,26 @@ from __future__ import annotations
 import logging
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app import config
 from app.auth import NOT_FOUND, current_admin
 from app.deps import get_db
-from app.models import Application, Posting, Profile, Review, SavedPosting, User
+from app.models import (
+    Application,
+    Posting,
+    Profile,
+    Review,
+    SavedPosting,
+    TailoredResume,
+    User,
+)
 from app.routes.applications import _detail
 from app.routes.profile import profile_out
 from app.schemas import (
@@ -38,6 +49,7 @@ from app.schemas import (
     AdminUserReviewOut,
     AdminUserRow,
     AdminUsersOut,
+    ResumeFullOut,
     ResumeSummaryOut,
 )
 from app.services import postings, storage
@@ -309,3 +321,54 @@ def local_resume_file(token: str):
         media_type="application/pdf",
         headers={"Content-Disposition": storage.attachment(str(claims.get("f") or "resume.pdf"))},
     )
+
+
+# --------------------------------------------------------------------------- #
+# Their saved resumes
+# --------------------------------------------------------------------------- #
+
+
+def _their_resume(db: Session, user_id: int, resume_id: int) -> TailoredResume:
+    resume = db.scalar(
+        select(TailoredResume)
+        .options(joinedload(TailoredResume.posting))
+        .where(TailoredResume.id == resume_id, TailoredResume.user_id == user_id)
+    )
+    if resume is None:
+        raise _not_found()
+    return resume
+
+
+@router.get("/admin/users/{user_id}/resumes/{resume_id}", response_model=ResumeFullOut)
+def user_resume(
+    user_id: int,
+    resume_id: int,
+    request: Request,
+    admin: User = Depends(current_admin),
+    db: Session = Depends(get_db),
+):
+    from app.routes.resumes import full
+
+    resume = _their_resume(db, user_id, resume_id)
+    _audit(request, admin, user_id, "GET /admin/users/{id}/resumes/{resume_id}")
+    return full(resume)
+
+
+@router.get(
+    "/admin/users/{user_id}/resumes/{resume_id}/download",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}}},
+)
+def user_resume_download(
+    user_id: int,
+    resume_id: int,
+    request: Request,
+    format: Literal["pdf", "docx"] = Query("pdf"),
+    admin: User = Depends(current_admin),
+    db: Session = Depends(get_db),
+):
+    from app.routes.resumes import download
+
+    resume = _their_resume(db, user_id, resume_id)
+    _audit(request, admin, user_id, "GET /admin/users/{id}/resumes/{resume_id}/download")
+    return download(resume, format)

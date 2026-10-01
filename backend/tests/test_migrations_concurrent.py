@@ -16,9 +16,9 @@ from sqlalchemy.engine import make_url
 from app import config
 
 BACKEND = Path(__file__).resolve().parent.parent
-TABLES = 16  # fifteen of the application's, and alembic_version
-HEAD = "0004"
-REVISIONS = 4
+TABLES = 18  # seventeen of the application's, and alembic_version
+HEAD = "0005"
+REVISIONS = 5
 
 
 @pytest.fixture()
