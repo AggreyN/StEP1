@@ -228,7 +228,7 @@ test.describe("the admin page", () => {
 
   test("if the API says 404, the admin page says not found too", async ({ page }) => {
     await signInDemo(page);
-    await page.evaluate(() => localStorage.setItem("step1.mock.fail", "404 GET /admin/reviews"));
+    await page.evaluate(() => localStorage.setItem("step1.mock.fail", "404 always GET /admin/reviews"));
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
   });
