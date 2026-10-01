@@ -31,9 +31,16 @@ import transitionsData from "./transitions.json";
 import ingestData from "./ingest.json";
 import statsData from "./stats.json";
 import reviewsData from "./reviews.json";
+import baseResumeData from "./base-resume.json";
+import tailorData from "./tailor.json";
+import adminUsersData from "./admin-users.json";
 import type {
   ApplicationDetail,
   ApplicationEvent,
+  BaseResume,
+  PostingKind,
+  ResumeDoc,
+  ResumeFull,
   FeedStatus,
   IngestStatus,
   Posting,
@@ -45,7 +52,8 @@ import { AUTH_MODE, COGNITO, REGISTRATION_OPEN } from "../config";
 import { roleLabel } from "../roles";
 
 const DELAY_MS = 300;
-const STORE_KEY = "step1.mock.v3";
+const TAILOR_DELAY_MS = 1700; // plus DELAY_MS: two seconds in all
+const STORE_KEY = "step1.mock.v4";
 const DEMO_EMAIL = "demo@umd.edu";
 
 
@@ -84,6 +92,10 @@ interface Account {
   buildShownAt?: number;
   /** Fingerprint of the password last used to sign in (see `fingerprint`). */
   pw: string | null;
+  /** The base resume, once saved. */
+  base?: BaseResume;
+  /** Saved tailored resumes. */
+  resumes?: ResumeFull[];
 }
 interface State {
   users: Record<string, MockUser>;
@@ -282,7 +294,10 @@ function paginate(list: Posting[], q: URLSearchParams) {
 }
 
 /** Same filter semantics the real /feed applies. */
-function filterFeed(q: URLSearchParams): Posting[] {
+/** The feed only shows the kinds of role the profile asks for, like the
+ *  other hard filters (terms, degree); `kind` narrows it further. */
+function filterFeed(q: URLSearchParams, lookingFor: PostingKind[]): Posting[] {
+  const kind = q.get("kind");
   const roles = (q.get("roles") || "").split(",").filter(Boolean);
   const location = (q.get("location") || "").trim().toLowerCase();
   const term = q.get("term") || "";
@@ -294,7 +309,9 @@ function filterFeed(q: URLSearchParams): Posting[] {
       (!location || p.locations.some((l) => l.toLowerCase().includes(location))) &&
       (!term || p.terms.includes(term)) &&
       (p.score ?? 0) >= minScore &&
-      (!remote || p.is_remote)
+      (!remote || p.is_remote) &&
+      lookingFor.includes(p.kind) &&
+      (!kind || p.kind === kind)
   );
 }
 
@@ -498,7 +515,7 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
   // ---- profile ----
   if (path === "/profile" && method === "GET") {
     const p = s.profiles[email];
-    return p ? ok(p) : err(404, "Profile not found");
+    return p ? ok({ ...p, looking_for: p.looking_for?.length ? p.looking_for : ["internship"] }) : err(404, "Profile not found");
   }
   if (path === "/profile" && method === "PUT") {
     const input = body as unknown as ProfileInput;
@@ -507,6 +524,10 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
       return err(422, "Pick 3 to 5 fields of interest.");
     }
     if (!input.major?.trim()) return err(422, "Major is required.");
+    const lookingFor = Array.isArray(input.looking_for)
+      ? input.looking_for.filter((k): k is PostingKind => k === "internship" || k === "new_grad")
+      : [];
+    if (!lookingFor.length) return err(422, "looking_for: Choose internships, new grad roles, or both.");
     const prev = s.profiles[email];
     let resume = s.resumes[email] ?? prev?.resume ?? null;
     if (resume && Array.isArray(input.skills)) resume = { ...resume, skills: input.skills };
@@ -525,6 +546,7 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
         .sort((a, b) => a.rank - b.rank)
         .map((i) => ({ role: i.role, label: roleLabel(i.role), rank: i.rank })),
       resume,
+      looking_for: [...new Set(lookingFor)],
       profile_version: version,
     };
     mine.buildStartedAt = Date.now();
@@ -575,7 +597,8 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
     if (!s.profiles[email]) return err(409, "Complete onboarding first");
     const sort = q.get("sort") ?? "recent"; // the API's default
     if (sort !== "recent" && sort !== "score") return err(422, "sort: must be 'recent' or 'score'");
-    return ok(paginate(sortPostings(filterFeed(q), sort).map((p) => decorate(p, mine)), q));
+    const lookingFor = s.profiles[email].looking_for?.length ? s.profiles[email].looking_for : (["internship"] as PostingKind[]);
+    return ok(paginate(sortPostings(filterFeed(q, lookingFor), sort).map((p) => decorate(p, mine)), q));
   }
 
   let m = path.match(/^\/postings\/(.+)$/);
@@ -662,7 +685,285 @@ function route(method: string, url: URL, body: Body, token: string | null): Mock
     }
   }
 
+  const extra = resumeRoutes(method, path, q, body, email, mine) ?? adminUserRoutes(method, path, q, email);
+  if (extra) return extra;
+
   return err(404, "Not found");
+}
+
+// ---------- resumes ----------
+
+const iso = (ms = Date.now()) => new Date(ms).toISOString().replace(/\.\d+Z$/, "Z");
+const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
+
+function baseFixture(): BaseResume {
+  const { _comment, ...b } = baseResumeData as BaseResume & { _comment?: string };
+  void _comment;
+  return clone(b);
+}
+
+/** The canned tailored draft: the base with Projects moved up and Skills trimmed. */
+function draftFrom(base: BaseResume, forPosting: boolean): ResumeDoc {
+  const doc: ResumeDoc = { name: base.name, contact: [...base.contact], sections: clone(base.sections) };
+  if (forPosting) {
+    const i = doc.sections.findIndex((x) => x.title === "Projects");
+    if (i > 0) doc.sections.splice(1, 0, ...doc.sections.splice(i, 1));
+  }
+  const skills = doc.sections.find((x) => x.title === "Skills");
+  if (skills?.entries[0]) skills.entries[0].lines = skills.entries[0].lines.map((l) => l.replace(", Tutoring", ""));
+  return doc;
+}
+
+function validDoc(doc: unknown): doc is ResumeDoc {
+  const d = doc as ResumeDoc;
+  return !!d && typeof d.name === "string" && Array.isArray(d.contact) && Array.isArray(d.sections);
+}
+
+function summaryOf(r: ResumeFull) {
+  const { doc, ...summary } = r;
+  void doc;
+  return summary;
+}
+
+function resumeRoutes(
+  method: string,
+  path: string,
+  q: URLSearchParams,
+  body: Body,
+  email: string,
+  mine: Account
+): MockResponse | null {
+  const s = db();
+  if (path === "/resume/base/extract" && method === "POST") {
+    if (!s.resumes[email] && !s.profiles[email]?.resume) return err(409, "Upload your resume first.");
+    return ok(baseFixture());
+  }
+  if (path === "/resume/base" && method === "GET") {
+    return mine.base ? ok(mine.base) : err(404, "No base resume yet.");
+  }
+  if (path === "/resume/base" && method === "PUT") {
+    const b = body as unknown as BaseResume;
+    if (!validDoc(b) || !Array.isArray(b.skill_inventory)) return err(422, "body: A resume needs a name, contact lines and sections.");
+    if (!b.name.trim()) return err(422, "name: Add your name.");
+    mine.base = clone(b);
+    persist();
+    return ok(mine.base);
+  }
+  if (path === "/tailor" && method === "POST") {
+    const postingId = typeof body?.posting_id === "string" ? body.posting_id : undefined;
+    const jobText = typeof body?.job_text === "string" ? body.job_text : undefined;
+    if ((postingId === undefined) === (jobText === undefined)) {
+      return err(422, "Give either a posting or the text of a job description, not both.");
+    }
+    if (jobText !== undefined && !jobText.trim()) return err(422, "job_text: Paste the job description.");
+    if (jobText !== undefined && jobText.length > 20000) return err(422, "job_text: A job description can be at most 20000 characters.");
+    if (!mine.base) return err(409, "Set up your base resume first.");
+    if (postingId !== undefined) {
+      const posting = POSTINGS.find((p) => p.id === postingId);
+      if (!posting) return err(404, "Posting not found");
+      const t = tailorData.posting;
+      return ok({
+        draft: draftFrom(mine.base, true),
+        report: { fit: t.fit, changes: t.changes, gaps: t.gaps, question: t.question },
+        suggested_name: `${posting.company.name}, ${posting.title}`.slice(0, 80),
+      });
+    }
+    const t = tailorData.text;
+    return ok({
+      draft: draftFrom(mine.base, false),
+      report: { fit: t.fit, changes: t.changes, gaps: t.gaps, question: t.question },
+      suggested_name: "Tailored resume",
+    });
+  }
+  if (path === "/resumes" && method === "GET") {
+    const items = [...(mine.resumes ?? [])].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).map(summaryOf);
+    return ok({ items });
+  }
+  if (path === "/resumes" && method === "POST") {
+    const name = typeof body?.name === "string" ? body.name.trim() : "";
+    if (!name || name.length > 80) return err(422, "name: Give it a name of 1 to 80 characters.");
+    if (!validDoc(body?.doc)) return err(422, "doc: A resume needs a name, contact lines and sections.");
+    const postingId = typeof body?.posting_id === "string" ? body.posting_id : null;
+    const posting = postingId ? POSTINGS.find((p) => p.id === postingId) : null;
+    if (postingId && !posting) return err(404, "Posting not found");
+    const now = iso();
+    const r: ResumeFull = {
+      id: s.nextId++,
+      name,
+      created_at: now,
+      updated_at: now,
+      posting: posting ? { id: posting.id, title: posting.title, company: posting.company.name } : null,
+      doc: clone(body!.doc as ResumeDoc),
+    };
+    mine.resumes = [...(mine.resumes ?? []), r];
+    persist();
+    return ok(r, 201);
+  }
+  const m = path.match(/^\/resumes\/(\d+)(\/download)?$/);
+  if (m) {
+    const r = (mine.resumes ?? []).find((x) => x.id === Number(m[1]));
+    if (!r) return err(404, "Resume not found");
+    if (m[2] && method === "GET") {
+      const format = q.get("format");
+      if (format !== "pdf" && format !== "docx") return err(422, "format: pdf or docx");
+      const filename = `${r.doc.name.replace(/\s+/g, "_")}_${r.name.replace(/[^\w]+/g, "_").replace(/^_|_$/g, "")}.${format}`;
+      const type =
+        format === "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      const text = format === "pdf" ? `%PDF-1.4\n% placeholder for ${r.name}\n%%EOF\n` : `placeholder DOCX for ${r.name}`;
+      return ok(new Blob([text], { type }), 200, {
+        "Content-Type": type,
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      });
+    }
+    if (!m[2] && method === "GET") return ok(r);
+    if (!m[2] && method === "PUT") {
+      if (body?.name !== undefined) {
+        const name = typeof body.name === "string" ? body.name.trim() : "";
+        if (!name || name.length > 80) return err(422, "name: Give it a name of 1 to 80 characters.");
+        r.name = name;
+      }
+      if (body?.doc !== undefined) {
+        if (!validDoc(body.doc)) return err(422, "doc: A resume needs a name, contact lines and sections.");
+        r.doc = clone(body.doc as ResumeDoc);
+      }
+      r.updated_at = iso();
+      persist();
+      return ok(r);
+    }
+    if (!m[2] && method === "DELETE") {
+      mine.resumes = (mine.resumes ?? []).filter((x) => x.id !== r.id);
+      persist();
+      return ok(null, 204);
+    }
+  }
+  return null;
+}
+
+// ---------- admin: people ----------
+
+interface FixturePerson {
+  id: number;
+  email: string;
+  display_name: string | null;
+  created_days_ago: number;
+  onboarded: boolean;
+  school: string | null;
+  major: string | null;
+  grad_year: number | null;
+  applications: number;
+  saved: number;
+  tailored_resumes: number;
+  has_resume: boolean;
+  last_active_hours_ago: number | null;
+}
+
+/** Everyone the admin can see: accounts made in this browser, then the
+ *  fictional students in admin-users.json. */
+function people() {
+  const s = db();
+  const HOUR = 3_600_000;
+  const live = Object.values(s.users).map((u) => {
+    const acc = s.accounts[u.email];
+    const prof = s.profiles[u.email];
+    return {
+      id: u.id,
+      email: u.email,
+      display_name: u.display_name,
+      created_at: iso(Date.now() - 30 * 24 * HOUR),
+      onboarded: !!prof,
+      school: prof?.school ?? null,
+      major: prof?.major ?? null,
+      grad_year: prof?.grad_year ?? null,
+      applications: acc?.apps.length ?? 0,
+      saved: acc?.saved.length ?? 0,
+      tailored_resumes: acc?.resumes?.length ?? 0,
+      has_resume: !!(s.resumes[u.email] ?? prof?.resume),
+      last_active_at: iso(),
+      live: true as const,
+    };
+  });
+  const fixture = (adminUsersData.items as FixturePerson[]).map(({ created_days_ago, last_active_hours_ago, ...p }) => ({
+    ...p,
+    created_at: iso(Date.now() - created_days_ago * 24 * HOUR),
+    last_active_at: last_active_hours_ago === null ? null : iso(Date.now() - last_active_hours_ago * HOUR),
+    live: false as const,
+  }));
+  return [...live, ...fixture];
+}
+
+function adminUserRoutes(method: string, path: string, q: URLSearchParams, email: string): MockResponse | null {
+  if (!path.startsWith("/admin/users")) return null;
+  if (!isAdmin(email)) return err(404, "Not found.");
+  const s = db();
+  if (path === "/admin/users" && method === "GET") {
+    const term = (q.get("q") ?? "").trim().toLowerCase();
+    const all = people()
+      .filter(
+        (p) =>
+          !term ||
+          [p.email, p.display_name ?? "", p.school ?? "", p.major ?? ""].some((v) => v.toLowerCase().includes(term))
+      )
+      .map(({ live, ...row }) => {
+        void live;
+        return row;
+      });
+    const page = Math.max(1, Number(q.get("page")) || 1);
+    const size = Math.min(100, Math.max(1, Number(q.get("page_size")) || 20));
+    return ok({ items: all.slice((page - 1) * size, page * size), page, total: all.length, has_more: page * size < all.length });
+  }
+  const m = path.match(/^\/admin\/users\/(\d+)(\/resume-file)?$/);
+  if (!m || method !== "GET") return null;
+  const person = people().find((p) => p.id === Number(m[1]));
+  if (!person) return err(404, "Not found.");
+  if (m[2]) {
+    if (!person.has_resume) return err(404, "This person hasn't uploaded a resume.");
+    const filename = s.resumes[person.email]?.filename ?? s.profiles[person.email]?.resume?.filename ?? "resume.pdf";
+    const blob = new Blob([`%PDF-1.4\n% placeholder for ${person.email}\n%%EOF\n`], { type: "application/pdf" });
+    return ok({ url: URL.createObjectURL(blob), filename, expires_at: iso(Date.now() + 5 * 60_000) });
+  }
+  if (person.live) {
+    const acc = account(person.email);
+    const prof = s.profiles[person.email] ?? null;
+    return ok({
+      user: { id: person.id, email: person.email, display_name: person.display_name, created_at: person.created_at, is_admin: isAdmin(person.email) },
+      profile: prof && { ...prof, looking_for: prof.looking_for?.length ? prof.looking_for : ["internship"] },
+      saved: POSTINGS.filter((p) => acc.saved.includes(p.id)).map((p) => decorate(p, acc)),
+      applications: acc.apps.map((a) => appDetail(a, acc)),
+      resumes: (acc.resumes ?? []).map(summaryOf),
+      reviews: (s.reviews ?? [])
+        .filter((r) => r.user?.email === person.email)
+        .map(({ user, ...r }) => {
+          void user;
+          return r;
+        }),
+    });
+  }
+  // A fictional student: a plausible profile and a little activity, made up on the spot.
+  const acc: Account = { saved: POSTINGS.slice(0, person.saved).map((p) => p.id), apps: [], buildStartedAt: null, pw: null };
+  return ok({
+    user: { id: person.id, email: person.email, display_name: person.display_name, created_at: person.created_at, is_admin: false },
+    profile: person.onboarded
+      ? {
+          ...(profileData as Profile),
+          school: person.school,
+          major: person.major,
+          minor: null,
+          grad_year: person.grad_year,
+          resume: person.has_resume ? { filename: "resume.pdf", uploaded_at: person.created_at, skills: ["Python", "SQL"], needs_ocr: false } : null,
+          looking_for: ["internship"],
+        }
+      : null,
+    saved: POSTINGS.slice(0, Math.min(person.saved, 5)).map((p) => decorate(p, acc)),
+    applications: [],
+    resumes: Array.from({ length: person.tailored_resumes }, (_, i) => ({
+      id: person.id * 10 + i,
+      name: `${POSTINGS[i].company.name}, ${POSTINGS[i].title}`,
+      created_at: person.created_at,
+      updated_at: person.created_at,
+      posting: { id: POSTINGS[i].id, title: POSTINGS[i].title, company: POSTINGS[i].company.name },
+    })),
+    reviews: [],
+  });
 }
 
 function record(line: string, body: unknown) {
@@ -688,8 +989,13 @@ function forcedFailure(method: string, path: string): MockResponse | null {
       const detail =
         path === "/reviews"
           ? "You've sent a lot of reviews today. Try again tomorrow."
-          : "Too many attempts. Wait a minute and try again.";
+          : path === "/tailor"
+            ? "You've tailored a lot of resumes today. Try again tomorrow."
+            : "Too many attempts. Wait a minute and try again.";
       return ok({ detail }, 429, { "Retry-After": "60" });
+    }
+    if (status === 503 && path === "/tailor") {
+      return err(503, "The resume writer is busy right now. Try again in a few minutes.");
     }
     return err(status, "The server had a problem. Nothing was changed. Try again.");
   } catch {
@@ -706,10 +1012,13 @@ export async function handle(
   await sleep(DELAY_MS);
   const url = new URL(pathAndQuery, "http://mock.local");
   record(`${method} ${url.pathname}${url.search}`, body);
+  // Tailoring is slow for real (10 to 40 seconds); two seconds here.
+  if (url.pathname === "/tailor") await sleep(TAILOR_DELAY_MS);
   const forced = forcedFailure(method, url.pathname);
   if (forced) return forced;
   // Deep-copy so callers can never mutate mock state by reference.
   const res = route(method, url, body as Body, token);
+  if (res.body instanceof Blob) return res;
   return { ...res, body: res.body == null ? null : JSON.parse(JSON.stringify(res.body)) };
 }
 

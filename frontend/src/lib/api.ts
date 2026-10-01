@@ -16,8 +16,16 @@ import type {
   ApplicationDetail,
   ApplicationSummary,
   AuthResponse,
+  AdminUserDetail,
+  AdminUserRow,
+  BaseResume,
   FeedFilters,
   FeedSort,
+  ResumeDoc,
+  ResumeFileLink,
+  ResumeFull,
+  ResumeSummary,
+  TailorResult,
   FeedStatus,
   IngestStatus,
   Me,
@@ -66,6 +74,8 @@ interface SendOpts {
   authRedirect?: boolean;
   /** set on the one retry after the token was renewed */
   renewed?: boolean;
+  /** a file comes back, not JSON: the body is a Blob */
+  binary?: boolean;
 }
 
 interface RawResponse {
@@ -122,6 +132,10 @@ async function send(method: string, path: string, opts: SendOpts = {}): Promise<
       });
     } catch {
       throw new ApiError(0, "Can't reach the StEP1 API. Check your connection and try again.");
+    }
+    if (opts.binary && r.ok) {
+      res = { status: r.status, headers: r.headers, body: await r.blob() };
+      return res;
     }
     const text = await r.text();
     let parsed: unknown = null;
@@ -302,6 +316,7 @@ function feedQuery(f: Partial<FeedFilters>, page: number, page_size: number, sor
     term: f.term || undefined,
     min_score: f.min_score ?? undefined,
     remote: f.remote ? "true" : undefined,
+    kind: f.kind || undefined,
   };
 }
 
@@ -375,4 +390,112 @@ export function addEvent(
   return json<ApplicationDetail>("POST", `/applications/${enc(String(id))}/events`, {
     body: ev,
   });
+}
+
+// ---------- admin: people ----------
+
+export function getAdminUsers(q: string, page = 1, page_size = PAGE_SIZE) {
+  return json<Page<AdminUserRow>>("GET", "/admin/users", { query: { q: q.trim() || undefined, page, page_size } });
+}
+
+export function getAdminUser(id: number | string) {
+  return json<AdminUserDetail>("GET", `/admin/users/${enc(String(id))}`);
+}
+
+/** A short-lived link to the person's uploaded resume. 404 if they have none. */
+export function getAdminUserResumeFile(id: number | string) {
+  return json<ResumeFileLink>("GET", `/admin/users/${enc(String(id))}/resume-file`);
+}
+
+// ---------- resumes ----------
+
+/** A first draft of the base resume, read from the uploaded file. */
+export function extractBaseResume() {
+  return json<BaseResume>("POST", "/resume/base/extract");
+}
+
+/** null when there is no base resume yet (404). */
+export async function getBaseResume(): Promise<BaseResume | null> {
+  try {
+    return await json<BaseResume>("GET", "/resume/base");
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return null;
+    throw e;
+  }
+}
+
+export function saveBaseResume(base: BaseResume) {
+  return json<BaseResume>("PUT", "/resume/base", { body: base });
+}
+
+/** Exactly one of posting_id and job_text. Takes 10 to 40 seconds. */
+export function tailorResume(input: { posting_id: string } | { job_text: string }) {
+  return json<TailorResult>("POST", "/tailor", { body: input });
+}
+
+export function createResume(input: { name: string; doc: ResumeDoc; posting_id?: string }) {
+  return json<ResumeFull>("POST", "/resumes", { body: input });
+}
+
+export async function listResumes(): Promise<ResumeSummary[]> {
+  return (await json<{ items: ResumeSummary[] }>("GET", "/resumes")).items;
+}
+
+export function getResume(id: number | string) {
+  return json<ResumeFull>("GET", `/resumes/${enc(String(id))}`);
+}
+
+export function updateResume(id: number | string, change: { name?: string; doc?: ResumeDoc }) {
+  return json<ResumeFull>("PUT", `/resumes/${enc(String(id))}`, { body: change });
+}
+
+export async function deleteResume(id: number | string): Promise<void> {
+  await send("DELETE", `/resumes/${enc(String(id))}`);
+}
+
+export type ResumeFormat = "pdf" | "docx";
+
+/** The file name the server gave, from Content-Disposition. The API must
+ *  list that header in Access-Control-Expose-Headers for a browser to read
+ *  it across origins; without it the fallback name is used. */
+export function filenameFrom(header: string | null, fallback: string): string {
+  if (header) {
+    const star = header.match(/filename\*\s*=\s*(?:UTF-8|utf-8)''([^;]+)/);
+    if (star) {
+      try {
+        return decodeURIComponent(star[1].trim().replace(/^"|"$/g, ""));
+      } catch {
+        // fall through to the plain form
+      }
+    }
+    const plain = header.match(/filename\s*=\s*"([^"]+)"|filename\s*=\s*([^;]+)/);
+    const name = plain?.[1] ?? plain?.[2]?.trim();
+    if (name) return name;
+  }
+  return fallback;
+}
+
+/** Fetches the rendered resume (with the bearer header) and returns it with
+ *  the server's file name. */
+export async function downloadResume(
+  id: number | string,
+  format: ResumeFormat,
+  fallbackName: string
+): Promise<{ blob: Blob; filename: string }> {
+  const res = await send("GET", `/resumes/${enc(String(id))}/download`, { query: { format }, binary: true });
+  const fallback = `${fallbackName.replace(/[^\w .-]+/g, "").trim() || "resume"}.${format}`;
+  return { blob: res.body as Blob, filename: filenameFrom(res.headers.get("Content-Disposition"), fallback) };
+}
+
+/** Hands a file to the browser to save. */
+export function saveFile(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
