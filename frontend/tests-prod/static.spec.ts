@@ -60,6 +60,11 @@ test.describe("the files", () => {
       "privacy.html",
       "review.html",
       "admin.html",
+      "admin/user.html",
+      "resume.html",
+      "tailor.html",
+      "resumes.html",
+      "resumes/edit.html",
       "404.html",
       "icon.svg",
     ]) {
@@ -89,7 +94,7 @@ test.describe("the files", () => {
     expect(expected).toContain("connect-src 'self';");
     expect(expected).not.toContain("frame-ancestors"); // not allowed in a <meta> tag; the header has it
     const pages = walk(OUT).filter((f) => f.endsWith(".html"));
-    expect(pages.length).toBeGreaterThanOrEqual(14);
+    expect(pages.length).toBeGreaterThanOrEqual(19);
     for (const f of pages) {
       const html = readFileSync(f, "utf8").replace(/&#x27;/g, "'");
       expect(html, path.relative(OUT, f)).toContain(`http-equiv="Content-Security-Policy" content="${expected}"`);
@@ -153,7 +158,7 @@ test.describe("deep links", () => {
   });
 
   test("signed-in pages send a signed-out visitor to sign in", async ({ page }) => {
-    for (const url of ["/", "/saved", "/applications", "/application?id=12", "/onboarding", "/onboarding/building", "/review", "/admin"]) {
+    for (const url of ["/", "/saved", "/applications", "/application?id=12", "/onboarding", "/onboarding/building", "/review", "/admin", "/admin?tab=users", "/admin/user?id=1", "/resume", "/tailor", "/resumes", "/resumes/edit?id=1"]) {
       const res = await page.goto(url);
       expect(res!.status(), url).toBe(200); // the file exists; the page itself asks for sign-in
       await expect(page, url).toHaveURL(/\/login$/);
@@ -172,6 +177,11 @@ test.describe("deep links", () => {
       ["/onboarding", async () => expect(page.getByLabel("Major")).toHaveValue("Information Science")],
       ["/review", async () => expect(page.getByRole("radio", { name: "5 stars" })).toBeVisible()],
       ["/admin", async () => expect(page.getByTestId("admin-review").first()).toBeVisible()],
+      ["/admin?tab=users", async () => expect(page.getByTestId("person-row").first()).toBeVisible()],
+      ["/admin/user?id=1", async () => expect(page.getByTestId("viewing-banner")).toBeVisible()],
+      ["/resume", async () => expect(page.getByTestId("base-empty")).toBeVisible()],
+      ["/tailor", async () => expect(page.getByTestId("job-text")).toBeVisible()],
+      ["/resumes", async () => expect(page.getByTestId("resumes-empty")).toBeVisible()],
     ];
     for (const [url, ready] of pages) {
       const res = await page.goto(url);
@@ -430,4 +440,28 @@ test("a non-admin deep-linking to /admin gets the not-found page", async ({ page
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+});
+
+test("tailoring works from the exported site: base, tailor, save, reopen, download", async ({ page }) => {
+  await signInDemo(page);
+  await page.goto("/resume");
+  await page.getByTestId("extract-base").click();
+  await page.getByTestId("save-base").click();
+  await expect(page.getByTestId("base-status")).toHaveText("Saved.");
+  await page.goto("/");
+  await page.getByTestId("posting-card").first().getByTestId("tailor-button").click();
+  await expect(page).toHaveURL(/\/tailor\?posting=/);
+  await expect(page.getByTestId("tailor-report")).toBeVisible({ timeout: 15_000 });
+  await page.reload(); // a reload of /tailor?posting= runs it again
+  await expect(page.getByTestId("tailor-report")).toBeVisible({ timeout: 15_000 });
+  await page.getByTestId("save-tailored").click();
+  await expect(page.getByTestId("tailored-status")).toContainText("Saved.");
+  await page.goto("/resumes");
+  await page.getByRole("link", { name: /^Open / }).click();
+  await expect(page).toHaveURL(/\/resumes\/edit\?id=\d+$/);
+  await page.reload();
+  await expect(page.getByTestId("resume-editor")).toBeVisible();
+  const download = page.waitForEvent("download");
+  await page.getByTestId("download-pdf").click();
+  expect((await download).suggestedFilename()).toMatch(/^Jordan_Ellis_.+\.pdf$/);
 });

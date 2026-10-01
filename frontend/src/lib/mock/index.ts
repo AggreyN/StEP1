@@ -994,6 +994,8 @@ function forcedFailure(method: string, path: string): MockResponse | null {
             : "Too many attempts. Wait a minute and try again.";
       return ok({ detail }, 429, { "Retry-After": "60" });
     }
+    if (status === 409 && path === "/resume/base/extract") return err(409, "Upload your resume first.");
+    if (status === 409 && path === "/tailor") return err(409, "Set up your base resume first.");
     if (status === 503 && path === "/tailor") {
       return err(503, "The resume writer is busy right now. Try again in a few minutes.");
     }

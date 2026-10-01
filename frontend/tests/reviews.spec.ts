@@ -205,7 +205,9 @@ test.describe("the admin page", () => {
   test("the Admin link is on the Profile page, for phones", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await signInDemo(page);
-    await expect(page.getByRole("navigation", { name: "Main" }).last().getByRole("link")).toHaveCount(4);
+    // the phone tab bar has its five tabs, and Admin is not one of them
+    const tabs = page.getByRole("navigation", { name: "Main" }).last().getByRole("link");
+    await expect(tabs).toHaveText(["Matches", "Saved", "Applications", "Resumes", "Profile"]);
     await page.goto("/onboarding");
     await page.getByTestId("profile-admin-link").click();
     await expect(page).toHaveURL(/\/admin$/);

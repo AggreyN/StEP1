@@ -239,9 +239,9 @@ export function ResumeEditor<T extends ResumeDoc & { skill_inventory?: string[] 
   return (
     <div className="space-y-4" data-testid="resume-editor">
       <section className="rounded-card border border-line bg-surface p-3.5 sm:p-5" aria-labelledby="ed-top">
-        <h3 id="ed-top" className="text-base font-semibold">
+        <h2 id="ed-top" className="text-base font-semibold">
           Name and contact
-        </h3>
+        </h2>
         <div className="mt-3 space-y-3">
           <Text label="Name" value={value.name} onChange={(v) => set({ name: v })} max={LIMITS.name} />
           <fieldset>
@@ -279,7 +279,7 @@ export function ResumeEditor<T extends ResumeDoc & { skill_inventory?: string[] 
           <li key={i}>
             <section className="rounded-card border border-line bg-surface p-3.5 sm:p-5" aria-label={section.title.trim() || `Section ${i + 1}`} data-testid="resume-section">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h3 className="min-w-0 truncate text-base font-semibold">{section.title.trim() || `Section ${i + 1}`}</h3>
+                <h2 className="min-w-0 truncate text-base font-semibold">{section.title.trim() || `Section ${i + 1}`}</h2>
                 <ItemButtons
                   what={`section ${section.title.trim() || i + 1}`}
                   index={i}
@@ -301,15 +301,15 @@ export function ResumeEditor<T extends ResumeDoc & { skill_inventory?: string[] 
 
       {withSkills && (
         <section className="rounded-card border border-line bg-surface p-3.5 sm:p-5" aria-labelledby="ed-skills">
-          <h3 id="ed-skills" className="text-base font-semibold">
+          <h2 id="ed-skills" className="text-base font-semibold">
             Every skill you have
-          </h3>
+          </h2>
           <p className="mt-0.5 text-sm text-muted">
             Tailored resumes pick from this list, so put everything here, even what doesn&apos;t fit on one page.
           </p>
           <div className="mt-3">
             <ChipInput
-              label="Skills"
+              label="Skill list"
               value={value.skill_inventory ?? []}
               onChange={(v) => set({ skill_inventory: v })}
               placeholder="Python"
