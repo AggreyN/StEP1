@@ -11,8 +11,12 @@ const NAV = [
   { href: "/", label: "Matches" },
   { href: "/saved", label: "Saved" },
   { href: "/applications", label: "Applications" },
+  { href: "/resumes", label: "Resumes" },
   { href: "/onboarding", label: "Profile" },
 ];
+
+/** Pages that belong to a tab without living under its address. */
+const ALSO = { "/resumes": ["/resume", "/tailor"], "/applications": ["/application"] } as Record<string, string[]>;
 
 export function Wordmark() {
   return (
@@ -25,23 +29,24 @@ export function Wordmark() {
 export function AppShell({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   const path = usePathname();
   const router = useRouter();
-  const active = (href: string) =>
-    href === "/" ? path === "/" : path === href || path.startsWith(href + "/");
+  const under = (href: string) => path === href || path.startsWith(href + "/");
+  const active = (href: string) => (href === "/" ? path === "/" : under(href) || (ALSO[href] ?? []).some(under));
   const width = wide ? "max-w-6xl" : "max-w-3xl";
   // The owner's Admin link, desktop header only. On a phone it sits on the
-  // Profile page instead, so the tab bar keeps four items.
+  // Profile page instead, so the tab bar keeps five items.
   const me = useMe();
   const desktopNav = me?.is_admin ? [...NAV, { href: "/admin", label: "Admin" }] : NAV;
 
   return (
     <div className="flex min-h-screen flex-col pb-14 sm:pb-0">
-      <a
-        href="#content"
-        className="sr-only rounded-control bg-surface px-3 py-2 text-sm font-medium text-fg focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-30"
-      >
-        Skip to content
-      </a>
       <header className="sticky top-0 z-20 border-b border-line bg-surface/95 backdrop-blur">
+        {/* Inside the banner landmark, so it is never content outside a landmark. */}
+        <a
+          href="#content"
+          className="sr-only rounded-control bg-surface px-3 py-2 text-sm font-medium text-fg focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-30"
+        >
+          Skip to content
+        </a>
         <div className={`mx-auto flex h-12 items-center gap-2 px-4 sm:h-14 ${width}`}>
           <Link href="/" className="mr-2 sm:mr-6">
             <Wordmark />
@@ -84,14 +89,14 @@ export function AppShell({ children, wide = false }: { children: ReactNode; wide
 
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-20 grid h-14 grid-cols-4 border-t border-line bg-surface sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 grid h-14 grid-cols-5 border-t border-line bg-surface sm:hidden"
       >
         {NAV.map((n) => (
           <Link
             key={n.href}
             href={n.href}
             aria-current={active(n.href) ? "page" : undefined}
-            className={`flex items-center justify-center text-[13px] ${
+            className={`flex min-w-0 items-center justify-center px-0.5 text-[12px] ${
               active(n.href) ? "font-semibold text-fg shadow-[inset_0_2px_0_var(--accent)]" : "text-muted"
             }`}
           >

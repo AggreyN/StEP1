@@ -95,13 +95,18 @@ export interface Posting {
   /** null when the source list did not give a date */
   date_posted: string | null;
   salary: Salary | null;
+  /** Which list it came from. New lists bring new values; show unknown ones as they are. */
   source: string;
+  /** An internship, or a full-time role for new graduates. */
+  kind: PostingKind;
   /** null when the posting has not been scored for this user */
   score: number | null;
   reasons: Reason[];
   saved: boolean;
   application: PostingApplicationRef | null;
 }
+
+export type PostingKind = "internship" | "new_grad";
 
 export interface Page<T> {
   items: T[];
@@ -141,6 +146,8 @@ export interface Profile {
   remote_ok: boolean;
   interests: Interest[];
   resume: Resume | null;
+  /** What they want to see. At least one; ["internship"] by default. */
+  looking_for: PostingKind[];
   profile_version: number;
 }
 
@@ -155,6 +162,7 @@ export interface ProfileInput {
   preferred_locations: string[];
   remote_ok: boolean;
   interests: { role: string; rank: number }[];
+  looking_for: PostingKind[];
   skills?: string[];
 }
 
@@ -235,4 +243,91 @@ export interface FeedFilters {
   term: string;
   min_score: number | null;
   remote: boolean;
+  /** "" for any kind */
+  kind: PostingKind | "";
+}
+
+// ---------- resumes ----------
+
+export interface ResumeEntry {
+  heading: string;
+  right: string;
+  sub: string;
+  sub_right: string;
+  lines: string[];
+}
+
+export interface ResumeSection {
+  title: string;
+  entries: ResumeEntry[];
+}
+
+/** A resume as structured text. Rendered to PDF or DOCX by the API. */
+export interface ResumeDoc {
+  name: string;
+  contact: string[];
+  sections: ResumeSection[];
+}
+
+/** The resume every tailored one is built from, plus every skill they have. */
+export interface BaseResume extends ResumeDoc {
+  skill_inventory: string[];
+}
+
+export interface ResumeSummary {
+  id: number;
+  name: string;
+  created_at: string;
+  updated_at: string;
+  posting: { id: string; title: string; company: string } | null;
+}
+
+export interface ResumeFull extends ResumeSummary {
+  doc: ResumeDoc;
+}
+
+export interface TailorReport {
+  fit: string;
+  changes: string[];
+  gaps: string[];
+  question: string | null;
+}
+
+export interface TailorResult {
+  draft: ResumeDoc;
+  report: TailorReport;
+  suggested_name: string;
+}
+
+// ---------- admin: people ----------
+
+export interface AdminUserRow {
+  id: number;
+  email: string;
+  display_name: string | null;
+  created_at: string;
+  onboarded: boolean;
+  school: string | null;
+  major: string | null;
+  grad_year: number | null;
+  applications: number;
+  saved: number;
+  tailored_resumes: number;
+  has_resume: boolean;
+  last_active_at: string | null;
+}
+
+export interface AdminUserDetail {
+  user: { id: number; email: string; display_name: string | null; created_at: string; is_admin: boolean };
+  profile: Profile | null;
+  saved: Posting[];
+  applications: ApplicationDetail[];
+  resumes: ResumeSummary[];
+  reviews: Review[];
+}
+
+export interface ResumeFileLink {
+  url: string;
+  filename: string;
+  expires_at: string;
 }

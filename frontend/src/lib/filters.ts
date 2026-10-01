@@ -12,9 +12,10 @@ export const EMPTY_FILTERS: FeedFilters = {
   term: "",
   min_score: null,
   remote: false,
+  kind: "",
 };
 
-export type FilterKey = "roles" | "location" | "term" | "min_score" | "remote";
+export type FilterKey = "roles" | "location" | "term" | "min_score" | "remote" | "kind";
 
 export function filtersFromParams(p: URLSearchParams): FeedFilters {
   const ms = Number(p.get("min_score"));
@@ -24,6 +25,7 @@ export function filtersFromParams(p: URLSearchParams): FeedFilters {
     term: p.get("term") || "",
     min_score: p.get("min_score") && Number.isFinite(ms) && ms > 0 ? ms : null,
     remote: p.get("remote") === "true",
+    kind: p.get("kind") === "new_grad" ? "new_grad" : p.get("kind") === "internship" ? "internship" : "",
   };
 }
 
@@ -34,6 +36,7 @@ export function filtersToParams(f: FeedFilters): URLSearchParams {
   if (f.term) p.set("term", f.term);
   if (f.min_score) p.set("min_score", String(f.min_score));
   if (f.remote) p.set("remote", "true");
+  if (f.kind) p.set("kind", f.kind);
   return p;
 }
 
@@ -64,6 +67,7 @@ export function activeFilterKeys(f: FeedFilters): FilterKey[] {
   if (f.term) keys.push("term");
   if (f.min_score) keys.push("min_score");
   if (f.remote) keys.push("remote");
+  if (f.kind) keys.push("kind");
   return keys;
 }
 
@@ -77,6 +81,7 @@ export const FILTER_NAMES: Record<FilterKey, string> = {
   term: "term filter",
   min_score: "minimum score",
   remote: "remote-only filter",
+  kind: "internship or new grad filter",
 };
 
 function listJoin(items: string[]): string {
@@ -88,7 +93,8 @@ function listJoin(items: string[]): string {
 export function describe(f: FeedFilters, omit?: FilterKey): string {
   const remote = f.remote && omit !== "remote" ? "remote " : "";
   const roles = f.roles.length && omit !== "roles" ? listJoin(f.roles.map(roleLabel)) + " " : "";
-  let s = `${remote}${roles}postings`;
+  const kind = omit === "kind" ? "" : f.kind === "new_grad" ? "new grad " : f.kind === "internship" ? "internship " : "";
+  let s = `${remote}${roles}${kind}postings`;
   if (f.location && omit !== "location") s += ` in ${f.location}`;
   if (f.term && omit !== "term") s += ` for ${f.term}`;
   if (f.min_score && omit !== "min_score") s += ` scoring ${f.min_score}+`;
@@ -101,6 +107,7 @@ const RELAXED_SUFFIX: Record<FilterKey, string> = {
   term: "in other terms",
   min_score: "at lower scores",
   remote: "including on-site",
+  kind: "of the other kind",
 };
 
 export interface Relaxation {

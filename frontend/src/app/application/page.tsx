@@ -111,6 +111,13 @@ function ApplicationDetail() {
                   >
                     Original posting <ExternalIcon />
                   </a>
+                  <Link
+                    href={`/tailor?posting=${encodeURIComponent(app.posting.id)}`}
+                    data-testid="tailor-button"
+                    className="font-medium text-accent-text underline underline-offset-2"
+                  >
+                    Tailor resume
+                  </Link>
                 </div>
               </div>
             </div>

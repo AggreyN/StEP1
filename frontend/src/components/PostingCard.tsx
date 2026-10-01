@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatSalary, postedAge } from "@/lib/format";
 import { kindLabel } from "@/lib/labels";
 import { applicationHref } from "@/lib/routes";
+import { sourceLabel } from "@/lib/site";
 import type { Posting } from "@/lib/types";
 import { CheckIcon, ExternalIcon, StarIcon } from "./icons";
 import { ScoreBadge } from "./ScoreBadge";
@@ -93,6 +94,13 @@ export function PostingCard({
         )}
 
         <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px] text-muted">
+          {p.kind === "new_grad" && (
+            <span data-testid="new-grad-tag">
+              <Chip tone="strong" className="font-medium">
+                New grad
+              </Chip>
+            </span>
+          )}
           {p.role_labels.map((l) => (
             <Chip key={l} tone="outline">
               {l}
@@ -105,6 +113,9 @@ export function PostingCard({
           ))}
           {salary && <span className="tnum whitespace-nowrap">{salary}</span>}
           {age && <span className="whitespace-nowrap text-faint">Posted {age}</span>}
+          <span className="whitespace-nowrap text-faint" data-testid="posting-source">
+            via {sourceLabel(p.source)}
+          </span>
         </div>
 
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
@@ -128,6 +139,14 @@ export function PostingCard({
               I applied
             </button>
           )}
+          <Link
+            href={`/tailor?posting=${encodeURIComponent(p.id)}`}
+            data-testid="tailor-button"
+            aria-label={`Tailor resume for ${p.title} at ${p.company.name}`}
+            className="inline-flex h-10 items-center rounded-control border border-line-strong bg-surface px-3 text-sm font-medium hover:bg-surface-2 sm:h-9"
+          >
+            Tailor resume
+          </Link>
           <a
             href={p.url}
             target="_blank"

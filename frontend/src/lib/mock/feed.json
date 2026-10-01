@@ -64,7 +64,8 @@
         }
       ],
       "saved": true,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:b87123b4-93ac-13cd-350e-1fb948bf4e63",
@@ -128,7 +129,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:1774a3c6-f506-a36f-0e3e-a1f0a09fd896",
@@ -191,7 +193,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:7bc99d29-68c0-3c40-18e3-4772eceeb02e",
@@ -259,7 +262,8 @@
       "application": {
         "id": 15,
         "status": "applied"
-      }
+      },
+      "kind": "internship"
     },
     {
       "id": "simplify:1bafdb0e-db69-c5ef-2858-4fdd109cacc2",
@@ -314,7 +318,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "vanshb03:aef7db1e-9a55-e124-3b8a-8b03773e20ca",
@@ -369,7 +374,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:760e52c4-1557-0de3-a90c-b5aea74a6d07",
@@ -421,7 +427,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "vanshb03:529bf8c3-f5b6-67f2-3c43-d97eaf251fd7",
@@ -479,7 +486,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:ac02e327-c664-b81e-0b38-4584d1502064",
@@ -527,7 +535,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:9a5e7e29-0251-947b-cc3b-3121ae79507c",
@@ -592,7 +601,8 @@
       "application": {
         "id": 12,
         "status": "interview_scheduled"
-      }
+      },
+      "kind": "internship"
     },
     {
       "id": "simplify:f36adff1-6e47-a4f3-3b0e-a3dab89b3069",
@@ -655,7 +665,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:3f6bc0f5-61f2-3915-e768-87ec8726d54c",
@@ -716,7 +727,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "vanshb03:06d2ec6d-bac8-61ad-aed7-33320e5a6d2b",
@@ -770,7 +782,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:56eddc95-bf04-4061-5751-05b79459517c",
@@ -833,7 +846,8 @@
         }
       ],
       "saved": true,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:9fb7c36d-1863-7c62-49c8-42e79e5b317b",
@@ -881,7 +895,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:f5bdb088-2ef1-4007-3fa5-b2a30b4cdeed",
@@ -944,7 +959,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:da8f20b3-5580-3be8-e7e3-1a14f436d639",
@@ -1001,7 +1017,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "vanshb03:e1aa4242-0379-9de7-1383-7f79e6e1ec0a",
@@ -1029,7 +1046,7 @@
       "url": "https://careers.marriott.com/careers/jobs/6df52586",
       "date_posted": "2026-09-09T00:00:00Z",
       "salary": null,
-      "source": "vanshb03",
+      "source": "jobright_data_analysis",
       "score": 71,
       "reasons": [
         {
@@ -1054,7 +1071,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:48b7cf41-d84d-22ec-b9cf-cede6824f578",
@@ -1109,7 +1127,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:93742b7a-d60a-fa52-a0fd-f84432376e05",
@@ -1173,7 +1192,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:db2c3539-4c25-7957-d1a6-c56a5eb1e5d0",
@@ -1217,7 +1237,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "vanshb03:981c6155-e098-cf70-d04a-6b4c0474bd4c",
@@ -1257,7 +1278,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:aba0099c-ef5e-2188-11d6-b91d66811104",
@@ -1299,7 +1321,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:53f1f755-82f8-5f4f-823b-9dc2c1b3f35c",
@@ -1341,7 +1364,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:40660ea5-054a-6a54-ce25-8b160e64b032",
@@ -1397,7 +1421,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "vanshb03:3a763baf-a746-8f37-f56b-06dd575f9bd6",
@@ -1427,7 +1452,7 @@
       "url": "https://www.hudsonrivertrading.com/careers/jobs/073d3d23",
       "date_posted": "2026-09-05T00:00:00Z",
       "salary": null,
-      "source": "vanshb03",
+      "source": "zapply_internships",
       "score": 35,
       "reasons": [
         {
@@ -1437,7 +1462,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:afb727ab-b374-d698-a5be-4a26dcf67caf",
@@ -1477,7 +1503,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:a8aaaa05-f63a-fdd1-a253-4efb8c919a28",
@@ -1510,7 +1537,7 @@
         "max": 58,
         "unit": "hour"
       },
-      "source": "simplify",
+      "source": "jobright_product_management",
       "score": 47,
       "reasons": [
         {
@@ -1520,7 +1547,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "vanshb03:f3a2a70b-ad63-33f4-8b04-af0d29ba6b28",
@@ -1550,7 +1578,7 @@
       "url": "https://www.uber.com/careers/careers/jobs/868ac614",
       "date_posted": "2026-08-30T00:00:00Z",
       "salary": null,
-      "source": "vanshb03",
+      "source": "a_list_we_have_not_heard_of",
       "score": 44,
       "reasons": [
         {
@@ -1565,7 +1593,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:0d9f0793-fe37-5443-63f3-ad0b83fdcb77",
@@ -1612,7 +1641,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:d2a01b33-8b64-4110-5b3c-1f1e6c74967e",
@@ -1671,7 +1701,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "vanshb03:367ceb23-88c5-d4aa-fdc0-5d067e4c964e",
@@ -1712,7 +1743,8 @@
       "application": {
         "id": 7,
         "status": "rejected"
-      }
+      },
+      "kind": "internship"
     },
     {
       "id": "simplify:0410502f-a8c8-e6d9-129b-e66518f42643",
@@ -1772,7 +1804,8 @@
         }
       ],
       "saved": true,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:ab5e0a0b-2329-fce0-128e-57c37b445bc7",
@@ -1820,7 +1853,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "vanshb03:5097a6b0-2f0b-5261-4f39-9014db1aef1e",
@@ -1883,7 +1917,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:169199da-8215-2a0b-0967-e4bbe70618a7",
@@ -1945,7 +1980,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:a3e10e16-b286-d2b9-2394-301f0ad2f8f8",
@@ -2009,7 +2045,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:718c8375-0580-cdf0-3036-36a1f52dc44c",
@@ -2073,7 +2110,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "vanshb03:36572015-ed36-193e-09d7-9f9817a4a9f1",
@@ -2120,7 +2158,8 @@
       "application": {
         "id": 9,
         "status": "ghosted"
-      }
+      },
+      "kind": "internship"
     },
     {
       "id": "simplify:026a2268-1002-b9e2-75d5-a7346f10954b",
@@ -2163,7 +2202,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "vanshb03:d9969eee-12b6-d286-b31e-a13ac9501fcf",
@@ -2228,7 +2268,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:c52e96b8-a22d-4a00-424d-79ed135f7765",
@@ -2271,7 +2312,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "vanshb03:3792af9d-7084-e8b5-ffa8-8f0a9b7980a7",
@@ -2316,7 +2358,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:70c15b32-3f7a-063a-81cc-dbe2ea14ea79",
@@ -2368,7 +2411,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:f4e93f6e-8e87-f07f-0c9e-95888a8f790e",
@@ -2411,7 +2455,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:a857adbe-705d-832d-5bdf-0c716d07403e",
@@ -2464,7 +2509,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "vanshb03:a3909155-e904-bfb0-4c12-7a14a4255a87",
@@ -2512,7 +2558,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:e3208b58-55e6-8d75-fc07-3779313674ec",
@@ -2553,7 +2600,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:d6483aa4-a057-3cf9-ed9a-5fb3363c9e39",
@@ -2615,7 +2663,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "vanshb03:c12d8105-afbf-b939-0c96-b1b055291fdb",
@@ -2668,7 +2717,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:89f7c9e2-4e4e-bbcb-0834-6dcb1c2e9016",
@@ -2725,7 +2775,8 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
     },
     {
       "id": "simplify:96cdd534-6697-3901-1ab9-1a54faa01a77",
@@ -2754,7 +2805,7 @@
       "url": "https://corporate.visa.com/careers/careers/jobs/dc4bc07a",
       "date_posted": "2026-08-25T00:00:00Z",
       "salary": null,
-      "source": "simplify",
+      "source": "speedyapply_ai",
       "score": 39,
       "reasons": [
         {
@@ -2769,7 +2820,272 @@
         }
       ],
       "saved": false,
-      "application": null
+      "application": null,
+      "kind": "internship"
+    },
+    {
+      "id": "simplify_new_grad:b9650062-3267-6f80-0396-9cc989bb6f17",
+      "title": "Associate Software Engineer",
+      "company": {
+        "name": "Capital One",
+        "url": "https://www.capitalone.com"
+      },
+      "roles": [
+        "software"
+      ],
+      "role_labels": [
+        "Software Engineering"
+      ],
+      "locations": [
+        "McLean, VA"
+      ],
+      "is_remote": false,
+      "terms": [],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.capitalone.com/careers/0f475814",
+      "date_posted": "2026-09-24T00:00:00Z",
+      "salary": {
+        "min": 120000,
+        "max": 135000,
+        "unit": "year"
+      },
+      "source": "simplify_new_grad",
+      "score": 88,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 4 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null,
+      "kind": "new_grad"
+    },
+    {
+      "id": "simplify_new_grad:8a7a9cae-ae66-46a3-6d9e-008920294601",
+      "title": "Data Scientist, Entry Level",
+      "company": {
+        "name": "Booz Allen Hamilton",
+        "url": "https://www.boozallen.com"
+      },
+      "roles": [
+        "ai_ml_data"
+      ],
+      "role_labels": [
+        "AI / ML / Data Science"
+      ],
+      "locations": [
+        "Washington, DC"
+      ],
+      "is_remote": false,
+      "terms": [],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.boozallen.com/careers/ddd0115e",
+      "date_posted": "2026-09-22T00:00:00Z",
+      "salary": null,
+      "source": "simplify_new_grad",
+      "score": 82,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "AI / ML / Data Science"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 6 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null,
+      "kind": "new_grad"
+    },
+    {
+      "id": "speedyapply_ai:a54b861d-0e69-b40e-6dd4-093590203649",
+      "title": "Software Engineer I",
+      "company": {
+        "name": "Datadog",
+        "url": "https://www.datadoghq.com"
+      },
+      "roles": [
+        "software"
+      ],
+      "role_labels": [
+        "Software Engineering"
+      ],
+      "locations": [
+        "New York, NY",
+        "Remote in USA"
+      ],
+      "is_remote": true,
+      "terms": [],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.datadoghq.com/careers/580fa569",
+      "date_posted": "2026-09-19T00:00:00Z",
+      "salary": {
+        "min": 130000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "source": "speedyapply_ai",
+      "score": 76,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Software Engineering"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 9 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null,
+      "kind": "new_grad"
+    },
+    {
+      "id": "zapply_internships:411b9a37-ad1e-9ef2-80ba-e135e4853763",
+      "title": "Technology Consulting Analyst",
+      "company": {
+        "name": "Deloitte",
+        "url": "https://www2.deloitte.com"
+      },
+      "roles": [
+        "tech_consulting"
+      ],
+      "role_labels": [
+        "Technology Consulting"
+      ],
+      "locations": [
+        "Arlington, VA"
+      ],
+      "is_remote": false,
+      "terms": [],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www2.deloitte.com/careers/be8cc21a",
+      "date_posted": "2026-09-17T00:00:00Z",
+      "salary": null,
+      "source": "zapply_internships",
+      "score": 58,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Technology Consulting"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 11 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null,
+      "kind": "new_grad"
+    },
+    {
+      "id": "simplify_new_grad:6da8e551-e418-023b-c55d-8cbfb34c0ee6",
+      "title": "Cybersecurity Engineer, New Graduate",
+      "company": {
+        "name": "Johns Hopkins APL",
+        "url": "https://www.jhuapl.edu"
+      },
+      "roles": [
+        "security"
+      ],
+      "role_labels": [
+        "Security"
+      ],
+      "locations": [
+        "Laurel, MD"
+      ],
+      "is_remote": false,
+      "terms": [],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.jhuapl.edu/careers/b7897b6e",
+      "date_posted": "2026-09-26T00:00:00Z",
+      "salary": {
+        "min": 95000,
+        "max": 110000,
+        "unit": "year"
+      },
+      "source": "simplify_new_grad",
+      "score": 84,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches your #1 field",
+          "detail": "Security"
+        },
+        {
+          "code": "fresh",
+          "label": "Posted 2 days ago",
+          "detail": null
+        }
+      ],
+      "saved": false,
+      "application": null,
+      "kind": "new_grad"
+    },
+    {
+      "id": "simplify_new_grad:34132319-ea07-8bc5-7a08-ec173cb0fdac",
+      "title": "Solutions Architect, Early Career",
+      "company": {
+        "name": "Amazon Web Services",
+        "url": "https://www.amazon.jobs"
+      },
+      "roles": [
+        "solutions_architecture"
+      ],
+      "role_labels": [
+        "Solutions & Sales Engineering"
+      ],
+      "locations": [
+        "Herndon, VA"
+      ],
+      "is_remote": false,
+      "terms": [],
+      "degrees": [
+        "Bachelor's"
+      ],
+      "url": "https://www.amazon.jobs/careers/1d77ef78",
+      "date_posted": "2026-09-13T00:00:00Z",
+      "salary": {
+        "min": 110000,
+        "max": null,
+        "unit": "year"
+      },
+      "source": "simplify_new_grad",
+      "score": 71,
+      "reasons": [
+        {
+          "code": "role_rank",
+          "label": "Matches one of your fields",
+          "detail": "Solutions & Sales Engineering"
+        }
+      ],
+      "saved": false,
+      "application": null,
+      "kind": "new_grad"
     }
   ]
 }

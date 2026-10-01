@@ -5,21 +5,57 @@
   "degree_level": "Bachelor's",
   "grad_year": 2028,
   "gpa": 3.7,
-  "target_terms": ["Summer 2027"],
-  "preferred_locations": ["Washington, DC"],
+  "target_terms": [
+    "Summer 2027"
+  ],
+  "preferred_locations": [
+    "Washington, DC"
+  ],
   "remote_ok": true,
   "interests": [
-    { "role": "software", "label": "Software Engineering", "rank": 1 },
-    { "role": "ai_ml_data", "label": "AI / ML / Data Science", "rank": 2 },
-    { "role": "security", "label": "Security", "rank": 3 },
-    { "role": "solutions_architecture", "label": "Solutions & Sales Engineering", "rank": 4 },
-    { "role": "data_analytics", "label": "Data & Business Analytics", "rank": 5 }
+    {
+      "role": "software",
+      "label": "Software Engineering",
+      "rank": 1
+    },
+    {
+      "role": "ai_ml_data",
+      "label": "AI / ML / Data Science",
+      "rank": 2
+    },
+    {
+      "role": "security",
+      "label": "Security",
+      "rank": 3
+    },
+    {
+      "role": "solutions_architecture",
+      "label": "Solutions & Sales Engineering",
+      "rank": 4
+    },
+    {
+      "role": "data_analytics",
+      "label": "Data & Business Analytics",
+      "rank": 5
+    }
   ],
   "resume": {
     "filename": "resume.pdf",
     "uploaded_at": "2026-09-01T14:02:00Z",
-    "skills": ["Python", "SQL", "Java", "React", "AWS", "Linux", "Git", "Tableau"],
+    "skills": [
+      "Python",
+      "SQL",
+      "Java",
+      "React",
+      "AWS",
+      "Linux",
+      "Git",
+      "Tableau"
+    ],
     "needs_ocr": false
   },
-  "profile_version": 3
+  "profile_version": 3,
+  "looking_for": [
+    "internship"
+  ]
 }

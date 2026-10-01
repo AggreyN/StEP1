@@ -8,7 +8,7 @@ import { getProfile, putProfile, uploadResume, validateResume } from "@/lib/api"
 import { useRequireAuth } from "@/lib/auth";
 import { DEFAULT_SCHOOL, DEGREE_LEVELS, TERMS } from "@/lib/labels";
 import { LIMITS, tooLong } from "@/lib/limits";
-import type { Profile, Resume } from "@/lib/types";
+import type { PostingKind, Profile, Resume } from "@/lib/types";
 import { AppShell } from "@/components/AppShell";
 import { ChipInput } from "@/components/ChipInput";
 import { DeleteAccount } from "@/components/DeleteAccount";
@@ -58,6 +58,11 @@ function Field({
 
 const thisYear = new Date().getFullYear();
 
+const LOOKING_FOR: { value: PostingKind; label: string }[] = [
+  { value: "internship", label: "Internships" },
+  { value: "new_grad", label: "New grad roles" },
+];
+
 export default function OnboardingPage() {
   const authed = useRequireAuth();
   const router = useRouter();
@@ -73,6 +78,7 @@ export default function OnboardingPage() {
   const [degree, setDegree] = useState("Bachelor's");
   const [gradYear, setGradYear] = useState(String(thisYear + 2));
   const [terms, setTerms] = useState<string[]>(["Summer 2027"]);
+  const [lookingFor, setLookingFor] = useState<PostingKind[]>(["internship"]);
   const [locations, setLocations] = useState<string[]>([]);
   const [remoteOk, setRemoteOk] = useState(true);
   const [interests, setInterests] = useState<string[]>([]);
@@ -100,6 +106,7 @@ export default function OnboardingPage() {
           if (p.degree_level) setDegree(p.degree_level);
           if (p.grad_year) setGradYear(String(p.grad_year));
           setTerms(p.target_terms);
+          setLookingFor(p.looking_for?.length ? p.looking_for : ["internship"]);
           setLocations(p.preferred_locations);
           setRemoteOk(p.remote_ok);
           setInterests([...p.interests].sort((a, b) => a.rank - b.rank).map((i) => i.role));
@@ -145,6 +152,7 @@ export default function OnboardingPage() {
     school.trim() &&
     major.trim() &&
     terms.length > 0 &&
+    lookingFor.length > 0 &&
     Number.isInteger(gradYearNum) &&
     gradYearNum >= thisYear - 1 &&
     gradYearNum <= thisYear + 8 &&
@@ -165,6 +173,7 @@ export default function OnboardingPage() {
         degree_level: degree,
         grad_year: gradYearNum,
         target_terms: terms,
+        looking_for: lookingFor,
         preferred_locations: locations,
         remote_ok: remoteOk,
         interests: interests.map((role, i) => ({ role, rank: i + 1 })),
@@ -233,8 +242,38 @@ export default function OnboardingPage() {
             </div>
           </Section>
 
-          <Section title="When and where" hint="Terms you can intern, places you'd go.">
-            <p className="mb-2 text-sm font-medium">Target terms</p>
+          <Section title="When and where" hint="What you're after, when, and where you'd go.">
+            <p className="mb-2 text-sm font-medium" id="looking-for-label">
+              Looking for
+            </p>
+            <div className="flex flex-wrap gap-2" role="group" aria-labelledby="looking-for-label" data-testid="looking-for">
+              {LOOKING_FOR.map((k) => {
+                const on = lookingFor.includes(k.value);
+                return (
+                  <button
+                    type="button"
+                    key={k.value}
+                    aria-pressed={on}
+                    onClick={() =>
+                      setLookingFor(on ? lookingFor.filter((x) => x !== k.value) : [...lookingFor, k.value])
+                    }
+                    className={`inline-flex h-10 items-center gap-1.5 rounded-control border px-3.5 text-sm ${
+                      on ? "border-accent bg-accent-soft text-accent-text font-medium" : "border-line-strong bg-surface text-fg"
+                    }`}
+                  >
+                    {on && <CheckIcon />}
+                    {k.label}
+                  </button>
+                );
+              })}
+            </div>
+            {lookingFor.length === 0 && (
+              <p className="mt-2 text-sm text-danger" role="alert">
+                Choose internships, new grad roles, or both.
+              </p>
+            )}
+
+            <p className="mb-2 mt-5 text-sm font-medium">Target terms</p>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Target terms">
               {TERMS.map((t) => {
                 const on = terms.includes(t);
@@ -341,7 +380,7 @@ export default function OnboardingPage() {
                 {!interestsOk
                   ? `Pick ${MIN_INTERESTS}–${MAX_INTERESTS} fields to continue.`
                   : !formOk
-                    ? (schoolError ?? majorError ?? minorError ?? "Fill in your major, a term, and a valid graduation year.")
+                    ? (schoolError ?? majorError ?? minorError ?? (lookingFor.length === 0 ? "Choose what you're looking for." : "Fill in your major, a term, and a valid graduation year."))
                     : existing
                       ? "We'll re-rank your matches."
                       : "We'll rank every open internship for you."}

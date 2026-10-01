@@ -26,7 +26,7 @@ Sign in with any email and a password of 8 or more characters.
 
 Mock data lives in memory and is mirrored to `localStorage`, so a reload keeps
 your saves and applications. Each mock user has their own. To reset, clear
-site data (or remove the `step1.mock.v3` key).
+site data (or remove the `step1.mock.v4` key).
 
 ### Against the real API
 
@@ -92,6 +92,9 @@ What the suites cover:
 | `applications` | grouping, ghosted styling, old-style links, the not-found page |
 | `public` | About and Privacy signed out, live numbers, footer links on every screen |
 | `reviews` | leaving a review, its checks and errors, the admin page, keyboard rating, axe at both widths |
+| `admin-users` | the admin's Users tab: list, search, load more, a person's page, their resume download, 404 for others |
+| `listings` | Looking for, the kind filter in the URL, the New grad tag, source labels, credit for every list |
+| `resumes` | base resume, tailoring for a posting and for pasted text, saving, downloads, rename, delete, 409, 429, 503, keyboard, axe |
 | `a11y` | axe on every screen and dialog, light and dark, desktop and 375px |
 | `keyboard` | ranking interests, and save, apply, advance, with the keyboard alone |
 | `mobile` | no horizontal scroll at 375px |
@@ -142,6 +145,12 @@ src/
     saved/
     applications/          list grouped by status
     application/           timeline, at /application?id=12
+    review/                leave a review
+    admin/                 the owner's page: reviews and users (?tab=users)
+    admin/user/            one person, at /admin/user?id=12
+    resume/                the base resume
+    tailor/                tailoring, for a posting or pasted text
+    resumes/               saved resumes; resumes/edit/ opens one
     about/                 public
     privacy/               public
     not-found.tsx          the 404 page; also forwards old-style links
@@ -346,6 +355,59 @@ text with its line breaks, never as HTML.
 
 In mock mode `demo@umd.edu` is the admin and `src/lib/mock/reviews.json`
 holds twelve reviews; new ones are kept in the browser.
+
+### Users
+
+`/admin?tab=users` lists everyone, with search (`?q=`, by name, email, school
+or major) and load more. `/admin/user?id=` shows one person: account,
+profile, their uploaded resume (downloaded through a short-lived link the
+API hands out), applications with their timelines, saved postings, tailored
+resumes and reviews, under a banner that says this is another person's
+data. Everything they wrote is plain text. Both are for the admin only;
+anyone else gets the not-found page, as for reviews.
+Calls: `GET /admin/users`, `GET /admin/users/{id}`,
+`GET /admin/users/{id}/resume-file`.
+
+## Internships and new grad roles
+
+A profile says what the person is looking for: internships, new grad roles
+or both (internships by default, at least one). The feed only shows those
+kinds. The dashboard's Kind of role filter narrows it further and is kept in
+the URL as `kind=internship` or `kind=new_grad`, like the other filters; the
+empty state can name and drop it. New grad cards carry a small New grad tag,
+and every card says which list it came from ("via SimplifyJobs"). A list the
+app doesn't know yet shows under its own name.
+
+The lists are credited by name with a link in the footer, on About and on
+Privacy. They are defined once, in `SOURCES` in `src/lib/site.ts`; keep that
+in step with the sources the API reads.
+
+## Tailored resumes
+
+- `/resume`: the **base resume**, which every tailored resume is built from.
+  With none yet, the page offers to draft one from the uploaded resume
+  (`POST /resume/base/extract`), or points to Profile to upload one first.
+  It also keeps a list of every skill. `GET` and `PUT /resume/base`.
+- `/tailor`: tailors for a posting (`/tailor?posting=<id>`, reached from the
+  Tailor resume button on posting cards and on the timeline) or for pasted
+  job text (up to 20,000 characters). `POST /tailor` takes 10 to 40 seconds;
+  the page says it can take up to a minute and shows the seconds so far,
+  never a made-up percentage. Then it shows the fit, what changed, the gaps
+  and any question, above the editable draft, a name and Save.
+- `/resumes`: saved resumes. Open (`/resumes/edit?id=`), rename in place,
+  download, delete with a confirm.
+- The **editor** is shared by the base and tailored resumes: name, contact
+  lines, sections, entries and bullets, each added, removed and moved with
+  buttons (never drag only), with quiet hints when a line runs long.
+- **Downloads** (`GET /resumes/{id}/download?format=pdf|docx`) are fetched
+  with the sign-in token, turned into a file in the browser and saved under
+  the name in the response's `Content-Disposition`. Across origins a browser
+  can only read that header if the API lists it in
+  `Access-Control-Expose-Headers`; otherwise a fallback name is used.
+  Downloading an unsaved resume saves it first.
+
+What tailoring sends to Amazon Bedrock, and what is kept, is on the Privacy
+page.
 
 ## Security
 
@@ -646,7 +708,11 @@ codes, headers and bodies as the real API.
 
 | File | What it is |
 |---|---|
-| `feed.json` | 52 postings across all 14 roles, scores 22 to 95, two of them undated. `anchor` is the day the dates were written against; the mock shifts them so they stay relative to today |
+| `feed.json` | 52 internships across all 14 roles, scores 22 to 95, two of them undated, plus 6 new grad roles; a few come from the newer lists and one from a list the app doesn't know. `anchor` is the day the dates were written against; the mock shifts them so they stay relative to today |
+| `base-resume.json` | a fictional student's base resume (example.edu address, 555 phone number) |
+| `tailor.json` | the canned tailoring answers, for a posting and for pasted text; tailoring takes two seconds |
+| `admin-users.json` | twenty-four fictional people for the admin's Users tab |
+| `reviews.json` | twelve reviews for the admin page |
 | `profile.json` | the demo student's profile |
 | `applications.json` | four applications, including a ghosted and a rejected one |
 | `status.json` | the building to ready sequence for `/feed/status` |
@@ -665,6 +731,7 @@ Switches for tests, set in `localStorage`:
 | `step1.mock.fail = "POST /saved"` | the next matching request fails once with a 500 |
 | `step1.mock.fail = "429 POST /auth/login"` | the same, with a chosen status; 429 includes `Retry-After` |
 | `step1.mock.fail = "always GET /stats"` | keeps failing until the key is removed |
+| `step1.mock.fail = "429 POST /tailor"` | 429, 409 and 503 on `/tailor`, `/reviews` and `/resume/base/extract` use those routes' own messages |
 
 Two file names change what the mock's upload returns: a name containing
 `scan` comes back as an image-only PDF (`needs_ocr`), and one containing
@@ -694,8 +761,9 @@ to check what the client sent.
 
 ## Data sources
 
-Listings come from the
-[SimplifyJobs](https://github.com/SimplifyJobs/Summer2027-Internships) and
-[vanshb03](https://github.com/vanshb03/Summer2027-Internships) internship
-lists. StEP1 links out to the original posting and credits both lists in the
-page footer; it does not present the listings as its own.
+Listings come from community-maintained lists on GitHub, all credited by name
+with a link in the page footer: SimplifyJobs (internships and new grad
+positions), vanshb03, Jobright (data analysis, business analyst and product
+management internships), SpeedyApply (AI college jobs) and Zapply
+(internships). See `SOURCES` in `src/lib/site.ts`. StEP1 links out to the
+original posting and does not present the listings as its own.

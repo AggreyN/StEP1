@@ -43,13 +43,18 @@ export default function PrivacyPage() {
         <li>Your email address, and a hash of your password. The password itself is never stored.</li>
         <li>
           What you enter on your profile: school, major, minor, degree level,
-          graduation year, the terms you want, the locations you prefer, and
-          your ranked fields of interest.
+          graduation year, whether you want internships or new grad roles, the
+          terms you want, the locations you prefer, and your ranked fields of
+          interest.
         </li>
         <li>Your resume: the file, plus the text and the skills read from it.</li>
         <li>
+          If you use tailoring: your base resume (the version you edit here)
+          and every tailored resume you save.
+        </li>
+        <li>
           What you do here: the postings you save, the applications you track,
-          and the events and notes on each one.
+          the events and notes on each one, and any review you send.
         </li>
       </Items>
 
@@ -62,7 +67,10 @@ export default function PrivacyPage() {
           sign-in token is kept in your browser&apos;s local storage so you stay
           signed in. Signing out removes it.
         </p>
-        <p>Nothing is sold, and nothing is shared with anyone.</p>
+        <p>
+          Nothing is sold. Nothing is shared with anyone, except the one case
+          described under Tailored resumes below.
+        </p>
       </Paragraphs>
 
       <Rule />
@@ -91,16 +99,28 @@ export default function PrivacyPage() {
 
       <Rule />
 
+      <SectionLabel>Tailored resumes</SectionLabel>
+      <p className="m-0 max-w-[62ch]" data-testid="privacy-tailoring">
+        When you ask for a tailored resume, your base resume and the job
+        posting are sent to an AI model run on Amazon Bedrock, which drafts it.
+        That text is not used to train models. Tailored resumes you save are
+        stored with your account and deleted with it, along with your base
+        resume. Nothing is sent unless you ask for a tailored resume.
+      </p>
+
+      <Rule />
+
       <SectionLabel>Where listings come from</SectionLabel>
       <p className="m-0 max-w-[62ch]">
-        Listings come from two community-maintained lists on GitHub,{" "}
-        <a className={link} href={SOURCES[0].url} target="_blank" rel="noreferrer">
-          {SOURCES[0].name}
-        </a>{" "}
-        and{" "}
-        <a className={link} href={SOURCES[1].url} target="_blank" rel="noreferrer">
-          {SOURCES[1].name}
-        </a>
+        Listings come from community-maintained lists on GitHub:{" "}
+        {SOURCES.map((src, i) => (
+          <span key={src.url}>
+            <a className={link} href={src.url} target="_blank" rel="noreferrer">
+              {src.name}
+            </a>
+            {i < SOURCES.length - 2 ? ", " : i === SOURCES.length - 2 ? " and " : ""}
+          </span>
+        ))}
         . Every listing links to the original posting, and that is where you
         apply. StEP1 never applies for you.
       </p>
@@ -111,7 +131,8 @@ export default function PrivacyPage() {
       <Paragraphs>
         <p>
           Go to Profile, then Delete my account. That removes your account, your
-          resume file and all of your history immediately.
+          resume file, your base and saved resumes and all of your history
+          immediately.
         </p>
         <p>
           Or email me and I will do it for you:{" "}

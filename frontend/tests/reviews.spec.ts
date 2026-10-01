@@ -181,7 +181,7 @@ test.describe("the admin page", () => {
     await signInDemo(page);
     // 25 reviews: more than one page of 20
     await page.evaluate(() => {
-      const key = "step1.mock.v3";
+      const key = "step1.mock.v4";
       const state = JSON.parse(localStorage.getItem(key)!);
       state.reviews = Array.from({ length: 13 }, (_, i) => ({
         id: 5000 + i,
@@ -205,7 +205,9 @@ test.describe("the admin page", () => {
   test("the Admin link is on the Profile page, for phones", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await signInDemo(page);
-    await expect(page.getByRole("navigation", { name: "Main" }).last().getByRole("link")).toHaveCount(4);
+    // the phone tab bar has its five tabs, and Admin is not one of them
+    const tabs = page.getByRole("navigation", { name: "Main" }).last().getByRole("link");
+    await expect(tabs).toHaveText(["Matches", "Saved", "Applications", "Resumes", "Profile"]);
     await page.goto("/onboarding");
     await page.getByTestId("profile-admin-link").click();
     await expect(page).toHaveURL(/\/admin$/);
@@ -228,7 +230,7 @@ test.describe("the admin page", () => {
 
   test("if the API says 404, the admin page says not found too", async ({ page }) => {
     await signInDemo(page);
-    await page.evaluate(() => localStorage.setItem("step1.mock.fail", "404 GET /admin/reviews"));
+    await page.evaluate(() => localStorage.setItem("step1.mock.fail", "404 always GET /admin/reviews"));
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
   });

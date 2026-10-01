@@ -1,0 +1,107 @@
+{
+  "_comment": "Mock-only. A fictional student; any likeness is coincidence. The 555 phone number and example.edu address are reserved for fiction.",
+  "name": "Jordan Ellis",
+  "contact": [
+    "jordan.ellis@example.edu",
+    "(301) 555-0142",
+    "College Park, MD",
+    "github.com/jordan-ellis-demo"
+  ],
+  "sections": [
+    {
+      "title": "Education",
+      "entries": [
+        {
+          "heading": "University of Maryland, College Park",
+          "right": "May 2028",
+          "sub": "B.S. Information Science, minor in Data Science",
+          "sub_right": "GPA 3.7",
+          "lines": [
+            "Relevant coursework: Data Structures, Databases, Machine Learning, Human-Computer Interaction"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Experience",
+      "entries": [
+        {
+          "heading": "Terrapin Tutoring Center",
+          "right": "Sep 2025 to present",
+          "sub": "Peer Tutor, Intro Programming",
+          "sub_right": "College Park, MD",
+          "lines": [
+            "Tutor 15 students a week in Python and Java, with office hours and one-on-one sessions",
+            "Wrote a practice problem bank of 60 exercises now used by three course sections"
+          ]
+        },
+        {
+          "heading": "County Parks Department",
+          "right": "Jun 2025 to Aug 2025",
+          "sub": "Data Intern",
+          "sub_right": "Laurel, MD",
+          "lines": [
+            "Cleaned five years of facility booking records in SQL and built a Tableau dashboard used in budget meetings",
+            "Automated a weekly report in Python, saving about four hours of manual work each week"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Projects",
+      "entries": [
+        {
+          "heading": "Campus Shuttle Tracker",
+          "right": "Spring 2026",
+          "sub": "React, Node.js, PostgreSQL",
+          "sub_right": "",
+          "lines": [
+            "Built a live map of shuttle positions from a public feed, used by about 300 students a day",
+            "Cut page load time in half by caching route data and lazy-loading the map"
+          ]
+        },
+        {
+          "heading": "Course Review Sentiment",
+          "right": "Fall 2025",
+          "sub": "Python, scikit-learn",
+          "sub_right": "",
+          "lines": [
+            "Trained a classifier on 8,000 anonymised course reviews to flag common complaints",
+            "Presented results to the department's undergraduate committee"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Skills",
+      "entries": [
+        {
+          "heading": "",
+          "right": "",
+          "sub": "",
+          "sub_right": "",
+          "lines": [
+            "Languages: Python, Java, SQL, JavaScript, TypeScript",
+            "Tools: React, Node.js, PostgreSQL, Git, Tableau, Linux"
+          ]
+        }
+      ]
+    }
+  ],
+  "skill_inventory": [
+    "Python",
+    "Java",
+    "SQL",
+    "JavaScript",
+    "TypeScript",
+    "React",
+    "Node.js",
+    "PostgreSQL",
+    "Git",
+    "Tableau",
+    "Linux",
+    "scikit-learn",
+    "Data visualization",
+    "Tutoring"
+  ]
+}

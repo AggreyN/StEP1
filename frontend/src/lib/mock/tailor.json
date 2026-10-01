@@ -1,0 +1,28 @@
+{
+  "_comment": "Mock-only canned answers for POST /tailor. `{company}` and `{title}` are filled from the posting.",
+  "posting": {
+    "fit": "A good fit. The role asks for Python, SQL and building small tools for a team, all of which are in your projects and internship. It also mentions cloud experience, which your resume doesn't show.",
+    "changes": [
+      "Moved Projects above Experience so the Shuttle Tracker leads",
+      "Rewrote the Parks Department bullets to lead with SQL and automation, the posting's two main asks",
+      "Put Python and SQL first in Skills and dropped Tutoring, which the posting doesn't mention"
+    ],
+    "gaps": [
+      "Cloud platforms (AWS, Azure or GCP) are listed as preferred",
+      "No team software project with code review is shown"
+    ],
+    "question": "Have you used AWS, Azure or GCP in a class or project? If so, say where and I'll add it."
+  },
+  "text": {
+    "fit": "A reasonable fit for the role you pasted. Your data work and Python experience line up; the emphasis on stakeholder communication is lighter in your resume.",
+    "changes": [
+      "Led with the Parks Department internship and its dashboard",
+      "Added communication to the tutoring bullets",
+      "Kept Skills to the tools the description names"
+    ],
+    "gaps": [
+      "No experience presenting to non-technical audiences is shown beyond one committee presentation"
+    ],
+    "question": null
+  }
+}
