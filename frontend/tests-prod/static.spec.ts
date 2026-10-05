@@ -451,8 +451,11 @@ test("tailoring works from the exported site: base, tailor, save, reopen, downlo
   await page.goto("/");
   await page.getByTestId("posting-card").first().getByTestId("tailor-button").click();
   await expect(page).toHaveURL(/\/tailor\?posting=/);
-  await expect(page.getByTestId("tailor-report")).toBeVisible({ timeout: 15_000 });
-  await page.reload(); // a reload of /tailor?posting= runs it again
+  await expect(page.getByTestId("paste-advice")).toBeVisible({ timeout: 15_000 });
+  await page.reload(); // a reload of /tailor?posting= comes back to the same choice
+  await expect(page.getByTestId("paste-advice")).toBeVisible({ timeout: 15_000 });
+  await page.getByTestId("job-text").fill("We want SQL and dashboards.");
+  await page.getByTestId("tailor-text").click();
   await expect(page.getByTestId("tailor-report")).toBeVisible({ timeout: 15_000 });
   await page.getByTestId("save-tailored").click();
   await expect(page.getByTestId("tailored-status")).toContainText("Saved.");

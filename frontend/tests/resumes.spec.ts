@@ -133,6 +133,15 @@ test.describe("tailoring", () => {
     await card.getByTestId("tailor-button").click();
     await expect(page).toHaveURL(/\/tailor\?posting=/);
 
+    // Nothing starts on its own: the page asks for the full description first.
+    const advice = page.getByTestId("paste-advice");
+    await expect(advice).toContainText("Paste the full job description for the best result.");
+    await expect(advice).toContainText(`${title} at ${company}`);
+    await expect(page.getByTestId("open-original")).toHaveAttribute("target", "_blank");
+    await expect(page.getByTestId("tailoring")).toHaveCount(0);
+    await expect(page.getByTestId("tailor-text")).toBeDisabled();
+    await page.getByTestId("tailor-title-only").click();
+
     const progress = page.getByTestId("tailoring");
     await expect(progress).toContainText(`Tailoring your resume for ${title} at ${company}`);
     await expect(progress).toContainText("can take up to a minute");
@@ -144,6 +153,7 @@ test.describe("tailoring", () => {
     await expect(page.getByTestId("report-changes").getByRole("listitem")).toHaveCount(3);
     await expect(page.getByTestId("report-gaps").getByRole("listitem")).toHaveCount(2);
     await expect(page.getByTestId("report-question")).toContainText("Have you used AWS, Azure or GCP");
+    await expect(page.getByTestId("title-only-note")).toContainText("made from the job title only");
 
     // the draft: Projects moved up, editable; the name is suggested
     await expect(page.getByTestId("resume-section").nth(1)).toHaveAttribute("aria-label", "Projects");
@@ -229,12 +239,51 @@ test.describe("tailoring", () => {
     await setUpBase(page);
     await page.evaluate(() => localStorage.setItem("step1.mock.fail", "429 POST /tailor"));
     await page.goto(`/tailor?posting=${encodeURIComponent("simplify:9a5e7e29-0251-947b-cc3b-3121ae79507c")}`);
+    await page.getByTestId("tailor-title-only").click();
     await expect(errorNote(page)).toHaveText("You've tailored a lot of resumes today. Try again tomorrow.", { timeout: 10_000 });
     await page.evaluate(() => localStorage.setItem("step1.mock.fail", "503 POST /tailor"));
     await page.getByTestId("tailor-again").click();
     await expect(errorNote(page)).toHaveText("The resume writer is busy right now. Try again in a few minutes.", { timeout: 10_000 });
     await page.getByTestId("tailor-again").click();
     await expect(page.getByTestId("tailor-report")).toBeVisible({ timeout: 10_000 });
+  });
+
+  test("for a posting: a pasted description is what gets sent, and the saved resume keeps the posting", async ({ page }) => {
+    await signInDemo(page);
+    await setUpBase(page);
+    await page.goto("/");
+    const card = page.getByTestId("posting-card").first();
+    const id = (await card.getAttribute("data-posting-id"))!;
+    const title = (await card.getByRole("heading").innerText()).trim();
+    await page.goto(`/tailor?posting=${encodeURIComponent(id)}`);
+    await expect(page.getByTestId("paste-advice")).toContainText(title);
+    await page.getByTestId("job-text").fill("We want SQL, Tableau and stakeholder communication.");
+    await page.getByTestId("tailor-text").click();
+    await expect(page.getByTestId("tailor-report")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("title-only-note")).toHaveCount(0);
+    const sent = await page.evaluate(() => {
+      const w = window as unknown as { __step1Requests?: string[]; __step1Bodies?: unknown[] };
+      const i = (w.__step1Requests ?? []).lastIndexOf("POST /tailor");
+      return (w.__step1Bodies ?? [])[i] as Record<string, string>;
+    });
+    expect(Object.keys(sent)).toEqual(["job_text"]);
+    expect(sent.job_text).toMatch(/^Role: .+ at .+\n\nWe want SQL, Tableau and stakeholder communication\.$/);
+    await page.getByTestId("save-tailored").click();
+    await expect(page.getByTestId("tailored-status")).toContainText("Saved.");
+    const saved = await page.evaluate(() => {
+      const w = window as unknown as { __step1Requests?: string[]; __step1Bodies?: unknown[] };
+      const i = (w.__step1Requests ?? []).lastIndexOf("POST /resumes");
+      return (w.__step1Bodies ?? [])[i] as Record<string, string>;
+    });
+    expect(saved.posting_id).toBe(id);
+  });
+
+  test("a posting that can't be found still lets you paste a description", async ({ page }) => {
+    await signInDemo(page);
+    await page.goto(`/tailor?posting=${encodeURIComponent("simplify:no-such-posting")}`);
+    await expect(page.getByTestId("paste-advice")).toContainText("This posting");
+    await expect(page.getByTestId("open-original")).toHaveCount(0);
+    await expect(page.getByTestId("job-text")).toBeVisible();
   });
 
   test("the timeline has a Tailor resume button too", async ({ page }) => {
@@ -318,6 +367,10 @@ for (const scheme of ["light", "dark"] as const) {
       await expect(page.getByTestId("job-text")).toBeVisible();
       await expectAccessible(page, "tailor, form");
       await page.goto(`/tailor?posting=${encodeURIComponent("simplify:9a5e7e29-0251-947b-cc3b-3121ae79507c")}`);
+      await expect(page.getByTestId("paste-advice")).toBeVisible();
+      await expectAccessible(page, "tailor, for a posting");
+      await expectNoHorizontalScroll(page);
+      await page.getByTestId("tailor-title-only").click();
       await expect(page.getByTestId("tailoring")).toBeVisible();
       await expectAccessible(page, "tailor, running");
       await expect(page.getByTestId("tailor-report")).toBeVisible({ timeout: 10_000 });
