@@ -12,7 +12,9 @@ const LABELS: { key: keyof Pick<Stats, "active_postings" | "companies" | "role_f
   { key: "role_families", label: "Role families" },
 ];
 
-export function AboutStats() {
+/** "row": three across, ruled above and below. "stack": one per line, for a
+ *  narrow column beside the About headline. */
+export function AboutStats({ layout = "row" }: { layout?: "row" | "stack" }) {
   const [state, setState] = useState<{ stats: Stats } | "loading" | "failed">("loading");
 
   useEffect(() => {
@@ -32,21 +34,29 @@ export function AboutStats() {
     <dl
       data-testid="about-stats"
       aria-busy={stats ? undefined : true}
-      className="my-7 flex flex-wrap border-y border-[var(--line)]"
+      className={
+        layout === "stack"
+          ? "m-0 flex flex-col border-y border-[var(--line)]"
+          : "my-7 flex flex-wrap border-y border-[var(--line)]"
+      }
     >
       {LABELS.map((s, i) => (
         <div
           key={s.key}
-          className={`flex min-w-0 flex-[1_1_150px] flex-col-reverse px-[18px] pb-[15px] pt-4 ${
-            i < LABELS.length - 1 ? "border-r border-[var(--line)]" : ""
-          }`}
+          className={
+            layout === "stack"
+              ? `flex min-w-0 flex-col-reverse py-4 ${i < LABELS.length - 1 ? "border-b border-[var(--line)]" : ""}`
+              : `flex min-w-0 flex-[1_1_150px] flex-col-reverse px-[18px] pb-[15px] pt-4 ${
+                  i < LABELS.length - 1 ? "border-r border-[var(--line)]" : ""
+                }`
+          }
         >
           <dt className="font-ui mt-[5px] block text-[0.72rem] uppercase tracking-[0.06em] text-[var(--ink-3)]">
             {s.label}
           </dt>
           <dd
             data-testid={`stat-${s.key}`}
-            className="m-0 block min-h-[1.2em] font-mono text-[1.45rem] font-medium leading-[1.2] tracking-[-0.02em] tabular-nums"
+            className={`m-0 block min-h-[1.2em] font-mono ${layout === "stack" ? "text-[2rem] text-[var(--accent-text)]" : "text-[1.45rem]"} font-medium leading-[1.2] tracking-[-0.02em] tabular-nums`}
           >
             {stats ? stats[s.key].toLocaleString("en-US") : " "}
           </dd>
