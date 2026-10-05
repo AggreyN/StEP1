@@ -62,9 +62,9 @@ export default function AboutPage() {
       <SectionLabel>Why I built it</SectionLabel>
       <Paragraphs>
         <p>
-          I&apos;m Aggrey Narh. Most people call me Ussop. I&apos;m a junior at the
-          University of Maryland, College Park, studying Information Science with
-          a minor in Data Science.
+          I&apos;m Aggrey Narh. I&apos;m a junior at the University of Maryland,
+          College Park, studying Information Science with a minor in Data
+          Science.
         </p>
         <p>
           Last recruiting season I did what most students do. A spreadsheet.
