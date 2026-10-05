@@ -1,7 +1,7 @@
 /**
  * StEP1: About / origin story.  Route: /about  (public, no sign-in)
  *
- * Laid out like the "Ledger" mockup (docs/DESIGN_LEDGER.md §4): a top bar,
+ * Laid out like the "Ledger" design (docs/DESIGN_LEDGER.md §4): a top bar,
  * a wide hero with the stats beside the headline, the story in two columns,
  * what it does as three numbered columns, then one tan band holding the
  * roadmap and the contact block.
