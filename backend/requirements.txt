@@ -16,7 +16,7 @@ uvicorn[standard]>=0.30
 
 # --- Database + migrations ---
 SQLAlchemy>=2.0.30
-alembic>=1.13
+alembic>=1.20.0
 psycopg[binary]>=3.2        # PostgreSQL driver (postgresql+psycopg://)
 
 # --- Auth ---
