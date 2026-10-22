@@ -36,7 +36,7 @@ pydantic[email]>=2.7        # EmailStr on auth endpoints
 python-dotenv>=1.0          # load .env in development
 
 # --- HTTP (source fetches, Cognito JWKS) ---
-requests>=2.31
+requests>=2.34.2
 
 # --- Resume parsing ---
 PyMuPDF>=1.24.3             # imported as `pymupdf` (the name 1.24.3 introduced)
