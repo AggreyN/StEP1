@@ -32,7 +32,7 @@ slowapi>=0.1.9              # rate limits on /auth/* and the public routes
 boto3>=1.34                 # S3 presign (STORAGE_BACKEND=s3) + Secrets Manager (APP_ENV=prod)
 
 # --- Validation + config ---
-pydantic[email]>=2.7        # EmailStr on auth endpoints
+pydantic[email]>=2.13.5        # EmailStr on auth endpoints
 python-dotenv>=1.0          # load .env in development
 
 # --- HTTP (source fetches, Cognito JWKS) ---
